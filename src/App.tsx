@@ -219,6 +219,40 @@ function App() {
       description: 'Toggle Zen Mode',
       terminalBehavior: 'always' as const,
     },
+    {
+      key: '=',
+      ctrl: true,
+      shift: false,
+      action: () => {
+        const s = useSettingsStore.getState();
+        const cur = s.settings.terminal.fontSize;
+        if (cur < 32) s.updateTerminal('fontSize', Math.min(32, cur + 1));
+      },
+      description: 'Increase font size',
+      terminalBehavior: 'always' as const,
+    },
+    {
+      key: '-',
+      ctrl: true,
+      shift: false,
+      action: () => {
+        const s = useSettingsStore.getState();
+        const cur = s.settings.terminal.fontSize;
+        if (cur > 8) s.updateTerminal('fontSize', Math.max(8, cur - 1));
+      },
+      description: 'Decrease font size',
+      terminalBehavior: 'always' as const,
+    },
+    {
+      key: '0',
+      ctrl: true,
+      shift: false,
+      action: () => {
+        useSettingsStore.getState().updateTerminal('fontSize', 14);
+      },
+      description: 'Reset font size',
+      terminalBehavior: 'always' as const,
+    },
   ], [handleCreateLocalTerminal, activeTabId, closeTab, createTab]);
 
   // Use unified keyboard manager for app shortcuts
@@ -284,6 +318,26 @@ function App() {
         if (e.key === '\\' && !e.shiftKey) {
           e.preventDefault();
           useSettingsStore.getState().toggleSidebar();
+          return;
+        }
+        // Cmd+= / Cmd+- — Font size zoom
+        if ((e.key === '=' || e.key === '+') && !e.shiftKey) {
+          e.preventDefault();
+          const s = useSettingsStore.getState();
+          const cur = s.settings.terminal.fontSize;
+          if (cur < 32) s.updateTerminal('fontSize', Math.min(32, cur + 1));
+          return;
+        }
+        if (e.key === '-' && !e.shiftKey) {
+          e.preventDefault();
+          const s = useSettingsStore.getState();
+          const cur = s.settings.terminal.fontSize;
+          if (cur > 8) s.updateTerminal('fontSize', Math.max(8, cur - 1));
+          return;
+        }
+        if (e.key === '0' && !e.shiftKey) {
+          e.preventDefault();
+          useSettingsStore.getState().updateTerminal('fontSize', 14);
           return;
         }
         // Cmd+K — Command palette

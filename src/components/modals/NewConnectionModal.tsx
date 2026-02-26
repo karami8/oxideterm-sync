@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { open } from '@tauri-apps/plugin-dialog';
 import { invoke } from '@tauri-apps/api/core';
@@ -70,6 +70,20 @@ export const NewConnectionModal = () => {
   const [showAddJumpDialog, setShowAddJumpDialog] = useState(false);
   const [proxyChainExpanded, setProxyChainExpanded] = useState(false);
   const [agentAvailable, setAgentAvailable] = useState<boolean | null>(null);
+  const isComposingRef = useRef(false);
+
+  // Enter key submit (with IME guard)
+  const handleFormKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (isComposingRef.current || (e.nativeEvent as KeyboardEvent).isComposing || e.key === 'Process') return;
+    if (e.key === 'Enter' && !loading && canConnect()) {
+      // Don't submit when focus is on a button, select trigger, or checkbox
+      const tag = (e.target as HTMLElement).tagName;
+      const role = (e.target as HTMLElement).getAttribute('role');
+      if (tag === 'BUTTON' || role === 'combobox' || role === 'checkbox') return;
+      e.preventDefault();
+      handleConnect();
+    }
+  }, [loading]);
 
   // Type-safe auth type handler
   const handleAuthTypeChange = (value: string) => {
@@ -319,7 +333,13 @@ export const NewConnectionModal = () => {
         }
         toggleModal('newConnection', open);
       }}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto" aria-describedby="new-connection-description">
+        <DialogContent
+          className="max-h-[90vh] overflow-y-auto"
+          aria-describedby="new-connection-description"
+          onKeyDown={handleFormKeyDown}
+          onCompositionStart={() => { isComposingRef.current = true; }}
+          onCompositionEnd={() => { isComposingRef.current = false; }}
+        >
           <DialogHeader>
             <DialogTitle>{t('modals.new_connection.title')}</DialogTitle>
             <DialogDescription id="new-connection-description">

@@ -19,6 +19,7 @@ import {
   ArrowUpAZ,
   HardDrive,
   FolderOpen,
+  Loader2,
   CornerDownLeft,
   GitCompare,
   Usb,
@@ -140,6 +141,7 @@ const FileList = ({
   onPathInputChange,
   onPathInputSubmit,
   isRemote = false,
+  loading = false,
   t
 }: { 
   title: string, 
@@ -174,6 +176,7 @@ const FileList = ({
   onPathInputChange?: (v: string) => void,
   onPathInputSubmit?: () => void,
   isRemote?: boolean,
+  loading?: boolean,
   t: (key: string, options?: Record<string, unknown>) => string
 }) => {
   const listRef = useRef<HTMLDivElement>(null);
@@ -443,7 +446,17 @@ const FileList = ({
         onClick={() => setSelected(new Set())}
         onKeyDown={handleKeyDown}
       >
-        {files.map((file) => {
+        {loading ? (
+          <div className="flex items-center justify-center py-12 text-zinc-500">
+            <Loader2 className="h-5 w-5 animate-spin mr-2" />
+            <span className="text-xs">{t('sftp.file_list.loading')}</span>
+          </div>
+        ) : files.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-zinc-500">
+            <FolderOpen className="h-8 w-8 mb-2 opacity-40" />
+            <span className="text-xs">{t('sftp.file_list.empty')}</span>
+          </div>
+        ) : files.map((file) => {
           const isSelected = selected.has(file.name);
           return (
             <div 
@@ -642,6 +655,7 @@ export const SFTPView = ({ nodeId }: { nodeId: string }) => {
   const [remoteFiles, setRemoteFiles] = useState<FileInfo[]>([]);
   const [remotePath, setRemotePath] = useState('');
   const [remoteHome, setRemoteHome] = useState('');
+  const [remoteLoading, setRemoteLoading] = useState(false);
   
   const [localFiles, setLocalFiles] = useState<FileInfo[]>([]);
   const [localPath, setLocalPath] = useState('');
@@ -954,6 +968,7 @@ export const SFTPView = ({ nodeId }: { nodeId: string }) => {
      let cancelled = false;
 
      const refresh = async () => {
+        setRemoteLoading(true);
         try {
           const files = await nodeSftpListDir(nodeId, remotePath);
           if (!cancelled) setRemoteFiles(files);
@@ -968,6 +983,8 @@ export const SFTPView = ({ nodeId }: { nodeId: string }) => {
               setRemotePath('/');
             }
           }
+        } finally {
+          if (!cancelled) setRemoteLoading(false);
         }
      };
 
@@ -1880,6 +1897,7 @@ export const SFTPView = ({ nodeId }: { nodeId: string }) => {
              sortField={remoteSortField}
              sortDirection={remoteSortDirection}
              onSortChange={(field) => handleSortChange(false, field)}
+             loading={remoteLoading}
              isPathEditable={isRemotePathEditing}
              pathInputValue={remotePathInput}
              onPathInputChange={(v) => { setRemotePathInput(v); setIsRemotePathEditing(true); }}

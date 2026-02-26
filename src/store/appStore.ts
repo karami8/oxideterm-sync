@@ -666,11 +666,18 @@ export const useAppStore = create<AppStore>((set, get) => ({
     
     // ========== Phase 2: UI 乐观更新（立即响应） ==========
     set((state) => {
+      const oldIndex = state.tabs.findIndex(t => t.id === tabId);
       const newTabs = state.tabs.filter(t => t.id !== tabId);
       let newActiveId = state.activeTabId;
 
       if (state.activeTabId === tabId) {
-        newActiveId = newTabs.length > 0 ? newTabs[newTabs.length - 1].id : null;
+        // Activate the adjacent tab: prefer right neighbour, fall back to left
+        if (newTabs.length > 0) {
+          const nextIndex = Math.min(oldIndex, newTabs.length - 1);
+          newActiveId = newTabs[nextIndex].id;
+        } else {
+          newActiveId = null;
+        }
       }
 
       return {
