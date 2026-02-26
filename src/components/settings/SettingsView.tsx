@@ -299,12 +299,12 @@ const LocalTerminalSettings = () => {
                 <div className="space-y-3 text-sm">
                     <div className="flex items-center justify-between py-2">
                         <span className="text-theme-text">{t('settings_view.local_terminal.new_default_shell')}</span>
-                        <kbd className="px-2 py-1 bg-theme-bg-hover rounded text-xs text-theme-text-muted border border-theme-border">⌘T</kbd>
+                        <kbd className="px-2 py-1 bg-theme-bg-hover rounded text-xs text-theme-text-muted border border-theme-border">{platform.isMac ? '⌘T' : 'Ctrl+T'}</kbd>
                     </div>
                     <Separator className="opacity-30" />
                     <div className="flex items-center justify-between py-2">
                         <span className="text-theme-text">{t('settings_view.local_terminal.new_shell_launcher')}</span>
-                        <kbd className="px-2 py-1 bg-theme-bg-hover rounded text-xs text-theme-text-muted border border-theme-border">⌘⇧T</kbd>
+                        <kbd className="px-2 py-1 bg-theme-bg-hover rounded text-xs text-theme-text-muted border border-theme-border">{platform.isMac ? '⌘⇧T' : 'Ctrl+Shift+T'}</kbd>
                     </div>
                 </div>
             </div>
@@ -360,8 +360,15 @@ const HelpAboutSection = () => {
             shortcuts: [
                 { label: t('settings_view.help.shortcut_new_tab'), mac: '⌘T', other: 'Ctrl+T' },
                 { label: t('settings_view.help.shortcut_shell_launcher'), mac: '⌘⇧T', other: 'Ctrl+Shift+T' },
+                { label: t('settings_view.help.shortcut_close_tab'), mac: '⌘W', other: 'Ctrl+W' },
                 { label: t('settings_view.help.shortcut_next_tab'), mac: '⌘}', other: 'Ctrl+Tab' },
                 { label: t('settings_view.help.shortcut_prev_tab'), mac: '⌘{', other: 'Ctrl+Shift+Tab' },
+                { label: t('settings_view.help.shortcut_go_to_tab'), mac: '⌘1-9', other: 'Ctrl+1-9' },
+                { label: t('settings_view.help.shortcut_new_connection'), mac: '⌘N', other: 'Ctrl+N' },
+                { label: t('settings_view.help.shortcut_command_palette'), mac: '⌘K', other: 'Ctrl+K' },
+                { label: t('settings_view.help.shortcut_toggle_sidebar'), mac: '⌘\\', other: 'Ctrl+\\' },
+                { label: t('settings_view.help.shortcut_settings'), mac: '⌘,', other: 'Ctrl+,' },
+                { label: t('settings_view.help.shortcut_zen_mode'), mac: '⌘⇧Z', other: 'Ctrl+Shift+Z' },
             ],
         },
         {

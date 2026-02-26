@@ -110,5 +110,23 @@
     "no_subfolders": "Keine Unterordner in diesem Verzeichnis",
     "selected_path": "Ausgewählt",
     "open_folder": "Ordner öffnen"
+  },
+  "command_palette": {
+    "placeholder": "Befehle, Verbindungen suchen oder user@host eingeben...",
+    "no_results": "Keine Ergebnisse",
+    "section_commands": "Befehle",
+    "section_connections": "Gespeicherte Verbindungen",
+    "section_sessions": "Aktive Sitzungen",
+    "quick_connect": "Schnellverbindung",
+    "cmd_new_terminal": "Neues lokales Terminal",
+    "cmd_new_connection": "Neue SSH-Verbindung",
+    "cmd_settings": "Einstellungen öffnen",
+    "cmd_toggle_sidebar": "Seitenleiste umschalten",
+    "cmd_zen_mode": "Zen-Modus umschalten",
+    "cmd_close_tab": "Aktuellen Tab schließen"
+  },
+  "zen_mode": {
+    "hint": "Zen-Modus — Drücken Sie ⌘⇧Z zum Beenden",
+    "hint_other": "Zen-Modus — Drücken Sie Ctrl+Shift+Z zum Beenden"
   }
 }

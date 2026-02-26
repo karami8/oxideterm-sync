@@ -110,5 +110,23 @@
     "no_subfolders": "Không có thư mục con trong thư mục này",
     "selected_path": "Đã chọn",
     "open_folder": "Mở thư mục"
+  },
+  "command_palette": {
+    "placeholder": "Tìm lệnh, kết nối hoặc nhập user@host...",
+    "no_results": "Không có kết quả",
+    "section_commands": "Lệnh",
+    "section_connections": "Kết nối đã lưu",
+    "section_sessions": "Phiên hoạt động",
+    "quick_connect": "Kết nối nhanh",
+    "cmd_new_terminal": "Terminal mới",
+    "cmd_new_connection": "Kết nối SSH mới",
+    "cmd_settings": "Mở cài đặt",
+    "cmd_toggle_sidebar": "Chuyển đổi thanh bên",
+    "cmd_zen_mode": "Chuyển đổi chế độ Zen",
+    "cmd_close_tab": "Đóng tab hiện tại"
+  },
+  "zen_mode": {
+    "hint": "Chế độ Zen — Nhấn ⌘⇧Z để thoát",
+    "hint_other": "Chế độ Zen — Nhấn Ctrl+Shift+Z để thoát"
   }
 }

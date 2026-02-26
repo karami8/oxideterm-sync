@@ -138,6 +138,8 @@ export interface SidebarUIState {
   // AI sidebar (right side)
   aiSidebarCollapsed: boolean;
   aiSidebarWidth: number;  // AI sidebar width in pixels (280-500)
+  // Zen mode
+  zenMode: boolean;
 }
 
 /** AI thinking display style */
@@ -288,6 +290,8 @@ const defaultSidebarUIState: SidebarUIState = {
   // AI sidebar defaults
   aiSidebarCollapsed: true,  // Start collapsed
   aiSidebarWidth: 340,       // Default AI sidebar width
+  // Zen mode
+  zenMode: false,
 };
 
 const defaultAiSettings: AiSettings = {
@@ -510,6 +514,8 @@ interface SettingsStore {
   setAiSidebarCollapsed: (collapsed: boolean) => void;
   setAiSidebarWidth: (width: number) => void;
   toggleAiSidebar: () => void;
+  // Zen mode
+  toggleZenMode: () => void;
 
   // Actions - Bulk operations
   resetToDefaults: () => void;
@@ -788,6 +794,34 @@ export const useSettingsStore = create<SettingsStore>()(
           },
         };
         persistSettings(newSettings);
+        return { settings: newSettings };
+      });
+    },
+
+    // ========== Zen Mode ==========
+    toggleZenMode: () => {
+      set((state) => {
+        const sui = state.settings.sidebarUI;
+        const entering = !sui.zenMode;
+        const newSidebarUI: SidebarUIState = entering
+          ? {
+              // Enter zen: collapse both sidebars, set zenMode flag
+              ...sui,
+              zenMode: true,
+              collapsed: true,
+              aiSidebarCollapsed: true,
+            }
+          : {
+              // Exit zen: restore default open state
+              ...sui,
+              zenMode: false,
+              collapsed: false,
+            };
+        const newSettings: PersistedSettingsV2 = {
+          ...state.settings,
+          sidebarUI: newSidebarUI,
+        };
+        // Don't persist zen mode — it's a transient UI state
         return { settings: newSettings };
       });
     },

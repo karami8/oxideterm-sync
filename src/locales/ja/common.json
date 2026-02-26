@@ -110,5 +110,23 @@
     "no_subfolders": "このディレクトリにサブフォルダーはありません",
     "selected_path": "選択済み",
     "open_folder": "フォルダーを開く"
+  },
+  "command_palette": {
+    "placeholder": "コマンド、接続を検索、または user@host でクイック接続...",
+    "no_results": "結果が見つかりません",
+    "section_commands": "コマンド",
+    "section_connections": "保存済み接続",
+    "section_sessions": "アクティブセッション",
+    "quick_connect": "クイック接続",
+    "cmd_new_terminal": "新規ローカルターミナル",
+    "cmd_new_connection": "新規 SSH 接続",
+    "cmd_settings": "設定を開く",
+    "cmd_toggle_sidebar": "サイドバー切替",
+    "cmd_zen_mode": "Zen モード切替",
+    "cmd_close_tab": "現在のタブを閉じる"
+  },
+  "zen_mode": {
+    "hint": "Zen モード — ⌘⇧Z で終了",
+    "hint_other": "Zen モード — Ctrl+Shift+Z で終了"
   }
 }

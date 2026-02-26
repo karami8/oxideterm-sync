@@ -110,5 +110,23 @@
     "no_subfolders": "此目錄下沒有子資料夾",
     "selected_path": "已選擇",
     "open_folder": "開啟資料夾"
+  },
+  "command_palette": {
+    "placeholder": "搜尋指令、連線，或輸入 user@host 快速連線...",
+    "no_results": "無匹配結果",
+    "section_commands": "指令",
+    "section_connections": "已儲存連線",
+    "section_sessions": "活躍工作階段",
+    "quick_connect": "快速連線",
+    "cmd_new_terminal": "新增本機終端",
+    "cmd_new_connection": "新增 SSH 連線",
+    "cmd_settings": "開啟設定",
+    "cmd_toggle_sidebar": "切換側邊欄",
+    "cmd_zen_mode": "切換 Zen 模式",
+    "cmd_close_tab": "關閉當前分頁"
+  },
+  "zen_mode": {
+    "hint": "Zen 模式 — 按 ⌘⇧Z 退出",
+    "hint_other": "Zen 模式 — 按 Ctrl+Shift+Z 退出"
   }
 }

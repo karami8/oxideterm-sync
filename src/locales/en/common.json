@@ -110,5 +110,23 @@
     "no_subfolders": "No subfolders in this directory",
     "selected_path": "Selected",
     "open_folder": "Open Folder"
+  },
+  "command_palette": {
+    "placeholder": "Search commands, connections, or type user@host...",
+    "no_results": "No results found",
+    "section_commands": "Commands",
+    "section_connections": "Saved Connections",
+    "section_sessions": "Active Sessions",
+    "quick_connect": "Quick Connect",
+    "cmd_new_terminal": "New Local Terminal",
+    "cmd_new_connection": "New SSH Connection",
+    "cmd_settings": "Open Settings",
+    "cmd_toggle_sidebar": "Toggle Sidebar",
+    "cmd_zen_mode": "Toggle Zen Mode",
+    "cmd_close_tab": "Close Current Tab"
+  },
+  "zen_mode": {
+    "hint": "Zen Mode — Press ⌘⇧Z to exit",
+    "hint_other": "Zen Mode — Press Ctrl+Shift+Z to exit"
   }
 }

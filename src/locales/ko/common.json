@@ -110,5 +110,23 @@
     "no_subfolders": "이 디렉토리에 하위 폴더가 없습니다",
     "selected_path": "선택됨",
     "open_folder": "폴더 열기"
+  },
+  "command_palette": {
+    "placeholder": "명령, 연결 검색 또는 user@host 입력...",
+    "no_results": "결과 없음",
+    "section_commands": "명령",
+    "section_connections": "저장된 연결",
+    "section_sessions": "활성 세션",
+    "quick_connect": "빠른 연결",
+    "cmd_new_terminal": "새 로컬 터미널",
+    "cmd_new_connection": "새 SSH 연결",
+    "cmd_settings": "설정 열기",
+    "cmd_toggle_sidebar": "사이드바 전환",
+    "cmd_zen_mode": "Zen 모드 전환",
+    "cmd_close_tab": "현재 탭 닫기"
+  },
+  "zen_mode": {
+    "hint": "Zen 모드 — ⌘⇧Z를 눌러 종료",
+    "hint_other": "Zen 모드 — Ctrl+Shift+Z를 눌러 종료"
   }
 }

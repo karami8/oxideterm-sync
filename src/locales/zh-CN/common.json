@@ -110,5 +110,23 @@
     "no_subfolders": "此目录下没有子文件夹",
     "selected_path": "已选择",
     "open_folder": "打开文件夹"
+  },
+  "command_palette": {
+    "placeholder": "搜索命令、连接，或输入 user@host 快速连接...",
+    "no_results": "无匹配结果",
+    "section_commands": "命令",
+    "section_connections": "已保存连接",
+    "section_sessions": "活跃会话",
+    "quick_connect": "快速连接",
+    "cmd_new_terminal": "新建本地终端",
+    "cmd_new_connection": "新建 SSH 连接",
+    "cmd_settings": "打开设置",
+    "cmd_toggle_sidebar": "切换侧边栏",
+    "cmd_zen_mode": "切换 Zen 模式",
+    "cmd_close_tab": "关闭当前标签页"
+  },
+  "zen_mode": {
+    "hint": "Zen 模式 — 按 ⌘⇧Z 退出",
+    "hint_other": "Zen 模式 — 按 Ctrl+Shift+Z 退出"
   }
 }

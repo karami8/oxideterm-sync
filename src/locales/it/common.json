@@ -110,5 +110,23 @@
     "no_subfolders": "Nessuna sottocartella in questa directory",
     "selected_path": "Selezionato",
     "open_folder": "Apri cartella"
+  },
+  "command_palette": {
+    "placeholder": "Cerca comandi, connessioni o digita user@host...",
+    "no_results": "Nessun risultato",
+    "section_commands": "Comandi",
+    "section_connections": "Connessioni salvate",
+    "section_sessions": "Sessioni attive",
+    "quick_connect": "Connessione rapida",
+    "cmd_new_terminal": "Nuovo terminale locale",
+    "cmd_new_connection": "Nuova connessione SSH",
+    "cmd_settings": "Apri impostazioni",
+    "cmd_toggle_sidebar": "Attiva/disattiva barra laterale",
+    "cmd_zen_mode": "Attiva/disattiva modalit\u00e0 Zen",
+    "cmd_close_tab": "Chiudi scheda corrente"
+  },
+  "zen_mode": {
+    "hint": "Modalit\u00e0 Zen \u2014 Premi \u2318\u21e7Z per uscire",
+    "hint_other": "Modalit\u00e0 Zen \u2014 Premi Ctrl+Shift+Z per uscire"
   }
 }

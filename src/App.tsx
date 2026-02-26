@@ -17,6 +17,7 @@ import { initializePluginSystem } from './lib/plugin/pluginLoader';
 import { setupConnectionBridge, setupNodeStateBridge, pluginEventBridge } from './lib/plugin/pluginEventBridge';
 import { useToastStore } from './hooks/useToast';
 import { PluginConfirmDialog } from './components/plugin/PluginConfirmDialog';
+import { CommandPalette } from './components/command-palette/CommandPalette';
 import { CastPlayer } from './components/terminal/CastPlayer';
 import { useRecordingStore } from './store/recordingStore';
 
@@ -33,7 +34,10 @@ function App() {
   // Shell launcher state
   const [shellLauncherOpen, setShellLauncherOpen] = useState(false);
   const { createTerminal, loadShells, shellsLoaded } = useLocalTerminalStore();
-  const { createTab, activeTabId, tabs } = useAppStore();
+  const { createTab, activeTabId, tabs, closeTab } = useAppStore();
+  
+  // Command palette state
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
 
   // Determine if a terminal is currently active
   const isTerminalActive = useMemo(() => {
@@ -167,7 +171,55 @@ function App() {
       description: 'Open shell launcher',
       terminalBehavior: 'always' as const,
     },
-  ], [handleCreateLocalTerminal]);
+    {
+      key: 'w',
+      ctrl: true,
+      shift: false,
+      action: () => { if (activeTabId) closeTab(activeTabId); },
+      description: 'Close current tab',
+      terminalBehavior: 'always' as const,
+    },
+    {
+      key: 'n',
+      ctrl: true,
+      shift: false,
+      action: () => useAppStore.getState().toggleModal('newConnection', true),
+      description: 'New SSH connection',
+      terminalBehavior: 'always' as const,
+    },
+    {
+      key: ',',
+      ctrl: true,
+      shift: false,
+      action: () => createTab('settings'),
+      description: 'Open settings',
+      terminalBehavior: 'always' as const,
+    },
+    {
+      key: '\\',
+      ctrl: true,
+      shift: false,
+      action: () => useSettingsStore.getState().toggleSidebar(),
+      description: 'Toggle sidebar',
+      terminalBehavior: 'always' as const,
+    },
+    {
+      key: 'k',
+      ctrl: true,
+      shift: false,
+      action: () => setCommandPaletteOpen(true),
+      description: 'Open command palette',
+      terminalBehavior: 'always' as const,
+    },
+    {
+      key: 'z',
+      ctrl: true,
+      shift: true,
+      action: () => useSettingsStore.getState().toggleZenMode(),
+      description: 'Toggle Zen Mode',
+      terminalBehavior: 'always' as const,
+    },
+  ], [handleCreateLocalTerminal, activeTabId, closeTab, createTab]);
 
   // Use unified keyboard manager for app shortcuts
   // Context: terminal is active, no panels open at app level
@@ -191,20 +243,78 @@ function App() {
         return;
       }
       
-      // Special case: Cmd+T on Mac should still create new tab even when terminal is active
-      // because Cmd+key is not a standard terminal control sequence
-      // (Ctrl+T is, but Cmd+T isn't)
-      if (e.metaKey && !e.ctrlKey && e.key.toLowerCase() === 't' && !e.shiftKey) {
-        e.preventDefault();
-        handleCreateLocalTerminal();
-        return;
-      }
-      
-      // Cmd+Shift+T on Mac
-      if (e.metaKey && !e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 't') {
-        e.preventDefault();
-        setShellLauncherOpen(true);
-        return;
+      // ─── Mac Cmd+key shortcuts ───
+      // Cmd+key is NOT a standard terminal control sequence, so it's
+      // safe to intercept even when the terminal is focused.
+      if (e.metaKey && !e.ctrlKey) {
+        const key = e.key.toLowerCase();
+
+        // Cmd+T — New local terminal
+        if (key === 't' && !e.shiftKey) {
+          e.preventDefault();
+          handleCreateLocalTerminal();
+          return;
+        }
+        // Cmd+Shift+T — Shell launcher
+        if (key === 't' && e.shiftKey) {
+          e.preventDefault();
+          setShellLauncherOpen(true);
+          return;
+        }
+        // Cmd+W — Close current tab
+        if (key === 'w' && !e.shiftKey) {
+          e.preventDefault();
+          const id = useAppStore.getState().activeTabId;
+          if (id) useAppStore.getState().closeTab(id);
+          return;
+        }
+        // Cmd+N — New SSH connection
+        if (key === 'n' && !e.shiftKey) {
+          e.preventDefault();
+          useAppStore.getState().toggleModal('newConnection', true);
+          return;
+        }
+        // Cmd+, — Open settings
+        if (key === ',' && !e.shiftKey) {
+          e.preventDefault();
+          useAppStore.getState().createTab('settings');
+          return;
+        }
+        // Cmd+\ — Toggle sidebar
+        if (e.key === '\\' && !e.shiftKey) {
+          e.preventDefault();
+          useSettingsStore.getState().toggleSidebar();
+          return;
+        }
+        // Cmd+K — Command palette
+        if (key === 'k' && !e.shiftKey) {
+          e.preventDefault();
+          setCommandPaletteOpen(true);
+          return;
+        }
+        // Cmd+Shift+Z — Zen Mode
+        if (key === 'z' && e.shiftKey) {
+          e.preventDefault();
+          useSettingsStore.getState().toggleZenMode();
+          return;
+        }
+        // Cmd+} / Cmd+{ — Next/Prev tab (Shift+]/Shift+[ on US layout)
+        if (e.key === '}') {
+          e.preventDefault();
+          useAppStore.getState().nextTab();
+          return;
+        }
+        if (e.key === '{') {
+          e.preventDefault();
+          useAppStore.getState().prevTab();
+          return;
+        }
+        // Cmd+1-9 — Go to tab N
+        if (key >= '1' && key <= '9') {
+          e.preventDefault();
+          useAppStore.getState().goToTab(parseInt(key, 10) - 1);
+          return;
+        }
       }
     };
 
@@ -224,6 +334,7 @@ function App() {
       <Toaster />
       <AutoRouteModal />
       <PluginConfirmDialog />
+      <CommandPalette open={commandPaletteOpen} onOpenChange={setCommandPaletteOpen} />
       <LocalShellLauncher 
         open={shellLauncherOpen} 
         onOpenChange={setShellLauncherOpen} 

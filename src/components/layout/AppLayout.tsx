@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useMemo } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Sidebar } from './Sidebar';
 import { AiSidebar } from './AiSidebar';
@@ -89,6 +89,21 @@ export const AppLayout = () => {
   const { t } = useTranslation();
   const { tabs, activeTabId, toggleModal, setActivePaneId, closePane } = useAppStore();
   const monitorBgActive = useTabBgActive('connection_monitor');
+  const zenMode = useSettingsStore((s) => s.settings.sidebarUI.zenMode);
+
+  // Zen mode hint — show briefly on enter
+  const [showZenHint, setShowZenHint] = useState(false);
+  useEffect(() => {
+    if (zenMode) {
+      setShowZenHint(true);
+      const timer = setTimeout(() => setShowZenHint(false), 2500);
+      return () => clearTimeout(timer);
+    } else {
+      setShowZenHint(false);
+    }
+  }, [zenMode]);
+
+  const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
 
   // Handlers for split pane interactions
   const handlePaneFocus = useCallback((tabId: string, paneId: string) => {
@@ -105,12 +120,12 @@ export const AppLayout = () => {
       <NewConnectionModal />
       {/* SettingsModal removed - now a Tab View */}
 
-      {/* Sidebar */}
-      <Sidebar />
+      {/* Sidebar — hidden in zen mode */}
+      {!zenMode && <Sidebar />}
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0">
-        <TabBar />
+        {!zenMode && <TabBar />}
 
         <div className="flex-1 relative bg-theme-bg overflow-hidden">
           {tabs.length === 0 ? (
@@ -272,8 +287,15 @@ export const AppLayout = () => {
         </div>
       </div>
 
-      {/* AI Sidebar - Right side */}
-      <AiSidebar />
+      {/* AI Sidebar - Right side (hidden in zen mode) */}
+      {!zenMode && <AiSidebar />}
+
+      {/* Zen mode hint overlay */}
+      {showZenHint && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-md bg-theme-bg-panel/90 border border-theme-border text-sm text-theme-text-muted backdrop-blur-sm animate-in fade-in slide-in-from-bottom-2 duration-300">
+          {isMac ? t('zen_mode.hint') : t('zen_mode.hint_other')}
+        </div>
+      )}
     </div>
   );
 };
