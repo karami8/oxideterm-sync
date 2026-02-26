@@ -24,7 +24,9 @@
     "empty": {
       "title": "OxideTerm",
       "no_sessions": "No active sessions",
-      "new_connection": "New Connection"
+      "new_connection": "New Connection",
+      "new_local_terminal": "Local Terminal",
+      "recent_connections": "Recent connections"
     },
     "connection_monitor": {
       "title": "Connection Monitor"
@@ -36,7 +38,10 @@
     "offline": "Offline",
     "cancel_reconnect": "Cancel reconnect",
     "reconnect": "Reconnect",
-    "close_tab": "Close tab"
+    "close_tab": "Close tab",
+    "close_other_tabs": "Close other tabs",
+    "close_tabs_to_right": "Close tabs to the right",
+    "close_all_tabs": "Close all tabs"
   },
   "tabs": {
     "settings": "Settings",
@@ -112,6 +117,7 @@
     "open_folder": "Open Folder"
   },
   "command_palette": {
+    "title": "Command Palette",
     "placeholder": "Search commands, connections, or type user@host...",
     "no_results": "No results found",
     "section_commands": "Commands",

@@ -13,9 +13,10 @@ import { ConnectionPoolMonitor } from '../connections/ConnectionPoolMonitor';
 import { TabActiveProvider } from '../../hooks/useTabActive';
 import { ConnectionsPanel } from '../connections/ConnectionsPanel';
 import { SystemHealthPanel } from './SystemHealthPanel';
-import { Plus } from 'lucide-react';
+import { Plus, Terminal as TerminalIcon } from 'lucide-react';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { useSettingsStore } from '../../store/settingsStore';
+import { useLocalTerminalStore } from '../../store/localTerminalStore';
 import { useTabBgActive } from '../../hooks/useTabBackground';
 
 // Lazy load non-critical views (only loaded when user opens SFTP/Forwards tab)
@@ -85,9 +86,63 @@ const TabBgWrapper: React.FC<{ tabType: string; children: React.ReactNode }> = (
   );
 };
 
+// Empty state with quick actions and shortcut hints
+const EmptyState = () => {
+  const { t } = useTranslation();
+  const { toggleModal, createTab } = useAppStore();
+  const createLocalTerminal = useLocalTerminalStore((s) => s.createTerminal);
+  const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+
+  const handleNewLocalTerminal = async () => {
+    try {
+      const info = await createLocalTerminal();
+      createTab('local_terminal', info.id);
+    } catch (err) {
+      console.error('Failed to create local terminal:', err);
+    }
+  };
+
+  const shortcuts = [
+    { key: isMac ? '⌘K' : 'Ctrl+K', label: t('command_palette.title') },
+    { key: isMac ? '⌘N' : 'Ctrl+N', label: t('layout.empty.new_connection') },
+    { key: isMac ? '⌘`' : 'Ctrl+`', label: t('layout.empty.new_local_terminal') },
+  ];
+
+  return (
+    <div className="flex flex-col items-center justify-center h-full text-theme-text-muted px-4">
+      <div className="w-full max-w-sm space-y-6">
+        {/* Header */}
+        <div className="text-center">
+          <h1 className="text-4xl font-bold text-theme-text tracking-tight">{t('layout.empty.title')}</h1>
+        </div>
+
+        {/* Quick Actions */}
+        <div className="flex gap-3 justify-center">
+          <Button onClick={() => toggleModal('newConnection', true)} className="gap-2">
+            <Plus className="h-4 w-4" /> {t('layout.empty.new_connection')}
+          </Button>
+          <Button variant="outline" onClick={handleNewLocalTerminal} className="gap-2">
+            <TerminalIcon className="h-4 w-4" /> {t('layout.empty.new_local_terminal')}
+          </Button>
+        </div>
+
+        {/* Keyboard shortcut hints */}
+        <div className="flex flex-wrap justify-center gap-x-5 gap-y-2 pt-1">
+          {shortcuts.map(s => (
+            <span key={s.key} className="inline-flex items-center gap-1.5 text-xs text-theme-text-muted">
+              <kbd className="px-1.5 py-0.5 rounded bg-theme-bg-hover border border-theme-border text-theme-text font-mono text-[10px] leading-tight">{s.key}</kbd>
+              <span>{s.label}</span>
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export const AppLayout = () => {
   const { t } = useTranslation();
-  const { tabs, activeTabId, toggleModal, setActivePaneId, closePane } = useAppStore();
+  const { tabs, activeTabId, setActivePaneId, closePane } = useAppStore();
   const monitorBgActive = useTabBgActive('connection_monitor');
   const zenMode = useSettingsStore((s) => s.settings.sidebarUI.zenMode);
 
@@ -101,6 +156,16 @@ export const AppLayout = () => {
     } else {
       setShowZenHint(false);
     }
+  }, [zenMode]);
+
+  // After zen mode toggled, TabBar/Sidebar appear/disappear changing the terminal
+  // container dimensions. Dispatch a resize event after DOM reflow so that
+  // xterm.js FitAddon recalculates cols/rows correctly.
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => {
+      window.dispatchEvent(new Event('resize'));
+    });
+    return () => cancelAnimationFrame(raf);
   }, [zenMode]);
 
   const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
@@ -129,13 +194,7 @@ export const AppLayout = () => {
 
         <div className="flex-1 relative bg-theme-bg overflow-hidden">
           {tabs.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-theme-text-muted">
-              <div className="mb-4 text-2xl font-bold text-theme-text">{t('layout.empty.title')}</div>
-              <p className="mb-8 text-theme-text-muted">{t('layout.empty.no_sessions')}</p>
-              <Button onClick={() => toggleModal('newConnection', true)} className="gap-2">
-                <Plus className="h-4 w-4" /> {t('layout.empty.new_connection')}
-              </Button>
-            </div>
+            <EmptyState />
           ) : (
             <>
               {tabs.map(tab => {

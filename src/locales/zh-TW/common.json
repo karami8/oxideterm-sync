@@ -24,7 +24,9 @@
     "empty": {
       "title": "OxideTerm",
       "no_sessions": "沒有使用中的工作階段",
-      "new_connection": "新增連線"
+      "new_connection": "新增連線",
+      "new_local_terminal": "本機終端",
+      "recent_connections": "最近連線"
     },
     "connection_monitor": {
       "title": "連線監控"
@@ -36,7 +38,10 @@
     "offline": "離線",
     "cancel_reconnect": "取消重新連線",
     "reconnect": "重新連線",
-    "close_tab": "關閉分頁"
+    "close_tab": "關閉分頁",
+    "close_other_tabs": "關閉其他分頁",
+    "close_tabs_to_right": "關閉右側分頁",
+    "close_all_tabs": "關閉所有分頁"
   },
   "tabs": {
     "settings": "設定",
@@ -112,6 +117,7 @@
     "open_folder": "開啟資料夾"
   },
   "command_palette": {
+    "title": "命令面板",
     "placeholder": "搜尋指令、連線，或輸入 user@host 快速連線...",
     "no_results": "無匹配結果",
     "section_commands": "指令",

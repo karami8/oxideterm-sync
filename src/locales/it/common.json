@@ -24,7 +24,9 @@
     "empty": {
       "title": "OxideTerm",
       "no_sessions": "Nessuna sessione attiva",
-      "new_connection": "Nuova Connessione"
+      "new_connection": "Nuova Connessione",
+      "new_local_terminal": "Terminale locale",
+      "recent_connections": "Connessioni recenti"
     },
     "connection_monitor": {
       "title": "Monitor Connessioni"
@@ -36,7 +38,10 @@
     "offline": "Offline",
     "cancel_reconnect": "Annulla riconnessione",
     "reconnect": "Riconnetti",
-    "close_tab": "Chiudi scheda"
+    "close_tab": "Chiudi scheda",
+    "close_other_tabs": "Chiudi altre schede",
+    "close_tabs_to_right": "Chiudi schede a destra",
+    "close_all_tabs": "Chiudi tutte le schede"
   },
   "tabs": {
     "settings": "Impostazioni",
@@ -112,6 +117,7 @@
     "open_folder": "Apri cartella"
   },
   "command_palette": {
+    "title": "Tavolozza comandi",
     "placeholder": "Cerca comandi, connessioni o digita user@host...",
     "no_results": "Nessun risultato",
     "section_commands": "Comandi",

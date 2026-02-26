@@ -24,7 +24,9 @@
     "empty": {
       "title": "OxideTerm",
       "no_sessions": "활성 세션 없음",
-      "new_connection": "새 연결"
+      "new_connection": "새 연결",
+      "new_local_terminal": "로컬 터미널",
+      "recent_connections": "최근 연결"
     },
     "connection_monitor": {
       "title": "연결 모니터"
@@ -36,7 +38,10 @@
     "offline": "오프라인",
     "cancel_reconnect": "재연결 취소",
     "reconnect": "재연결",
-    "close_tab": "탭 닫기"
+    "close_tab": "탭 닫기",
+    "close_other_tabs": "다른 탭 닫기",
+    "close_tabs_to_right": "오른쪽 탭 닫기",
+    "close_all_tabs": "모든 탭 닫기"
   },
   "tabs": {
     "settings": "설정",
@@ -112,6 +117,7 @@
     "open_folder": "폴더 열기"
   },
   "command_palette": {
+    "title": "명령 팔레트",
     "placeholder": "명령, 연결 검색 또는 user@host 입력...",
     "no_results": "결과 없음",
     "section_commands": "명령",

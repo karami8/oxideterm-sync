@@ -24,7 +24,9 @@
     "empty": {
       "title": "OxideTerm",
       "no_sessions": "アクティブなセッションがありません",
-      "new_connection": "新規接続"
+      "new_connection": "新規接続",
+      "new_local_terminal": "ローカルターミナル",
+      "recent_connections": "最近の接続"
     },
     "connection_monitor": {
       "title": "接続モニター"
@@ -36,7 +38,10 @@
     "offline": "オフライン",
     "cancel_reconnect": "再接続をキャンセル",
     "reconnect": "再接続",
-    "close_tab": "タブを閉じる"
+    "close_tab": "タブを閉じる",
+    "close_other_tabs": "他のタブを閉じる",
+    "close_tabs_to_right": "右のタブを閉じる",
+    "close_all_tabs": "すべてのタブを閉じる"
   },
   "tabs": {
     "settings": "設定",
@@ -112,6 +117,7 @@
     "open_folder": "フォルダーを開く"
   },
   "command_palette": {
+    "title": "コマンドパレット",
     "placeholder": "コマンド、接続を検索、または user@host でクイック接続...",
     "no_results": "結果が見つかりません",
     "section_commands": "コマンド",

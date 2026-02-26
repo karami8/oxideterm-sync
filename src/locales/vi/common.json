@@ -24,7 +24,9 @@
     "empty": {
       "title": "OxideTerm",
       "no_sessions": "Không có phiên hoạt động",
-      "new_connection": "Kết nối mới"
+      "new_connection": "Kết nối mới",
+      "new_local_terminal": "Terminal cục bộ",
+      "recent_connections": "Kết nối gần đây"
     },
     "connection_monitor": {
       "title": "Giám sát kết nối"
@@ -36,7 +38,10 @@
     "offline": "Ngoại tuyến",
     "cancel_reconnect": "Hủy kết nối lại",
     "reconnect": "Kết nối lại",
-    "close_tab": "Đóng tab"
+    "close_tab": "Đóng tab",
+    "close_other_tabs": "Đóng các tab khác",
+    "close_tabs_to_right": "Đóng các tab bên phải",
+    "close_all_tabs": "Đóng tất cả tab"
   },
   "tabs": {
     "settings": "Cài đặt",
@@ -112,6 +117,7 @@
     "open_folder": "Mở thư mục"
   },
   "command_palette": {
+    "title": "Bảng lệnh",
     "placeholder": "Tìm lệnh, kết nối hoặc nhập user@host...",
     "no_results": "Không có kết quả",
     "section_commands": "Lệnh",

@@ -24,7 +24,9 @@
     "empty": {
       "title": "OxideTerm",
       "no_sessions": "无活动会话",
-      "new_connection": "新建连接"
+      "new_connection": "新建连接",
+      "new_local_terminal": "本地终端",
+      "recent_connections": "最近连接"
     },
     "connection_monitor": {
       "title": "连接监控"
@@ -36,7 +38,10 @@
     "offline": "离线",
     "cancel_reconnect": "取消重连",
     "reconnect": "重新连接",
-    "close_tab": "关闭标签页"
+    "close_tab": "关闭标签页",
+    "close_other_tabs": "关闭其他标签页",
+    "close_tabs_to_right": "关闭右侧标签页",
+    "close_all_tabs": "关闭所有标签页"
   },
   "tabs": {
     "settings": "设置",
@@ -112,6 +117,7 @@
     "open_folder": "打开文件夹"
   },
   "command_palette": {
+    "title": "命令面板",
     "placeholder": "搜索命令、连接，或输入 user@host 快速连接...",
     "no_results": "无匹配结果",
     "section_commands": "命令",

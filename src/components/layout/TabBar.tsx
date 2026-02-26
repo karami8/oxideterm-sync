@@ -11,6 +11,7 @@ import { topologyResolver } from '../../lib/topologyResolver';
 import { resolvePluginIcon } from '../../lib/plugin/pluginIconResolver';
 import { ReconnectTimeline } from '../connections/ReconnectTimeline';
 import { TabBarTerminalActions } from './TabBarTerminalActions';
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from '../ui/context-menu';
 
 /** Count leaf panes in a pane tree */
 function countPanes(node: PaneNode): number {
@@ -58,6 +59,35 @@ const TabIcon = ({ type }: { type: string }) => {
 const PluginTabIcon = ({ iconName }: { iconName: string }) => {
   const Icon = resolvePluginIcon(iconName);
   return <Icon className="h-3.5 w-3.5 opacity-70" />;
+};
+
+/** Tiny colored dot indicating connection state */
+const ConnectionDot = ({ state }: { state: string }) => {
+  let colorClass: string;
+  switch (state) {
+    case 'active':
+      colorClass = 'bg-emerald-400';
+      break;
+    case 'idle':
+      colorClass = 'bg-yellow-400';
+      break;
+    case 'connecting':
+    case 'reconnecting':
+      colorClass = 'bg-amber-400 animate-pulse';
+      break;
+    case 'link_down':
+      colorClass = 'bg-red-400 animate-pulse';
+      break;
+    case 'disconnected':
+    case 'disconnecting':
+      colorClass = 'bg-zinc-500';
+      break;
+    default:
+      // error state (object)
+      colorClass = 'bg-red-500';
+      break;
+  }
+  return <span className={cn("inline-block w-1.5 h-1.5 rounded-full shrink-0", colorClass)} />;
 };
 
 // Get dynamic tab title (non-hook version for use in render)
@@ -196,6 +226,7 @@ export const TabBar = () => {
     closeTerminalSession,
     moveTab,
     sessions,
+    connections,
     networkOnline
   } = useAppStore();
   const orchestratorGetJob = useReconnectOrchestratorStore((s) => s.getJob);
@@ -317,8 +348,8 @@ export const TabBar = () => {
   };
 
   // 关闭 Tab 时释放后端资源
-  const handleCloseTab = async (e: React.MouseEvent, tabId: string, sessionId: string | undefined, tabType: string) => {
-    e.stopPropagation();
+  const handleCloseTab = async (e: React.MouseEvent | null, tabId: string, sessionId: string | undefined, tabType: string) => {
+    e?.stopPropagation();
 
     // Handle local terminal tabs
     if (tabType === 'local_terminal' && sessionId) {
@@ -363,6 +394,26 @@ export const TabBar = () => {
     closeTab(tabId);
   };
 
+  const handleCloseOtherTabs = async (keepTabId: string) => {
+    const tabsToClose = tabs.filter(tab => tab.id !== keepTabId);
+    for (const tab of tabsToClose) {
+      await handleCloseTab(null, tab.id, tab.sessionId, tab.type);
+    }
+  };
+
+  const handleCloseTabsToRight = async (fromIndex: number) => {
+    const tabsToClose = tabs.slice(fromIndex + 1);
+    for (const tab of tabsToClose) {
+      await handleCloseTab(null, tab.id, tab.sessionId, tab.type);
+    }
+  };
+
+  const handleCloseAllTabs = async () => {
+    for (const tab of [...tabs]) {
+      await handleCloseTab(null, tab.id, tab.sessionId, tab.type);
+    }
+  };
+
   return (
     // 最外层（限制层）：w-full + overflow-hidden 限制总宽度
     <div className="w-full h-9 overflow-hidden bg-theme-bg border-b border-theme-border flex items-center">
@@ -388,6 +439,7 @@ export const TabBar = () => {
             
             // Look up orchestrator job for this tab's node
             const connectionId = session?.connectionId;
+            const connectionState = connectionId ? connections.get(connectionId)?.state : undefined;
             const nodeId = connectionId ? topologyResolver.getNodeId(connectionId) : undefined;
             const orchJob = nodeId ? orchestratorGetJob(nodeId) : undefined;
             const isOrchestratorActive = orchJob && orchJob.status !== 'done' && orchJob.status !== 'failed' && orchJob.status !== 'cancelled';
@@ -401,8 +453,9 @@ export const TabBar = () => {
 
             return (
               // 每个 Tab 必须 flex-shrink-0，防止被挤压
+              <ContextMenu key={tab.id}>
+              <ContextMenuTrigger asChild>
               <div
-                key={tab.id}
                 ref={(el) => {
                   if (el) tabRefsMap.current.set(tab.id, el);
                   else tabRefsMap.current.delete(tab.id);
@@ -411,6 +464,12 @@ export const TabBar = () => {
                 onPointerMove={handlePointerMove}
                 onPointerUp={handlePointerUp}
                 onPointerCancel={handlePointerCancel}
+                onMouseDown={(e) => {
+                  if (e.button === 1) {
+                    e.preventDefault();
+                    handleCloseTab(e, tab.id, tab.sessionId, tab.type);
+                  }
+                }}
                 onClick={() => {
                   if (!isActuallyDragging) setActiveTab(tab.id);
                 }}
@@ -426,6 +485,9 @@ export const TabBar = () => {
                 style={isBeingDragged && isActuallyDragging ? { cursor: 'grabbing' } : undefined}
               >
                 {tab.type === 'plugin' && tab.icon ? <PluginTabIcon iconName={tab.icon} /> : <TabIcon type={tab.type} />}
+                {tab.type === 'terminal' && connectionState && (
+                  <ConnectionDot state={typeof connectionState === 'string' ? connectionState : 'error'} />
+                )}
                 <span className="truncate flex-1">{getTabTitle(tab, sessions, t)}</span>
 
                 {/* Reconnect progress indicator with hover timeline */}
@@ -471,6 +533,29 @@ export const TabBar = () => {
                   </div>
                 )}
               </div>
+              </ContextMenuTrigger>
+              <ContextMenuContent>
+                <ContextMenuItem onSelect={() => handleCloseTab(null, tab.id, tab.sessionId, tab.type)}>
+                  {t('tabbar.close_tab')}
+                </ContextMenuItem>
+                <ContextMenuItem
+                  onSelect={() => handleCloseOtherTabs(tab.id)}
+                  disabled={tabs.length <= 1}
+                >
+                  {t('tabbar.close_other_tabs')}
+                </ContextMenuItem>
+                <ContextMenuItem
+                  onSelect={() => handleCloseTabsToRight(tabIndex)}
+                  disabled={tabIndex >= tabs.length - 1}
+                >
+                  {t('tabbar.close_tabs_to_right')}
+                </ContextMenuItem>
+                <ContextMenuSeparator />
+                <ContextMenuItem onSelect={() => handleCloseAllTabs()}>
+                  {t('tabbar.close_all_tabs')}
+                </ContextMenuItem>
+              </ContextMenuContent>
+              </ContextMenu>
             );
           })}
         </div>
