@@ -13,7 +13,7 @@ import i18n from '../i18n';
 // Constants
 // ═══════════════════════════════════════════════════════════════════════════
 
-const MAX_MESSAGES_PER_CONVERSATION = 100;
+const MAX_MESSAGES_PER_CONVERSATION = 200;
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Backend Types (matching Rust structs)
@@ -81,7 +81,7 @@ interface AiChatStore {
   clearAllConversations: () => Promise<void>;
 
   // Message actions
-  sendMessage: (content: string, context?: string) => Promise<void>;
+  sendMessage: (content: string, context?: string, options?: { skipUserMessage?: boolean }) => Promise<void>;
   stopGeneration: () => void;
   regenerateLastResponse: () => Promise<void>;
   summarizeConversation: () => Promise<void>;
@@ -116,13 +116,27 @@ function dtoToConversation(dto: FullConversationDto): AiConversation {
     title: dto.title,
     createdAt: dto.createdAt,
     updatedAt: dto.updatedAt,
-    messages: dto.messages.map((m) => ({
-      id: m.id,
-      role: m.role,
-      content: m.content,
-      timestamp: m.timestamp,
-      context: m.context || undefined,
-    })),
+    messages: dto.messages.map((m) => {
+      // Re-parse thinking content from persisted full content
+      if (m.role === 'assistant' && m.content.includes('<thinking>')) {
+        const parsed = parseThinkingContent(m.content);
+        return {
+          id: m.id,
+          role: m.role as 'assistant',
+          content: parsed.content,
+          thinkingContent: parsed.thinkingContent,
+          timestamp: m.timestamp,
+          context: m.context || undefined,
+        };
+      }
+      return {
+        id: m.id,
+        role: m.role,
+        content: m.content,
+        timestamp: m.timestamp,
+        context: m.context || undefined,
+      };
+    }),
   };
 }
 
@@ -307,8 +321,10 @@ export const useAiChatStore = create<AiChatStore>()((set, get) => ({
     if (id) {
       const conv = get().conversations.find((c) => c.id === id);
       if (conv && conv.messages.length === 0) {
-        // Load messages on demand
-        get()._loadConversation(id);
+        // Load messages on demand (await to prevent flash of empty content)
+        get()._loadConversation(id).catch((e) =>
+          console.warn(`[AiChatStore] Failed to load conversation ${id}:`, e)
+        );
       }
     }
   },
@@ -347,7 +363,8 @@ export const useAiChatStore = create<AiChatStore>()((set, get) => ({
   },
 
   // Send a message
-  sendMessage: async (content, context) => {
+  sendMessage: async (content, context, options) => {
+    const skipUserMessage = options?.skipUserMessage ?? false;
     const { activeConversationId, createConversation, _addMessage, _setStreaming } = get();
 
     // Get or create conversation
@@ -416,7 +433,7 @@ export const useAiChatStore = create<AiChatStore>()((set, get) => ({
 
     const effectiveContext = context || sidebarContext?.contextBlock || '';
 
-    // Add user message
+    // Add user message (skipped during regeneration — user message is already in store)
     const userMessage: AiChatMessage = {
       id: generateId(),
       role: 'user',
@@ -424,10 +441,12 @@ export const useAiChatStore = create<AiChatStore>()((set, get) => ({
       timestamp: Date.now(),
       context: effectiveContext || undefined,
     };
-    await _addMessage(convId, userMessage, sidebarContext);
+    if (!skipUserMessage) {
+      await _addMessage(convId, userMessage, sidebarContext);
+    }
 
     // Update title if this is first message
-    if (conversation.messages.length === 0) {
+    if (!skipUserMessage && conversation.messages.length === 0) {
       const title = generateTitle(content);
       set((state) => ({
         conversations: state.conversations.map((c) =>
@@ -658,20 +677,21 @@ export const useAiChatStore = create<AiChatStore>()((set, get) => ({
 
     const lastUserMessage = messages[lastUserMessageIndex];
 
-    // Remove messages after last user message (local)
+    // Keep messages up to AND including the last user message (remove only assistant responses)
     set((state) => ({
       conversations: state.conversations.map((c) =>
         c.id === activeConversationId
           ? {
               ...c,
-              messages: c.messages.slice(0, lastUserMessageIndex),
+              messages: c.messages.slice(0, lastUserMessageIndex + 1),
               updatedAt: Date.now(),
             }
           : c
       ),
     }));
 
-    // Delete from backend
+    // Delete assistant messages after the user message from backend
+    // Backend keeps the user message (at idx) and deletes everything after idx
     try {
       await invoke('ai_chat_delete_messages_after', {
         conversationId: activeConversationId,
@@ -681,8 +701,8 @@ export const useAiChatStore = create<AiChatStore>()((set, get) => ({
       console.warn('[AiChatStore] Failed to delete messages from backend:', e);
     }
 
-    // Resend
-    await sendMessage(lastUserMessage.content, lastUserMessage.context);
+    // Resend — skipUserMessage since user message is already persisted in both frontend and backend
+    await sendMessage(lastUserMessage.content, lastUserMessage.context, { skipUserMessage: true });
   },
 
   // Summarize conversation — compress history into a single summary message
