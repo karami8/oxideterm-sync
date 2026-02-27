@@ -376,6 +376,13 @@ function mergeWithDefaults(saved: Partial<PersistedSettingsV2>): PersistedSettin
     sftp: saved.sftp
       ? { ...defaults.sftp!, ...saved.sftp }
       : defaults.sftp,
+    ide: saved.ide
+      ? { ...defaults.ide!, ...saved.ide }
+      : defaults.ide,
+    experimental: saved.experimental
+      ? { ...defaults.experimental, ...saved.experimental }
+      : defaults.experimental,
+    onboardingCompleted: saved.onboardingCompleted ?? defaults.onboardingCompleted,
   };
 }
 

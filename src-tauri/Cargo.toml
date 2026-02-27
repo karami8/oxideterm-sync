@@ -127,12 +127,11 @@ regex = "1.10"
 strip-ansi-escapes = "0.2"
 flate2 = "1.1.9"
 
-# macOS Biometric Keychain (Touch ID for API keys)
+# macOS Touch ID authentication (LAContext via LocalAuthentication.framework)
 [target.'cfg(target_os = "macos")'.dependencies]
-security-framework = { version = "2", features = ["OSX_10_13"] }
-security-framework-sys = { version = "2", features = ["OSX_10_13"] }
-core-foundation = "0.9"
-core-foundation-sys = "0.8"
+objc2 = "0.6"
+objc2-foundation = { version = "0.3", features = ["NSError", "NSString"] }
+block2 = "0.6"
 
 # Unix process group management (for PTY cleanup)
 [target.'cfg(unix)'.dependencies]

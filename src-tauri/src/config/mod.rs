@@ -15,7 +15,7 @@ pub mod types;
 pub mod vault;
 
 #[cfg(target_os = "macos")]
-pub mod biometric_keychain;
+pub mod touch_id;
 
 pub use keychain::{Keychain, KeychainError};
 pub use ssh_config::{default_ssh_config_path, parse_ssh_config, SshConfigError, SshConfigHost};
