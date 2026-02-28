@@ -16,6 +16,7 @@ import { create } from 'zustand';
 import { api, nodeSftpListIncompleteTransfers, nodeSftpResumeTransfer, nodeGetState } from '../lib/api';
 import { useSessionTreeStore } from './sessionTreeStore';
 import { useIdeStore } from './ideStore';
+import { useSettingsStore } from './settingsStore';
 import { useToastStore } from '../hooks/useToast';
 import { slog } from '../lib/structuredLog';
 import i18n from '../i18n';
@@ -114,10 +115,31 @@ interface OrchestratorActions {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const DEBOUNCE_MS = 500;
-const MAX_ATTEMPTS = 5;
-const BASE_RETRY_DELAY_MS = 1000;
-const MAX_RETRY_DELAY_MS = 15_000;
+/** Fallback defaults when settings store is unavailable */
+const DEFAULT_MAX_ATTEMPTS = 5;
+const DEFAULT_BASE_RETRY_DELAY_MS = 1000;
+const DEFAULT_MAX_RETRY_DELAY_MS = 15_000;
 const BACKOFF_MULTIPLIER = 1.5;
+
+/** Read user-configurable reconnect settings from settingsStore */
+function getReconnectConfig() {
+  try {
+    const reconnect = useSettingsStore.getState().getReconnect();
+    return {
+      enabled: reconnect.enabled,
+      maxAttempts: reconnect.maxAttempts,
+      baseDelayMs: reconnect.baseDelayMs,
+      maxDelayMs: reconnect.maxDelayMs,
+    };
+  } catch {
+    return {
+      enabled: true,
+      maxAttempts: DEFAULT_MAX_ATTEMPTS,
+      baseDelayMs: DEFAULT_BASE_RETRY_DELAY_MS,
+      maxDelayMs: DEFAULT_MAX_RETRY_DELAY_MS,
+    };
+  }
+}
 
 /**
  * Grace Period: 在销毁旧 SSH session 前尝试复用已有连接。
@@ -149,9 +171,10 @@ const MAX_PHASE_HISTORY = 64;
  * delay = min(BASE × MULTIPLIER^(attempt-1), MAX) × (0.8 ~ 1.2)
  */
 function calculateBackoff(attempt: number): number {
+  const config = getReconnectConfig();
   const base = Math.min(
-    BASE_RETRY_DELAY_MS * Math.pow(BACKOFF_MULTIPLIER, Math.max(0, attempt - 1)),
-    MAX_RETRY_DELAY_MS,
+    config.baseDelayMs * Math.pow(BACKOFF_MULTIPLIER, Math.max(0, attempt - 1)),
+    config.maxDelayMs,
   );
   const jitter = 0.8 + Math.random() * 0.4; // ±20%
   return Math.round(base * jitter);
@@ -424,6 +447,13 @@ function flushPending() {
 
   console.log(`[Orchestrator] Flushing ${nodeIds.length} pending -> ${selectedRoots.length} subtree root(s)`);
 
+  // Check if auto-reconnect is enabled
+  const config = getReconnectConfig();
+  if (!config.enabled) {
+    console.log('[Orchestrator] Auto-reconnect disabled by user settings, skipping');
+    return;
+  }
+
   const jobs = new Map(useReconnectOrchestratorStore.getState().jobs);
   const newJobIds: string[] = [];
 
@@ -442,7 +472,7 @@ function flushPending() {
       nodeName: rootNode.displayName || `${rootNode.username}@${rootNode.host}`,
       status: 'queued',
       attempt: 0,
-      maxAttempts: MAX_ATTEMPTS,
+      maxAttempts: config.maxAttempts,
       startedAt: Date.now(),
       snapshot: {
         nodeId: rootNodeId,

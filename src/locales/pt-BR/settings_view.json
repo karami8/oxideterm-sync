@@ -40,6 +40,7 @@
       "ssh": "Chaves SSH",
       "ai": "Assistente IA",
       "local": "Terminal local",
+      "reconnect": "Reconexão",
       "help": "Ajuda e Sobre"
     },
     "general": {
@@ -384,6 +385,20 @@
       "delete_group_failed": "Falha ao excluir grupo: {{error}}",
       "import_success": "\"{{name}}\" importado com sucesso como conexão salva!",
       "import_failed": "Falha ao importar host: {{error}}"
+    },
+    "reconnect": {
+      "title": "Reconexão automática",
+      "description": "Configure o comportamento de reconexão automática quando as conexões SSH são perdidas.",
+      "enabled": "Habilitar reconexão automática",
+      "enabled_hint": "Tentar automaticamente restaurar conexões quando interrupções de rede são detectadas.",
+      "strategy": "Estratégia de repetição",
+      "max_attempts": "Tentativas máximas",
+      "max_attempts_hint": "Número máximo de tentativas de reconexão antes de desistir.",
+      "base_delay": "Atraso base de repetição",
+      "base_delay_hint": "Tempo de espera inicial antes da primeira tentativa.",
+      "max_delay": "Atraso máximo de repetição",
+      "max_delay_hint": "Limite superior do atraso com backoff exponencial.",
+      "formula_hint": "Repetições usam backoff exponencial com jitter: cada tentativa subsequente espera mais (até o atraso máximo), com uma pequena variação aleatória para evitar o efeito thundering herd."
     }
   }
 }

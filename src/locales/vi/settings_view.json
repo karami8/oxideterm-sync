@@ -40,6 +40,7 @@
       "ssh": "SSH Keys",
       "ai": "Trợ lý AI",
       "local": "Terminal cục bộ",
+      "reconnect": "Tự động kết nối lại",
       "help": "Trợ giúp & Giới thiệu"
     },
     "general": {
@@ -384,6 +385,20 @@
       "delete_group_failed": "Không thể xóa nhóm: {{error}}",
       "import_success": "Đã nhập thành công \"{{name}}\" làm kết nối đã lưu!",
       "import_failed": "Không thể nhập host: {{error}}"
+    },
+    "reconnect": {
+      "title": "Tự động kết nối lại",
+      "description": "Cấu hình hành vi tự động kết nối lại khi các kết nối SSH bị mất.",
+      "enabled": "Bật tự động kết nối lại",
+      "enabled_hint": "Tự động cố gắng khôi phục kết nối khi phát hiện gán đoạn mạng.",
+      "strategy": "Chiến lược thử lại",
+      "max_attempts": "Số lần thử tối đa",
+      "max_attempts_hint": "Số lần thử kết nối lại tối đa trước khi bỏ cuộc.",
+      "base_delay": "Độ trễ cơ bản",
+      "base_delay_hint": "Thời gian chờ ban đầu trước lần thử đầu tiên.",
+      "max_delay": "Độ trễ tối đa",
+      "max_delay_hint": "Giới hạn trên của độ trễ với backoff lũy thừa.",
+      "formula_hint": "Thử lại sử dụng backoff lũy thừa với jitter: mỗi lần thử tiếp theo chờ lâu hơn (tối đa độ trễ), với một biến đổi ngẫu nhiên nhỏ để tránh hiệu ứng thundering herd."
     }
   }
 }

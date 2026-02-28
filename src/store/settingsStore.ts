@@ -202,6 +202,14 @@ export interface IdeSettings {
   agentMode: 'ask' | 'enabled' | 'disabled';  // Remote agent deployment policy
 }
 
+/** Auto-reconnect strategy settings */
+export interface ReconnectSettings {
+  enabled: boolean;              // Master toggle for auto-reconnect
+  maxAttempts: number;           // Max retry attempts (1-20)
+  baseDelayMs: number;           // Base retry delay in ms (500-10000)
+  maxDelayMs: number;            // Max retry delay cap in ms (5000-60000)
+}
+
 /** Complete settings structure */
 export interface PersistedSettingsV2 {
   version: 2;
@@ -216,6 +224,7 @@ export interface PersistedSettingsV2 {
   localTerminal?: LocalTerminalSettings;
   sftp?: SftpSettings;
   ide?: IdeSettings;
+  reconnect?: ReconnectSettings;
   experimental?: ExperimentalSettings;
   /** Whether the first-run onboarding wizard has been completed or dismissed */
   onboardingCompleted?: boolean;
@@ -335,6 +344,13 @@ const defaultIdeSettings: IdeSettings = {
   agentMode: 'ask',
 };
 
+const defaultReconnectSettings: ReconnectSettings = {
+  enabled: true,
+  maxAttempts: 5,
+  baseDelayMs: 1000,
+  maxDelayMs: 15000,
+};
+
 function createDefaultSettings(): PersistedSettingsV2 {
   return {
     version: 2,
@@ -349,6 +365,7 @@ function createDefaultSettings(): PersistedSettingsV2 {
     localTerminal: { ...defaultLocalTerminalSettings },
     sftp: { ...defaultSftpSettings },
     ide: { ...defaultIdeSettings },
+    reconnect: { ...defaultReconnectSettings },
     experimental: { virtualSessionProxy: false },
     onboardingCompleted: false,
   };
@@ -380,6 +397,9 @@ function mergeWithDefaults(saved: Partial<PersistedSettingsV2>): PersistedSettin
     ide: saved.ide
       ? { ...defaults.ide!, ...saved.ide }
       : defaults.ide,
+    reconnect: saved.reconnect
+      ? { ...defaults.reconnect!, ...saved.reconnect }
+      : defaults.reconnect,
     experimental: saved.experimental
       ? { ...defaults.experimental, ...saved.experimental }
       : defaults.experimental,
@@ -507,6 +527,7 @@ interface SettingsStore {
   updateLocalTerminal: <K extends keyof LocalTerminalSettings>(key: K, value: LocalTerminalSettings[K]) => void;
   updateSftp: <K extends keyof SftpSettings>(key: K, value: SftpSettings[K]) => void;
   updateIde: <K extends keyof IdeSettings>(key: K, value: IdeSettings[K]) => void;
+  updateReconnect: <K extends keyof ReconnectSettings>(key: K, value: ReconnectSettings[K]) => void;
 
   // Actions - Dedicated language setter with i18n sync
   setLanguage: (language: Language) => void;
@@ -543,6 +564,7 @@ interface SettingsStore {
   getAi: () => AiSettings;
   getSftp: () => SftpSettings;
   getIde: () => IdeSettings;
+  getReconnect: () => ReconnectSettings;
 }
 
 // ============================================================================
@@ -678,6 +700,19 @@ export const useSettingsStore = create<SettingsStore>()(
         const newSettings: PersistedSettingsV2 = {
           ...state.settings,
           ide: { ...currentIde, [key]: value },
+        };
+        persistSettings(newSettings);
+        return { settings: newSettings };
+      });
+    },
+
+    // ========== Reconnect Settings ==========
+    updateReconnect: (key, value) => {
+      set((state) => {
+        const currentReconnect = state.settings.reconnect || defaultReconnectSettings;
+        const newSettings: PersistedSettingsV2 = {
+          ...state.settings,
+          reconnect: { ...currentReconnect, [key]: value },
         };
         persistSettings(newSettings);
         return { settings: newSettings };
@@ -1020,6 +1055,7 @@ export const useSettingsStore = create<SettingsStore>()(
     getAi: () => get().settings.ai,
     getSftp: () => get().settings.sftp || defaultSftpSettings,
     getIde: () => get().settings.ide || defaultIdeSettings,
+    getReconnect: () => get().settings.reconnect || defaultReconnectSettings,
   }))
 );
 

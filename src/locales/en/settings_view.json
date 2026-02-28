@@ -40,6 +40,7 @@
       "ssh": "SSH Keys",
       "ai": "AI Assistant",
       "local": "Local Terminal",
+      "reconnect": "Reconnect",
       "help": "Help & About"
     },
     "general": {
@@ -384,6 +385,20 @@
       "delete_group_failed": "Failed to delete group: {{error}}",
       "import_success": "Successfully imported \"{{name}}\" as a saved connection!",
       "import_failed": "Failed to import host: {{error}}"
+    },
+    "reconnect": {
+      "title": "Auto-Reconnect",
+      "description": "Configure automatic reconnection behavior when SSH connections are lost.",
+      "enabled": "Enable Auto-Reconnect",
+      "enabled_hint": "Automatically attempt to restore connections when network interruptions are detected.",
+      "strategy": "Retry Strategy",
+      "max_attempts": "Max Retry Attempts",
+      "max_attempts_hint": "Maximum number of reconnection attempts before giving up.",
+      "base_delay": "Base Retry Delay",
+      "base_delay_hint": "Initial wait time before the first retry attempt.",
+      "max_delay": "Max Retry Delay",
+      "max_delay_hint": "Upper limit for retry delay with exponential backoff.",
+      "formula_hint": "Retries use exponential backoff with jitter: each subsequent attempt waits longer (up to the max delay), with a small random variation to avoid thundering herd."
     }
   }
 }

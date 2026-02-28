@@ -40,6 +40,7 @@
       "ssh": "SSH-Schlüssel",
       "ai": "KI-Assistent",
       "local": "Lokales Terminal",
+      "reconnect": "Wiederverbindung",
       "help": "Hilfe & Info"
     },
     "general": {
@@ -384,6 +385,20 @@
       "delete_group_failed": "Gruppe konnte nicht gelöscht werden: {{error}}",
       "import_success": "\"{{name}}\" erfolgreich als gespeicherte Verbindung importiert!",
       "import_failed": "Host konnte nicht importiert werden: {{error}}"
+    },
+    "reconnect": {
+      "title": "Automatische Wiederverbindung",
+      "description": "Konfigurieren Sie das automatische Wiederverbindungsverhalten bei SSH-Verbindungsverlust.",
+      "enabled": "Automatische Wiederverbindung aktivieren",
+      "enabled_hint": "Automatisch versuchen, Verbindungen wiederherzustellen, wenn Netzwerkunterbrechungen erkannt werden.",
+      "strategy": "Wiederholungsstrategie",
+      "max_attempts": "Maximale Versuche",
+      "max_attempts_hint": "Maximale Anzahl von Wiederverbindungsversuchen bevor aufgegeben wird.",
+      "base_delay": "Basis-Wiederholungsverzögerung",
+      "base_delay_hint": "Anfängliche Wartezeit vor dem ersten Versuch.",
+      "max_delay": "Maximale Wiederholungsverzögerung",
+      "max_delay_hint": "Obergrenze für die Verzögerung bei exponentiellem Backoff.",
+      "formula_hint": "Wiederholungen verwenden exponentielles Backoff mit Jitter: Jeder nachfolgende Versuch wartet länger (bis zur maximalen Verzögerung), mit einer kleinen zufälligen Variation zur Vermeidung des Thundering-Herd-Effekts."
     }
   }
 }

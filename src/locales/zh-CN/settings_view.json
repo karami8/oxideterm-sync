@@ -40,6 +40,7 @@
       "ssh": "SSH 密钥",
       "ai": "AI 助手",
       "local": "本地终端",
+      "reconnect": "自动重连",
       "help": "帮助与关于"
     },
     "general": {
@@ -384,6 +385,20 @@
       "delete_group_failed": "删除分组失败: {{error}}",
       "import_success": "成功将 \"{{name}}\" 导入为保存的连接！",
       "import_failed": "导入主机失败: {{error}}"
+    },
+    "reconnect": {
+      "title": "自动重连",
+      "description": "配置 SSH 连接断开时的自动重连行为。",
+      "enabled": "启用自动重连",
+      "enabled_hint": "检测到网络中断时自动尝试恢复连接。",
+      "strategy": "重试策略",
+      "max_attempts": "最大重试次数",
+      "max_attempts_hint": "放弃前最多尝试重连的次数。",
+      "base_delay": "基础重试延迟",
+      "base_delay_hint": "首次重试前的初始等待时间。",
+      "max_delay": "最大重试延迟",
+      "max_delay_hint": "指数退避的重试延迟上限。",
+      "formula_hint": "重试使用带抖动的指数退避策略：每次后续尝试等待更长时间（不超过最大延迟），并加入少量随机变化以避免惊群效应。"
     }
   }
 }

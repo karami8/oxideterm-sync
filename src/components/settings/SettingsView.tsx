@@ -29,7 +29,7 @@ import {
     SelectLabel,
     SelectSeparator
 } from '../ui/select';
-import { Monitor, Key, Terminal as TerminalIcon, Shield, Plus, Trash2, FolderInput, Sparkles, Square, HardDrive, HelpCircle, Github, ExternalLink, Keyboard, RefreshCw, ImageIcon, X, Code2 } from 'lucide-react';
+import { Monitor, Key, Terminal as TerminalIcon, Shield, Plus, Trash2, FolderInput, Sparkles, Square, HardDrive, HelpCircle, Github, ExternalLink, Keyboard, RefreshCw, ImageIcon, X, Code2, WifiOff } from 'lucide-react';
 import { api } from '../../lib/api';
 import { useLocalTerminalStore } from '../../store/localTerminalStore';
 import { SshKeyInfo, SshHostInfo } from '../../types';
@@ -801,8 +801,8 @@ export const SettingsView = () => {
     const [activeTab, setActiveTab] = useState('general');
 
     // Use unified settings store
-    const { settings, updateTerminal, updateConnectionDefaults, updateAi, updateSftp, updateIde, setLanguage, addProvider, removeProvider, updateProvider, setActiveProvider, refreshProviderModels } = useSettingsStore();
-    const { general, terminal, connectionDefaults, ai, sftp, ide } = settings;
+    const { settings, updateTerminal, updateConnectionDefaults, updateAi, updateSftp, updateIde, updateReconnect, setLanguage, addProvider, removeProvider, updateProvider, setActiveProvider, refreshProviderModels } = useSettingsStore();
+    const { general, terminal, connectionDefaults, ai, sftp, ide, reconnect } = settings;
 
     // AI enable confirmation dialog
     const [showAiConfirm, setShowAiConfirm] = useState(false);
@@ -889,6 +889,7 @@ export const SettingsView = () => {
                     <h2 className="text-xl font-semibold text-theme-text">{t('settings_view.title')}</h2>
                 </div>
                 <div className="space-y-1 px-3 flex-1 overflow-y-auto min-h-0">
+                    {/* ── 基础 ── */}
                     <Button
                         variant={activeTab === 'general' ? 'secondary' : 'ghost'}
                         className="w-full justify-start gap-3 h-10 font-normal"
@@ -896,6 +897,10 @@ export const SettingsView = () => {
                     >
                         <Monitor className="h-4 w-4" /> {t('settings.general.title')}
                     </Button>
+
+                    <Separator className="!my-2" />
+
+                    {/* ── 终端（字体/光标/缓冲区 → 主题/背景 → 本地 shell） ── */}
                     <Button
                         variant={activeTab === 'terminal' ? 'secondary' : 'ghost'}
                         className="w-full justify-start gap-3 h-10 font-normal"
@@ -904,26 +909,23 @@ export const SettingsView = () => {
                         <TerminalIcon className="h-4 w-4" /> {t('settings.terminal.title')}
                     </Button>
                     <Button
-                        variant={activeTab === 'sftp' ? 'secondary' : 'ghost'}
-                        className="w-full justify-start gap-3 h-10 font-normal"
-                        onClick={() => setActiveTab('sftp')}
-                    >
-                        <HardDrive className="h-4 w-4" /> {t('settings_view.tabs.sftp')}
-                    </Button>
-                    <Button
-                        variant={activeTab === 'ide' ? 'secondary' : 'ghost'}
-                        className="w-full justify-start gap-3 h-10 font-normal"
-                        onClick={() => setActiveTab('ide')}
-                    >
-                        <Code2 className="h-4 w-4" /> {t('settings_view.tabs.ide', 'IDE')}
-                    </Button>
-                    <Button
                         variant={activeTab === 'appearance' ? 'secondary' : 'ghost'}
                         className="w-full justify-start gap-3 h-10 font-normal"
                         onClick={() => setActiveTab('appearance')}
                     >
                         <Monitor className="h-4 w-4" /> {t('settings_view.tabs.appearance')}
                     </Button>
+                    <Button
+                        variant={activeTab === 'local' ? 'secondary' : 'ghost'}
+                        className="w-full justify-start gap-3 h-10 font-normal"
+                        onClick={() => setActiveTab('local')}
+                    >
+                        <Square className="h-4 w-4" /> {t('settings_view.tabs.local')}
+                    </Button>
+
+                    <Separator className="!my-2" />
+
+                    {/* ── 连接（默认/分组 → 密钥 → 重连策略） ── */}
                     <Button
                         variant={activeTab === 'connections' ? 'secondary' : 'ghost'}
                         className="w-full justify-start gap-3 h-10 font-normal"
@@ -939,19 +941,41 @@ export const SettingsView = () => {
                         <Key className="h-4 w-4" /> {t('settings_view.tabs.ssh')}
                     </Button>
                     <Button
+                        variant={activeTab === 'reconnect' ? 'secondary' : 'ghost'}
+                        className="w-full justify-start gap-3 h-10 font-normal"
+                        onClick={() => setActiveTab('reconnect')}
+                    >
+                        <WifiOff className="h-4 w-4" /> {t('settings_view.tabs.reconnect')}
+                    </Button>
+
+                    <Separator className="!my-2" />
+
+                    {/* ── 功能（文件传输 → 编辑器 → AI） ── */}
+                    <Button
+                        variant={activeTab === 'sftp' ? 'secondary' : 'ghost'}
+                        className="w-full justify-start gap-3 h-10 font-normal"
+                        onClick={() => setActiveTab('sftp')}
+                    >
+                        <HardDrive className="h-4 w-4" /> {t('settings_view.tabs.sftp')}
+                    </Button>
+                    <Button
+                        variant={activeTab === 'ide' ? 'secondary' : 'ghost'}
+                        className="w-full justify-start gap-3 h-10 font-normal"
+                        onClick={() => setActiveTab('ide')}
+                    >
+                        <Code2 className="h-4 w-4" /> {t('settings_view.tabs.ide', 'IDE')}
+                    </Button>
+                    <Button
                         variant={activeTab === 'ai' ? 'secondary' : 'ghost'}
                         className="w-full justify-start gap-3 h-10 font-normal"
                         onClick={() => setActiveTab('ai')}
                     >
                         <Sparkles className="h-4 w-4" /> {t('settings_view.tabs.ai')}
                     </Button>
-                    <Button
-                        variant={activeTab === 'local' ? 'secondary' : 'ghost'}
-                        className="w-full justify-start gap-3 h-10 font-normal"
-                        onClick={() => setActiveTab('local')}
-                    >
-                        <Square className="h-4 w-4" /> {t('settings_view.tabs.local')}
-                    </Button>
+
+                    <Separator className="!my-2" />
+
+                    {/* ── 帮助 ── */}
                     <Button
                         variant={activeTab === 'help' ? 'secondary' : 'ghost'}
                         className="w-full justify-start gap-3 h-10 font-normal"
@@ -1754,6 +1778,116 @@ export const SettingsView = () => {
 
                     {activeTab === 'local' && (
                         <LocalTerminalSettings />
+                    )}
+
+                    {activeTab === 'reconnect' && (
+                        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                            <div>
+                                <h3 className="text-2xl font-medium text-theme-text mb-2">{t('settings_view.reconnect.title')}</h3>
+                                <p className="text-theme-text-muted">{t('settings_view.reconnect.description')}</p>
+                            </div>
+                            <Separator />
+
+                            {/* Auto-reconnect toggle */}
+                            <div className="flex items-center justify-between max-w-2xl">
+                                <div className="grid gap-1">
+                                    <Label>{t('settings_view.reconnect.enabled')}</Label>
+                                    <p className="text-xs text-theme-text-muted">{t('settings_view.reconnect.enabled_hint')}</p>
+                                </div>
+                                <Checkbox
+                                    checked={reconnect?.enabled ?? true}
+                                    onCheckedChange={(checked) => updateReconnect('enabled', !!checked)}
+                                />
+                            </div>
+
+                            <Separator />
+
+                            {/* Retry strategy settings */}
+                            <div className={cn('space-y-6 transition-opacity', !(reconnect?.enabled ?? true) && 'opacity-40 pointer-events-none')}>
+                                <h4 className="text-lg font-medium text-theme-text">{t('settings_view.reconnect.strategy')}</h4>
+
+                                <div className="grid grid-cols-2 gap-8 max-w-2xl">
+                                    {/* Max attempts */}
+                                    <div className="grid gap-2">
+                                        <Label>{t('settings_view.reconnect.max_attempts')}</Label>
+                                        <p className="text-xs text-theme-text-muted">{t('settings_view.reconnect.max_attempts_hint')}</p>
+                                        <Select
+                                            value={String(reconnect?.maxAttempts ?? 5)}
+                                            onValueChange={(v) => updateReconnect('maxAttempts', parseInt(v))}
+                                        >
+                                            <SelectTrigger className="w-full">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {[1, 2, 3, 5, 8, 10, 15, 20].map((n) => (
+                                                    <SelectItem key={n} value={String(n)}>{n}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
+                                    {/* Base delay */}
+                                    <div className="grid gap-2">
+                                        <Label>{t('settings_view.reconnect.base_delay')}</Label>
+                                        <p className="text-xs text-theme-text-muted">{t('settings_view.reconnect.base_delay_hint')}</p>
+                                        <Select
+                                            value={String(reconnect?.baseDelayMs ?? 1000)}
+                                            onValueChange={(v) => updateReconnect('baseDelayMs', parseInt(v))}
+                                        >
+                                            <SelectTrigger className="w-full">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {[
+                                                    { v: 500, l: '0.5s' },
+                                                    { v: 1000, l: '1s' },
+                                                    { v: 2000, l: '2s' },
+                                                    { v: 3000, l: '3s' },
+                                                    { v: 5000, l: '5s' },
+                                                    { v: 10000, l: '10s' },
+                                                ].map(({ v, l }) => (
+                                                    <SelectItem key={v} value={String(v)}>{l}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-8 max-w-2xl">
+                                    {/* Max delay */}
+                                    <div className="grid gap-2">
+                                        <Label>{t('settings_view.reconnect.max_delay')}</Label>
+                                        <p className="text-xs text-theme-text-muted">{t('settings_view.reconnect.max_delay_hint')}</p>
+                                        <Select
+                                            value={String(reconnect?.maxDelayMs ?? 15000)}
+                                            onValueChange={(v) => updateReconnect('maxDelayMs', parseInt(v))}
+                                        >
+                                            <SelectTrigger className="w-full">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {[
+                                                    { v: 5000, l: '5s' },
+                                                    { v: 10000, l: '10s' },
+                                                    { v: 15000, l: '15s' },
+                                                    { v: 30000, l: '30s' },
+                                                    { v: 60000, l: '60s' },
+                                                ].map(({ v, l }) => (
+                                                    <SelectItem key={v} value={String(v)}>{l}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
+
+                                {/* Backoff formula explanation */}
+                                <div className="p-4 bg-theme-bg-panel/50 border border-theme-border/50 rounded-md max-w-2xl">
+                                    <p className="text-xs text-theme-text-muted leading-relaxed">
+                                        {t('settings_view.reconnect.formula_hint')}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
                     )}
 
                     {activeTab === 'help' && (

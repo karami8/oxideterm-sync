@@ -40,6 +40,7 @@
       "ssh": "Claves SSH",
       "ai": "Asistente IA",
       "local": "Terminal local",
+      "reconnect": "Reconexión",
       "help": "Ayuda e Info"
     },
     "general": {
@@ -384,6 +385,20 @@
       "delete_group_failed": "Error al eliminar grupo: {{error}}",
       "import_success": "¡\"{{name}}\" importado correctamente como conexión guardada!",
       "import_failed": "Error al importar host: {{error}}"
+    },
+    "reconnect": {
+      "title": "Reconexión automática",
+      "description": "Configure el comportamiento de reconexión automática cuando se pierden las conexiones SSH.",
+      "enabled": "Habilitar reconexión automática",
+      "enabled_hint": "Intentar automáticamente restaurar las conexiones cuando se detectan interrupciones de red.",
+      "strategy": "Estrategia de reintento",
+      "max_attempts": "Intentos máximos",
+      "max_attempts_hint": "Número máximo de intentos de reconexión antes de desistir.",
+      "base_delay": "Retraso base de reintento",
+      "base_delay_hint": "Tiempo de espera inicial antes del primer intento.",
+      "max_delay": "Retraso máximo de reintento",
+      "max_delay_hint": "Límite superior del retraso con retroceso exponencial.",
+      "formula_hint": "Los reintentos usan retroceso exponencial con jitter: cada intento posterior espera más (hasta el retraso máximo), con una pequeña variación aleatoria para evitar el efecto manada."
     }
   }
 }

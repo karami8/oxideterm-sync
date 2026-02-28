@@ -40,6 +40,7 @@
       "ssh": "SSH 金鑰",
       "ai": "AI 助手",
       "local": "本機終端機",
+      "reconnect": "自動重連",
       "help": "說明與關於"
     },
     "general": {
@@ -384,6 +385,20 @@
       "delete_group_failed": "無法刪除群組：{{error}}",
       "import_success": "已成功將「{{name}}」匯入為已儲存的連線！",
       "import_failed": "無法匯入主機：{{error}}"
+    },
+    "reconnect": {
+      "title": "自動重連",
+      "description": "設定 SSH 連線中斷時的自動重連行為。",
+      "enabled": "啟用自動重連",
+      "enabled_hint": "偵測到網路中斷時自動嘗試恢復連線。",
+      "strategy": "重試策略",
+      "max_attempts": "最大重試次數",
+      "max_attempts_hint": "放棄前最多嘗試重連的次數。",
+      "base_delay": "基礎重試延遲",
+      "base_delay_hint": "首次重試前的初始等待時間。",
+      "max_delay": "最大重試延遲",
+      "max_delay_hint": "指數退避的重試延遲上限。",
+      "formula_hint": "重試使用帶抖動的指數退避策略：每次後續嘗試等待更長時間（不超過最大延遲），並加入少量隨機變化以避免驚群效應。"
     }
   }
 }

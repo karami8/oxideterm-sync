@@ -40,6 +40,7 @@
       "ssh": "Clés SSH",
       "ai": "Assistant IA",
       "local": "Terminal local",
+      "reconnect": "Reconnexion",
       "help": "Aide et À propos"
     },
     "general": {
@@ -384,6 +385,20 @@
       "delete_group_failed": "Échec de la suppression du groupe : {{error}}",
       "import_success": "\"{{name}}\" importé avec succès comme connexion enregistrée !",
       "import_failed": "Échec de l'importation de l'hôte : {{error}}"
+    },
+    "reconnect": {
+      "title": "Reconnexion automatique",
+      "description": "Configurer le comportement de reconnexion automatique lorsque les connexions SSH sont perdues.",
+      "enabled": "Activer la reconnexion automatique",
+      "enabled_hint": "Tenter automatiquement de restaurer les connexions lorsque des interruptions réseau sont détectées.",
+      "strategy": "Stratégie de réessai",
+      "max_attempts": "Tentatives maximum",
+      "max_attempts_hint": "Nombre maximum de tentatives de reconnexion avant d'abandonner.",
+      "base_delay": "Délai de réessai de base",
+      "base_delay_hint": "Temps d'attente initial avant la première tentative.",
+      "max_delay": "Délai de réessai maximum",
+      "max_delay_hint": "Limite supérieure du délai avec backoff exponentiel.",
+      "formula_hint": "Les réessais utilisent un backoff exponentiel avec gigue : chaque tentative suivante attend plus longtemps (jusqu'au délai maximum), avec une petite variation aléatoire pour éviter l'effet de troupeau."
     }
   }
 }
