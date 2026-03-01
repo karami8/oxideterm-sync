@@ -48,6 +48,8 @@
   - [6.8 ctx.storage](#68-ctxstorage)
   - [6.9 ctx.api](#69-ctxapi)
   - [6.10 ctx.assets](#610-ctxassets)
+  - [6.11 ctx.sftp](#611-ctxsftp)
+  - [6.12 ctx.forward](#612-ctxforward)
 - [7. 共享模块 (window.\_\_OXIDE\_\_)](#7-共享模块-window__oxide__)
   - [7.1 可用模块](#71-可用模块)
   - [7.2 使用 React](#72-使用-react)
@@ -669,6 +671,46 @@ export function deactivate() {
 ```
 
 只有声明在此列表中的命令才能通过 `ctx.api.invoke()` 调用。未声明的命令会在调用时抛出异常并在 console 输出警告。
+
+> **提示**：大多数 SFTP 和端口转发操作可以直接通过 `ctx.sftp` 和 `ctx.forward` 命名空间调用，无需在 `apiCommands` 中声明。只有这两个命名空间未覆盖的底层命令才需要通过 `ctx.api.invoke()` 调用。
+
+#### 可用的 apiCommands 列表
+
+| 类别 | 命令 | 说明 |
+|------|------|------|
+| **连接** | `list_connections` | 列出所有活跃连接 |
+| | `get_connection_health` | 获取连接健康指标 |
+| | `quick_health_check` | 快速连接检查 |
+| **SFTP** | `node_sftp_init` | 初始化 SFTP 通道 |
+| | `node_sftp_list_dir` | 列出远程目录 |
+| | `node_sftp_stat` | 获取文件/目录信息 |
+| | `node_sftp_preview` | 预览文件内容 |
+| | `node_sftp_write` | 写入文件 |
+| | `node_sftp_mkdir` | 创建目录 |
+| | `node_sftp_delete` | 删除文件 |
+| | `node_sftp_delete_recursive` | 递归删除目录 |
+| | `node_sftp_rename` | 重命名/移动文件 |
+| | `node_sftp_download` | 下载文件 |
+| | `node_sftp_upload` | 上传文件 |
+| | `node_sftp_download_dir` | 递归下载目录 |
+| | `node_sftp_upload_dir` | 递归上传目录 |
+| | `node_sftp_tar_probe` | 探测远端 tar 支持 |
+| | `node_sftp_tar_upload` | tar 流式上传 |
+| | `node_sftp_tar_download` | tar 流式下载 |
+| **端口转发** | `list_port_forwards` | 列出会话端口转发 |
+| | `create_port_forward` | 创建端口转发 |
+| | `stop_port_forward` | 停止端口转发 |
+| | `delete_port_forward` | 删除端口转发规则 |
+| | `restart_port_forward` | 重启端口转发 |
+| | `update_port_forward` | 更新转发参数 |
+| | `get_port_forward_stats` | 获取转发流量统计 |
+| | `stop_all_forwards` | 停止所有转发 |
+| **传输队列** | `sftp_cancel_transfer` | 取消传输 |
+| | `sftp_pause_transfer` | 暂停传输 |
+| | `sftp_resume_transfer` | 恢复传输 |
+| | `sftp_transfer_stats` | 传输队列统计 |
+| **系统** | `get_app_version` | 获取 OxideTerm 版本 |
+| | `get_system_info` | 获取系统信息 |
 
 ### 4.8 locales
 
@@ -1422,6 +1464,199 @@ ctx.assets.revokeAssetUrl(url);
 
 > 卸载插件时，所有未手动释放的 blob URL 和注入的 `<style>` 标签会**自动清理**。
 
+---
+
+### 6.11 ctx.sftp
+
+远程文件系统操作 API。通过 SFTP 协议操作远端文件，无需在 `contributes.apiCommands` 中声明。
+
+所有方法使用 `nodeId`（稳定标识符），在重连后仍然有效。后端会自动初始化 SFTP 通道。
+
+#### `listDir(nodeId, path)`
+
+```typescript
+sftp.listDir(nodeId: string, path: string): Promise<ReadonlyArray<PluginFileInfo>>
+```
+
+列出远程目录内容。返回 frozen 的文件信息数组。
+
+```javascript
+const files = await ctx.sftp.listDir(nodeId, '/home/user');
+for (const f of files) {
+  console.log(`${f.file_type} ${f.name} (${f.size} bytes)`);
+}
+```
+
+#### `stat(nodeId, path)`
+
+```typescript
+sftp.stat(nodeId: string, path: string): Promise<PluginFileInfo>
+```
+
+获取远程文件或目录的元数据。
+
+#### `readFile(nodeId, path)`
+
+```typescript
+sftp.readFile(nodeId: string, path: string): Promise<string>
+```
+
+读取远程文本文件内容（最大 10 MB）。自动检测编码并返回 UTF-8 字符串。非文本文件或超过大小限制时抛出异常。
+
+```javascript
+const content = await ctx.sftp.readFile(nodeId, '/etc/hostname');
+```
+
+#### `writeFile(nodeId, path, content)`
+
+```typescript
+sftp.writeFile(nodeId: string, path: string, content: string): Promise<void>
+```
+
+将文本内容写入远程文件（使用原子写入以防止损坏）。
+
+#### `mkdir(nodeId, path)`
+
+```typescript
+sftp.mkdir(nodeId: string, path: string): Promise<void>
+```
+
+在远程主机上创建目录。
+
+#### `delete(nodeId, path)`
+
+```typescript
+sftp.delete(nodeId: string, path: string): Promise<void>
+```
+
+删除远程文件。要递归删除目录，请使用 `ctx.api.invoke('node_sftp_delete_recursive', { nodeId, path })`。
+
+#### `rename(nodeId, oldPath, newPath)`
+
+```typescript
+sftp.rename(nodeId: string, oldPath: string, newPath: string): Promise<void>
+```
+
+重命名或移动远程文件/目录。
+
+#### PluginFileInfo 类型
+
+```typescript
+type PluginFileInfo = Readonly<{
+  name: string;
+  path: string;
+  file_type: 'file' | 'directory' | 'symlink' | 'unknown';
+  size: number;
+  modified: number | null;     // Unix timestamp (seconds)
+  permissions: string | null;  // e.g. "rwxr-xr-x"
+}>;
+```
+
+---
+
+### 6.12 ctx.forward
+
+端口转发管理 API。可用于创建、查询和管理 SSH 端口转发，无需在 `contributes.apiCommands` 中声明。
+
+注意：端口转发使用 `sessionId`（而非 nodeId），因为转发绑定到 SSH 会话生命周期。可通过 `ctx.connections.getByNode(nodeId)?.id` 获取 sessionId。
+
+#### `list(sessionId)`
+
+```typescript
+forward.list(sessionId: string): Promise<ReadonlyArray<PluginForwardRule>>
+```
+
+列出某个会话的所有活跃端口转发。
+
+```javascript
+const conn = ctx.connections.getByNode(nodeId);
+if (conn) {
+  const forwards = await ctx.forward.list(conn.id);
+  forwards.forEach(f => console.log(`${f.forward_type} ${f.bind_address}:${f.bind_port} → ${f.target_host}:${f.target_port}`));
+}
+```
+
+#### `create(request)`
+
+```typescript
+forward.create(request: PluginForwardRequest): Promise<{
+  success: boolean;
+  forward?: PluginForwardRule;
+  error?: string;
+}>
+```
+
+创建新的端口转发。支持 local、remote 和 dynamic (SOCKS5) 三种类型。
+
+```javascript
+const result = await ctx.forward.create({
+  sessionId: conn.id,
+  forwardType: 'local',
+  bindAddress: '127.0.0.1',
+  bindPort: 8080,
+  targetHost: 'localhost',
+  targetPort: 80,
+  description: 'My plugin forward',
+});
+if (result.success) {
+  console.log('Forward created:', result.forward?.id);
+}
+```
+
+#### `stop(sessionId, forwardId)`
+
+```typescript
+forward.stop(sessionId: string, forwardId: string): Promise<void>
+```
+
+停止一个端口转发。
+
+#### `stopAll(sessionId)`
+
+```typescript
+forward.stopAll(sessionId: string): Promise<void>
+```
+
+停止某个会话的所有端口转发。
+
+#### `getStats(sessionId, forwardId)`
+
+```typescript
+forward.getStats(sessionId: string, forwardId: string): Promise<{
+  connectionCount: number;
+  activeConnections: number;
+  bytesSent: number;
+  bytesReceived: number;
+} | null>
+```
+
+获取端口转发的流量统计信息。
+
+#### 相关类型
+
+```typescript
+type PluginForwardRequest = {
+  sessionId: string;
+  forwardType: 'local' | 'remote' | 'dynamic';
+  bindAddress: string;
+  bindPort: number;
+  targetHost: string;
+  targetPort: number;
+  description?: string;
+};
+
+type PluginForwardRule = Readonly<{
+  id: string;
+  forward_type: 'local' | 'remote' | 'dynamic';
+  bind_address: string;
+  bind_port: number;
+  target_host: string;
+  target_port: number;
+  status: string;
+  description?: string;
+}>;
+```
+
 **完整示例**：
 
 ```javascript
@@ -1463,6 +1698,9 @@ window.__OXIDE__ = {
   ReactDOM: { createRoot: typeof import('react-dom/client').createRoot };
   zustand: { create: typeof import('zustand').create };
   lucideIcons: Record<string, React.FC>;  // Lucide 图标名 → 组件映射
+  clsx: typeof import('clsx').clsx;        // 轻量 className 构建器
+  cn: (...inputs: ClassValue[]) => string; // Tailwind-merge + clsx
+  useTranslation: typeof import('react-i18next').useTranslation; // i18n hook
   ui: PluginUIKit;   // 插件 UI 组件库
 };
 ```

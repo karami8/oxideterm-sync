@@ -261,6 +261,84 @@ export type PluginAssetsAPI = {
   revokeAssetUrl(url: string): void;
 };
 
+// ═══════════════════════════════════════════════════════════════════════════
+// SFTP File Info (subset safe for plugins)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** File information returned by SFTP operations */
+export type PluginFileInfo = Readonly<{
+  name: string;
+  path: string;
+  file_type: 'file' | 'directory' | 'symlink' | 'unknown';
+  size: number;
+  modified: number | null;
+  permissions: string | null;
+}>;
+
+/** ctx.sftp — remote file system operations (requires node with active SFTP session) */
+export type PluginSftpAPI = {
+  /** List directory contents on the remote host */
+  listDir(nodeId: string, path: string): Promise<ReadonlyArray<PluginFileInfo>>;
+  /** Get file/directory metadata */
+  stat(nodeId: string, path: string): Promise<PluginFileInfo>;
+  /** Read a remote text file (max 10 MB, returns UTF-8 string) */
+  readFile(nodeId: string, path: string): Promise<string>;
+  /** Write text content to a remote file */
+  writeFile(nodeId: string, path: string, content: string): Promise<void>;
+  /** Create a directory on the remote host */
+  mkdir(nodeId: string, path: string): Promise<void>;
+  /** Delete a remote file */
+  delete(nodeId: string, path: string): Promise<void>;
+  /** Rename or move a remote file/directory */
+  rename(nodeId: string, oldPath: string, newPath: string): Promise<void>;
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Port Forward Info (subset safe for plugins)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Port forward rule snapshot for plugins */
+export type PluginForwardRule = Readonly<{
+  id: string;
+  forward_type: 'local' | 'remote' | 'dynamic';
+  bind_address: string;
+  bind_port: number;
+  target_host: string;
+  target_port: number;
+  status: string;
+  description?: string;
+}>;
+
+/** Request to create a port forward */
+export type PluginForwardRequest = {
+  sessionId: string;
+  forwardType: 'local' | 'remote' | 'dynamic';
+  bindAddress: string;
+  bindPort: number;
+  targetHost: string;
+  targetPort: number;
+  description?: string;
+};
+
+/** ctx.forward — port forwarding management */
+export type PluginForwardAPI = {
+  /** List all active forwards for a session */
+  list(sessionId: string): Promise<ReadonlyArray<PluginForwardRule>>;
+  /** Create a new port forward */
+  create(request: PluginForwardRequest): Promise<{ success: boolean; forward?: PluginForwardRule; error?: string }>;
+  /** Stop a port forward */
+  stop(sessionId: string, forwardId: string): Promise<void>;
+  /** Stop all forwards for a session */
+  stopAll(sessionId: string): Promise<void>;
+  /** Get traffic stats for a forward */
+  getStats(sessionId: string, forwardId: string): Promise<{
+    connectionCount: number;
+    activeConnections: number;
+    bytesSent: number;
+    bytesReceived: number;
+  } | null>;
+};
+
 /** The full PluginContext passed to activate() */
 export type PluginContext = Readonly<{
   pluginId: string;
@@ -273,6 +351,10 @@ export type PluginContext = Readonly<{
   storage: PluginStorageAPI;
   api: PluginBackendAPI;
   assets: PluginAssetsAPI;
+  /** Remote file system operations via SFTP */
+  sftp: PluginSftpAPI;
+  /** Port forwarding management */
+  forward: PluginForwardAPI;
 }>;
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -338,6 +420,12 @@ declare global {
       /** @deprecated Use lucideIcons instead. Kept for backward compatibility with existing plugins. */
       lucideReact: typeof import('lucide-react');
       ui: import('../lib/plugin/pluginUIKit').PluginUIKit;
+      /** clsx — lightweight className string builder */
+      clsx: typeof import('clsx').clsx;
+      /** cn — Tailwind-merge + clsx helper (project utility) */
+      cn: (...inputs: import('clsx').ClassValue[]) => string;
+      /** useTranslation — i18next React hook for host-level translations */
+      useTranslation: typeof import('react-i18next').useTranslation;
       /** Host application version */
       version: string;
       /** Plugin API version (2 = current) */

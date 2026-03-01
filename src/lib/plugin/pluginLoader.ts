@@ -177,7 +177,7 @@ export async function loadPlugin(manifest: PluginManifest): Promise<void> {
   // Check shared dependencies (advisory — warn but don't block)
   if (manifest.sharedDependencies) {
     const available = window.__OXIDE__;
-    const knownShared = new Set(['react', 'react-dom', 'zustand', 'lucide-react']);
+    const knownShared = new Set(['react', 'react-dom', 'zustand', 'lucide-react', 'clsx', 'react-i18next']);
     for (const dep of Object.keys(manifest.sharedDependencies)) {
       if (!knownShared.has(dep) || !available) {
         console.warn(

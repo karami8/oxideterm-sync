@@ -18,6 +18,10 @@ import type {
   PluginStorageAPI,
   PluginBackendAPI,
   PluginAssetsAPI,
+  PluginSftpAPI,
+  PluginForwardAPI,
+  PluginFileInfo,
+  PluginForwardRule,
   ConnectionSnapshot,
   Disposable,
   InputInterceptor,
@@ -444,6 +448,95 @@ export function buildPluginContext(manifest: PluginManifest): PluginContext {
     },
   });
 
+  // ── ctx.sftp ───────────────────────────────────────────────────────
+  //
+  // Wraps node_sftp_* backend commands. Each method requires a nodeId
+  // (not sessionId) so it survives reconnects. The plugin must have an
+  // active connection on the node — backend enforces State Gating.
+  //
+  const sftp: PluginSftpAPI = Object.freeze({
+    async listDir(nodeId: string, path: string): Promise<ReadonlyArray<PluginFileInfo>> {
+      const items = await invoke<PluginFileInfo[]>('node_sftp_list_dir', { nodeId, path });
+      return Object.freeze(items.map((i) => Object.freeze(i)));
+    },
+    async stat(nodeId: string, path: string): Promise<PluginFileInfo> {
+      const info: PluginFileInfo = await invoke('node_sftp_stat', { nodeId, path });
+      return Object.freeze(info);
+    },
+    async readFile(nodeId: string, path: string): Promise<string> {
+      // Use preview with text extraction — safe and size-limited
+      const preview = await invoke<{ Text?: { data: string } }>('node_sftp_preview', { nodeId, path });
+      if (preview && typeof preview === 'object' && 'Text' in preview) {
+        return (preview as { Text: { data: string } }).Text.data;
+      }
+      throw new Error('File is not a text file or exceeds size limit');
+    },
+    async writeFile(nodeId: string, path: string, content: string): Promise<void> {
+      await invoke('node_sftp_write', { nodeId, path, content });
+    },
+    async mkdir(nodeId: string, path: string): Promise<void> {
+      await invoke('node_sftp_mkdir', { nodeId, path });
+    },
+    async delete(nodeId: string, path: string): Promise<void> {
+      await invoke('node_sftp_delete', { nodeId, path });
+    },
+    async rename(nodeId: string, oldPath: string, newPath: string): Promise<void> {
+      await invoke('node_sftp_rename', { nodeId, oldPath, newPath });
+    },
+  });
+
+  // ── ctx.forward ───────────────────────────────────────────────────
+  //
+  // Wraps port forwarding backend commands. Uses sessionId (not nodeId)
+  // because forwarding is bound to the SSH session lifecycle.
+  //
+  const forward: PluginForwardAPI = Object.freeze({
+    async list(sessionId: string): Promise<ReadonlyArray<PluginForwardRule>> {
+      const rules = await invoke<PluginForwardRule[]>('list_port_forwards', { sessionId });
+      return Object.freeze(rules.map((r) => Object.freeze(r)));
+    },
+    async create(request) {
+      const backendRequest = {
+        session_id: request.sessionId,
+        forward_type: request.forwardType,
+        bind_address: request.bindAddress,
+        bind_port: request.bindPort,
+        target_host: request.targetHost,
+        target_port: request.targetPort,
+        description: request.description,
+      };
+      const resp = await invoke<{ success: boolean; forward?: PluginForwardRule; error?: string }>(
+        'create_port_forward', { request: backendRequest },
+      );
+      return Object.freeze({
+        success: resp.success,
+        forward: resp.forward ? Object.freeze(resp.forward) : undefined,
+        error: resp.error,
+      });
+    },
+    async stop(sessionId: string, forwardId: string): Promise<void> {
+      await invoke('stop_port_forward', { sessionId, forwardId });
+    },
+    async stopAll(sessionId: string): Promise<void> {
+      await invoke('stop_all_forwards', { sessionId });
+    },
+    async getStats(sessionId: string, forwardId: string) {
+      const stats = await invoke<{
+        connection_count: number;
+        active_connections: number;
+        bytes_sent: number;
+        bytes_received: number;
+      } | null>('get_port_forward_stats', { sessionId, forwardId });
+      if (!stats) return null;
+      return Object.freeze({
+        connectionCount: stats.connection_count,
+        activeConnections: stats.active_connections,
+        bytesSent: stats.bytes_sent,
+        bytesReceived: stats.bytes_received,
+      });
+    },
+  });
+
   // ── Build final frozen context ────────────────────────────────────
   return Object.freeze({
     pluginId,
@@ -456,5 +549,7 @@ export function buildPluginContext(manifest: PluginManifest): PluginContext {
     storage: storageApi,
     api,
     assets,
+    sftp,
+    forward,
   });
 }

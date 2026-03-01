@@ -213,11 +213,11 @@ export async function activate(ctx) {
 
 ---
 
-## 3. PluginContext API（10 个命名空间）
+## 3. PluginContext API（12 个命名空间）
 
 插件通过 `activate(ctx)` 接收的唯一 API 入口。整个对象通过 `Object.freeze()` 递归冻结。
 
-包含：`pluginId` + 9 个子 API（`connections`、`events`、`ui`、`terminal`、`settings`、`i18n`、`storage`、`api`、`assets`）
+包含：`pluginId` + 11 个子 API（`connections`、`events`、`ui`、`terminal`、`settings`、`i18n`、`storage`、`api`、`assets`、`sftp`、`forward`）
 
 ### 3.1 `ctx.connections`（只读连接状态）
 
@@ -363,6 +363,38 @@ interface PluginAssetsAPI {
 - 卸载时自动清理所有注入的 `<style>` 和未释放的 blob URL
 - MIME 类型自动检测：支持 png/jpg/gif/svg/webp/woff/woff2/ttf/otf/ico/json/css/js 等
 - 配合 manifest `styles` 字段，加载时自动注入声明的 CSS 文件
+
+### 3.10 `ctx.sftp`
+
+远程文件系统操作（通过 SFTP 通道），需要在 manifest `apiCommands` 中声明对应的 `node_sftp_*` 命令。
+
+| 方法 | 说明 |
+|------|------|
+| `listDir(nodeId, path)` | 列出目录内容，返回 `PluginFileInfo[]` |
+| `stat(nodeId, path)` | 获取文件/目录元信息 |
+| `readFile(nodeId, path, maxBytes?)` | 读取文本文件内容（默认上限 1 MB） |
+| `writeFile(nodeId, path, content)` | 写入文本文件 |
+| `mkdir(nodeId, path)` | 创建目录 |
+| `delete(nodeId, path)` | 删除文件或目录 |
+| `rename(nodeId, oldPath, newPath)` | 重命名/移动文件 |
+
+- 所有返回值均通过 `Object.freeze()` 冻结
+- `readFile` 后端实际调用 `node_sftp_preview`，适合读取配置文件等小型文本
+
+### 3.11 `ctx.forward`
+
+端口转发管理 API，需要在 manifest `apiCommands` 中声明对应的转发命令。
+
+| 方法 | 说明 |
+|------|------|
+| `list(sessionId)` | 列出会话的所有转发规则 |
+| `create(sessionId, rule)` | 创建新的转发规则（Local / Remote / Dynamic） |
+| `stop(sessionId, forwardId)` | 停止单条转发 |
+| `stopAll(sessionId)` | 停止会话的所有转发 |
+| `getStats(sessionId, forwardId)` | 获取转发统计（字节数、连接数等） |
+
+- `create()` 接收 camelCase 的 `PluginForwardRequest`，内部自动转换为后端 snake_case 格式
+- 返回的 `PluginForwardRule` 使用 camelCase 字段名并通过 `Object.freeze()` 冻结
 
 ---
 

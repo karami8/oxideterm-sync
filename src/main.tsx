@@ -2,7 +2,10 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { create } from 'zustand'
 import * as lucideReact from 'lucide-react'
+import { clsx } from 'clsx'
+import { useTranslation } from 'react-i18next'
 import { pluginUIKit } from './lib/plugin/pluginUIKit'
+import { cn } from './lib/utils'
 import App from './App'
 import './styles.css'
 import './i18n' // Import i18n configuration
@@ -39,6 +42,9 @@ window.__OXIDE__ = {
   lucideIcons: lucideReact.icons,
   lucideReact: safeLucideReact,
   ui: pluginUIKit,
+  clsx,
+  cn,
+  useTranslation,
   version: '1.6.2',
   pluginApiVersion: 2,
 }
