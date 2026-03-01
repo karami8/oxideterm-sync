@@ -4,13 +4,7 @@ import { Info } from 'lucide-react';
 import { useAiChatStore } from '../../store/aiChatStore';
 import { useSettingsStore } from '../../store/settingsStore';
 import { estimateTokens, getModelContextWindow } from '../../lib/ai/tokenUtils';
-
-// ═══════════════════════════════════════════════════════════════════════════
-// Constants
-// ═══════════════════════════════════════════════════════════════════════════
-
-// Hardcoded system prompt (matches aiChatStore.ts)
-const DEFAULT_SYSTEM_PROMPT = `You are a helpful terminal assistant. You help users with shell commands, scripts, and terminal operations. Be concise and direct. When providing commands, format them clearly. You can use markdown for formatting.`;
+import { DEFAULT_SYSTEM_PROMPT } from '../../lib/ai/constants';
 
 interface TokenBreakdown {
   system: number;
@@ -43,8 +37,9 @@ export function ContextIndicator({ pendingInput = '' }: ContextIndicatorProps) {
   
   // Calculate token breakdown
   const breakdown = useMemo<TokenBreakdown>(() => {
-    // System prompt tokens (using default, actual may vary with context)
-    const systemTokens = estimateTokens(DEFAULT_SYSTEM_PROMPT);
+    // System prompt tokens (custom or default)
+    const effectivePrompt = aiSettings.customSystemPrompt?.trim() || DEFAULT_SYSTEM_PROMPT;
+    const systemTokens = estimateTokens(effectivePrompt);
     
     // History tokens (all messages — the API layer trims dynamically)
     let historyTokens = 0;
@@ -65,7 +60,7 @@ export function ContextIndicator({ pendingInput = '' }: ContextIndicatorProps) {
       context: contextTokens,
       total: systemTokens + historyTokens + contextTokens,
     };
-  }, [conversation?.messages, pendingInput]);
+  }, [conversation?.messages, pendingInput, aiSettings.customSystemPrompt]);
   
   // Context window from cached provider data or fallback pattern matching
   const maxTokens = useMemo(() => {

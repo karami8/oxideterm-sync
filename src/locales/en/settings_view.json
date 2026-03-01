@@ -305,7 +305,11 @@
       "available_models": "Available Models",
       "refresh_models": "Refresh Models",
       "refresh_failed": "Failed to refresh models: {{error}}",
-      "click_to_set_default": "Click to set as default model"
+      "click_to_set_default": "Click to set as default model",
+      "system_prompt_title": "System Prompt",
+      "custom_system_prompt": "Custom System Prompt",
+      "system_prompt_placeholder": "Enter a custom system prompt... (leave empty to use default)",
+      "system_prompt_hint": "Customize the AI assistant's behavior. Leave empty to use the default terminal assistant prompt."
     },
     "sftp": {
       "title": "SFTP Transfer",

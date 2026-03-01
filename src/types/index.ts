@@ -1231,6 +1231,8 @@ export interface AiConversation {
   updatedAt: number;
   /** Associated terminal session ID (optional) */
   sessionId?: string;
+  /** Cached message count from backend (for unloaded conversations) */
+  messageCount?: number;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

@@ -16,7 +16,8 @@
       "start_conversation": "Bắt đầu cuộc trò chuyện",
       "start_conversation_hint": "Đặt câu hỏi về lệnh shell, script hoặc các thao tác terminal.",
       "delete_conversation": "Xóa cuộc trò chuyện",
-      "messages_count": "{{count}} tin nhắn"
+      "messages_count": "{{count}} tin nhắn",
+      "double_click_rename": "Nhấp đúp để đổi tên"
     },
     "quick_prompts": {
       "explain_command": "Giải thích lệnh",
@@ -53,7 +54,15 @@
       "copy_code": "Sao chép mã",
       "insert_to_terminal": "Chèn vào terminal",
       "regenerate": "Tạo lại phản hồi",
-      "regenerating": "Đang tạo lại..."
+      "regenerating": "Đang tạo lại...",
+      "used_context": "đã sử dụng ngữ cảnh",
+      "edit": "Chỉnh sửa",
+      "cancel": "Hủy",
+      "save_and_resend": "Lưu và gửi lại",
+      "delete": "Xóa",
+      "delete_confirm": "Xóa tin nhắn này?",
+      "edit_failed": "Chỉnh sửa tin nhắn thất bại: không thể xóa lịch sử trên backend.",
+      "delete_failed": "Xóa tin nhắn thất bại: lỗi backend."
     },
     "thinking": {
       "thinking": "Đang suy nghĩ...",

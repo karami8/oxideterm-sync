@@ -190,6 +190,8 @@ export interface AiSettings {
    * Shape: { [providerId]: { [modelId]: tokenCount } }
    */
   modelContextWindows?: Record<string, Record<string, number>>;
+  /** Custom system prompt override (empty = use default) */
+  customSystemPrompt?: string;
 }
 
 /** Local terminal settings */
@@ -346,6 +348,7 @@ const defaultAiSettings: AiSettings = {
   contextVisibleLines: 120,
   thinkingStyle: 'detailed',         // Default: show full thinking content
   thinkingDefaultExpanded: false,    // Default: collapsed for less noise
+  customSystemPrompt: '',            // Default: use built-in prompt
 };
 
 const defaultLocalTerminalSettings: LocalTerminalSettings = {

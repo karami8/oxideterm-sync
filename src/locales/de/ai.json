@@ -16,7 +16,8 @@
       "start_conversation": "Unterhaltung starten",
       "start_conversation_hint": "Stellen Sie Fragen zu Shell-Befehlen, Skripten oder Terminal-Operationen.",
       "delete_conversation": "Unterhaltung löschen",
-      "messages_count": "{{count}} Nachrichten"
+      "messages_count": "{{count}} Nachrichten",
+      "double_click_rename": "Doppelklicken zum Umbenennen"
     },
     "quick_prompts": {
       "explain_command": "Befehl erklären",
@@ -53,7 +54,15 @@
       "copy_code": "Code kopieren",
       "insert_to_terminal": "Ins Terminal einfügen",
       "regenerate": "Antwort neu generieren",
-      "regenerating": "Wird neu generiert..."
+      "regenerating": "Wird neu generiert...",
+      "used_context": "Kontext verwendet",
+      "edit": "Bearbeiten",
+      "cancel": "Abbrechen",
+      "save_and_resend": "Speichern & erneut senden",
+      "delete": "Löschen",
+      "delete_confirm": "Diese Nachricht löschen?",
+      "edit_failed": "Nachricht bearbeiten fehlgeschlagen: Verlauf konnte nicht im Backend gelöscht werden.",
+      "delete_failed": "Nachricht löschen fehlgeschlagen: Backend-Fehler."
     },
     "thinking": {
       "thinking": "Denkt nach...",

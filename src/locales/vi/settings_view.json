@@ -305,7 +305,11 @@
       "available_models": "Mô hình có sẵn",
       "refresh_models": "Làm mới danh sách mô hình",
       "refresh_failed": "Làm mới mô hình thất bại: {{error}}",
-      "click_to_set_default": "Nhấp để đặt làm mô hình mặc định"
+      "click_to_set_default": "Nhấp để đặt làm mô hình mặc định",
+      "system_prompt_title": "Prompt hệ thống",
+      "custom_system_prompt": "Prompt hệ thống tùy chỉnh",
+      "system_prompt_placeholder": "Nhập prompt hệ thống tùy chỉnh... (để trống để sử dụng mặc định)",
+      "system_prompt_hint": "Tùy chỉnh hành vi của trợ lý AI. Để trống để sử dụng prompt trợ lý terminal mặc định."
     },
     "sftp": {
       "title": "Truyền file SFTP",

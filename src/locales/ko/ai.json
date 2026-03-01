@@ -16,7 +16,8 @@
       "start_conversation": "대화 시작하기",
       "start_conversation_hint": "셸 명령, 스크립트 또는 터미널 작업에 대해 질문하세요.",
       "delete_conversation": "대화 삭제",
-      "messages_count": "메시지 {{count}}개"
+      "messages_count": "메시지 {{count}}개",
+      "double_click_rename": "더블 클릭하여 이름 변경"
     },
     "quick_prompts": {
       "explain_command": "명령어 설명",
@@ -53,7 +54,15 @@
       "copy_code": "코드 복사",
       "insert_to_terminal": "터미널에 삽입",
       "regenerate": "응답 재생성",
-      "regenerating": "재생성 중..."
+      "regenerating": "재생성 중...",
+      "used_context": "컨텍스트 사용됨",
+      "edit": "편집",
+      "cancel": "취소",
+      "save_and_resend": "저장 후 재전송",
+      "delete": "삭제",
+      "delete_confirm": "이 메시지를 삭제하시겠습니까?",
+      "edit_failed": "메시지 편집 실패: 백엔드 기록을 지울 수 없습니다.",
+      "delete_failed": "메시지 삭제 실패: 백엔드 오류."
     },
     "thinking": {
       "thinking": "생각 중...",

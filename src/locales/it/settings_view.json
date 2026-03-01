@@ -305,7 +305,11 @@
       "available_models": "Modelli disponibili",
       "refresh_models": "Aggiorna lista modelli",
       "refresh_failed": "Aggiornamento modelli non riuscito: {{error}}",
-      "click_to_set_default": "Clicca per impostare come modello predefinito"
+      "click_to_set_default": "Clicca per impostare come modello predefinito",
+      "system_prompt_title": "Prompt di sistema",
+      "custom_system_prompt": "Prompt di sistema personalizzato",
+      "system_prompt_placeholder": "Inserisci un prompt di sistema personalizzato... (lascia vuoto per usare il predefinito)",
+      "system_prompt_hint": "Personalizza il comportamento dell'assistente AI. Lascia vuoto per usare il prompt dell'assistente terminale predefinito."
     },
     "sftp": {
       "title": "Trasferimento SFTP",

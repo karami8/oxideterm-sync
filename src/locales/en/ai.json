@@ -16,7 +16,8 @@
       "start_conversation": "Start a conversation",
       "start_conversation_hint": "Ask questions about shell commands, scripts, or get help with terminal operations.",
       "delete_conversation": "Delete conversation",
-      "messages_count": "{{count}} messages"
+      "messages_count": "{{count}} messages",
+      "double_click_rename": "Double-click to rename"
     },
     "quick_prompts": {
       "explain_command": "Explain a command",
@@ -53,7 +54,15 @@
       "copy_code": "Copy code",
       "insert_to_terminal": "Insert to terminal",
       "regenerate": "Regenerate response",
-      "regenerating": "Regenerating..."
+      "regenerating": "Regenerating...",
+      "used_context": "used context",
+      "edit": "Edit",
+      "cancel": "Cancel",
+      "save_and_resend": "Save & Resend",
+      "delete": "Delete",
+      "delete_confirm": "Delete this message?",
+      "edit_failed": "Failed to edit message: could not clear history on backend.",
+      "delete_failed": "Failed to delete message: backend error."
     },
     "thinking": {
       "thinking": "Thinking...",

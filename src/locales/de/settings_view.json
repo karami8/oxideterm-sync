@@ -305,7 +305,11 @@
       "available_models": "Verfügbare Modelle",
       "refresh_models": "Modellliste aktualisieren",
       "refresh_failed": "Modelle konnten nicht aktualisiert werden: {{error}}",
-      "click_to_set_default": "Klicken, um als Standardmodell festzulegen"
+      "click_to_set_default": "Klicken, um als Standardmodell festzulegen",
+      "system_prompt_title": "System-Prompt",
+      "custom_system_prompt": "Benutzerdefinierter System-Prompt",
+      "system_prompt_placeholder": "Benutzerdefinierten System-Prompt eingeben... (leer lassen für Standard)",
+      "system_prompt_hint": "Passen Sie das Verhalten des KI-Assistenten an. Leer lassen, um den Standard-Terminal-Assistenten-Prompt zu verwenden."
     },
     "sftp": {
       "title": "SFTP-Übertragung",

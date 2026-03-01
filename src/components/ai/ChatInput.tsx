@@ -47,7 +47,7 @@ export function ChatInput({ onSend, onStop, isLoading, disabled, externalValue, 
   // Get active terminal session
   const tabs = useAppStore((state) => state.tabs);
   const activeTabId = useAppStore((state) => state.activeTabId);
-  const contextMaxChars = useSettingsStore((state) => state.settings.ai.contextVisibleLines);
+  const contextMaxChars = useSettingsStore((state) => state.settings.ai.contextMaxChars);
 
   // Find active terminal tab
   const activeTab = tabs.find((t) => t.id === activeTabId);

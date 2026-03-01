@@ -16,7 +16,8 @@
       "start_conversation": "开始对话",
       "start_conversation_hint": "询问关于 Shell 命令、脚本或终端操作的问题。",
       "delete_conversation": "删除对话",
-      "messages_count": "{{count}} 条消息"
+      "messages_count": "{{count}} 条消息",
+      "double_click_rename": "双击重命名"
     },
     "quick_prompts": {
       "explain_command": "解释命令",
@@ -53,7 +54,15 @@
       "copy_code": "复制代码",
       "insert_to_terminal": "插入到终端",
       "regenerate": "重新生成",
-      "regenerating": "重新生成中..."
+      "regenerating": "重新生成中...",
+      "used_context": "已使用上下文",
+      "edit": "编辑",
+      "cancel": "取消",
+      "save_and_resend": "保存并重新发送",
+      "delete": "删除",
+      "delete_confirm": "删除此消息？",
+      "edit_failed": "消息编辑失败：无法清除后端历史记录。",
+      "delete_failed": "消息删除失败：后端错误。"
     },
     "thinking": {
       "thinking": "思考中...",

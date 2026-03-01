@@ -16,7 +16,8 @@
       "start_conversation": "Démarrer une conversation",
       "start_conversation_hint": "Posez des questions sur les commandes shell, les scripts ou les opérations du terminal.",
       "delete_conversation": "Supprimer la conversation",
-      "messages_count": "{{count}} messages"
+      "messages_count": "{{count}} messages",
+      "double_click_rename": "Double-cliquez pour renommer"
     },
     "quick_prompts": {
       "explain_command": "Expliquer une commande",
@@ -53,7 +54,15 @@
       "copy_code": "Copier le code",
       "insert_to_terminal": "Insérer dans le terminal",
       "regenerate": "Régénérer la réponse",
-      "regenerating": "Régénération..."
+      "regenerating": "Régénération...",
+      "used_context": "contexte utilisé",
+      "edit": "Modifier",
+      "cancel": "Annuler",
+      "save_and_resend": "Enregistrer et renvoyer",
+      "delete": "Supprimer",
+      "delete_confirm": "Supprimer ce message ?",
+      "edit_failed": "Échec de la modification du message : impossible de supprimer l'historique sur le backend.",
+      "delete_failed": "Échec de la suppression du message : erreur backend."
     },
     "thinking": {
       "thinking": "Réflexion...",

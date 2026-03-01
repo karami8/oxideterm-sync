@@ -29,6 +29,9 @@ export function AiChatPanel() {
     getActiveConversation,
     regenerateLastResponse,
     summarizeConversation,
+    editAndResend,
+    deleteMessage,
+    renameConversation,
   } = useAiChatStore();
 
   const aiEnabled = useSettingsStore((state) => state.settings.ai.enabled);
@@ -138,6 +141,20 @@ export function AiChatPanel() {
     }
   }, [regenerateLastResponse, isRegenerating, isLoading]);
 
+  // Handle edit and resend
+  const handleEdit = useCallback(async (messageId: string, newContent: string) => {
+    if (isLoading) return;
+    await editAndResend(messageId, newContent);
+  }, [editAndResend, isLoading]);
+
+  // Handle delete message
+  const handleDeleteMessage = useCallback(async (messageId: string) => {
+    if (isLoading) return;
+    if (await confirm({ title: t('ai.message.delete_confirm') })) {
+      await deleteMessage(messageId);
+    }
+  }, [deleteMessage, isLoading, confirm, t]);
+
   const handleSummarize = useCallback(async () => {
     if (isLoading) return;
     if (await confirm({ title: t('ai.context.summarize_confirm') })) {
@@ -168,7 +185,7 @@ export function AiChatPanel() {
   }
 
   return (
-    <div className="h-full flex flex-col bg-theme-bg">
+    <div className="h-full flex flex-col bg-theme-bg relative">
       {/* Header — Flat Utility Bar */}
       <div className="flex-shrink-0 flex items-center justify-between px-3 py-1.5 border-b border-theme-border/30 bg-theme-bg gap-2 min-h-[36px]">
         <div className="flex items-center gap-2 min-w-0">
@@ -232,7 +249,7 @@ export function AiChatPanel() {
       {showConversations && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setShowConversations(false)} />
-          <div className="absolute left-2 right-2 top-12 max-h-64 overflow-y-auto bg-theme-bg-panel border border-theme-border shadow-lg z-20">
+          <div className="absolute left-2 right-2 top-[36px] max-h-64 overflow-y-auto bg-theme-bg-panel border border-theme-border shadow-lg z-20">
             {conversations.length === 0 ? (
               <div className="p-4 text-center text-sm text-theme-text-muted">
                 {t('ai.chat.no_conversations')}
@@ -245,6 +262,7 @@ export function AiChatPanel() {
                   isActive={conv.id === activeConversationId}
                   onSelect={() => handleSelectConversation(conv.id)}
                   onDelete={(e) => handleDelete(e, conv.id)}
+                  onRename={(id, title) => renameConversation(id, title)}
                 />
               ))
             )}
@@ -297,6 +315,8 @@ export function AiChatPanel() {
                 isLastAssistant={index === lastAssistantIndex}
                 onRegenerate={handleRegenerate}
                 isRegenerating={isRegenerating}
+                onEdit={handleEdit}
+                onDelete={handleDeleteMessage}
               />
             ))}
             <div ref={messagesEndRef} className="h-4" />
@@ -363,14 +383,34 @@ function ConversationItem({
   isActive,
   onSelect,
   onDelete,
+  onRename,
 }: {
   conversation: AiConversation;
   isActive: boolean;
   onSelect: () => void;
   onDelete: (e: React.MouseEvent) => void;
+  onRename: (id: string, title: string) => void;
 }) {
   const { t } = useTranslation();
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [renameValue, setRenameValue] = useState('');
+  const renameInputRef = useRef<HTMLInputElement>(null);
   const timeStr = new Date(conversation.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+  const handleStartRename = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setRenameValue(conversation.title);
+    setIsRenaming(true);
+    setTimeout(() => renameInputRef.current?.select(), 50);
+  };
+
+  const handleFinishRename = () => {
+    const trimmed = renameValue.trim();
+    if (trimmed && trimmed !== conversation.title) {
+      onRename(conversation.id, trimmed);
+    }
+    setIsRenaming(false);
+  };
 
   return (
     <div
@@ -384,11 +424,31 @@ function ConversationItem({
         }`}
     >
       <div className="flex-1 min-w-0 pr-2">
-        <div className={`text-[12px] truncate font-bold tracking-tight ${isActive ? 'text-theme-text' : 'text-theme-text-muted group-hover/item:text-theme-text'}`}>
-          {conversation.title}
-        </div>
+        {isRenaming ? (
+          <input
+            ref={renameInputRef}
+            value={renameValue}
+            onChange={(e) => setRenameValue(e.target.value)}
+            onClick={(e) => e.stopPropagation()}
+            onBlur={handleFinishRename}
+            onKeyDown={(e) => {
+              e.stopPropagation();
+              if (e.key === 'Enter') handleFinishRename();
+              if (e.key === 'Escape') setIsRenaming(false);
+            }}
+            className="w-full text-[12px] font-bold tracking-tight bg-theme-bg/50 border border-theme-accent/40 px-1 py-0 text-theme-text focus:outline-none"
+          />
+        ) : (
+          <div
+            className={`text-[12px] truncate font-bold tracking-tight ${isActive ? 'text-theme-text' : 'text-theme-text-muted group-hover/item:text-theme-text'}`}
+            onDoubleClick={handleStartRename}
+            title={t('ai.chat.double_click_rename')}
+          >
+            {conversation.title}
+          </div>
+        )}
         <div className="text-[9px] text-theme-text-muted/40 uppercase tracking-tight mt-0.5 font-mono">
-          {t('ai.chat.messages_count', { count: conversation.messages.length })} · {timeStr}
+          {t('ai.chat.messages_count', { count: conversation.messages.length || conversation.messageCount || 0 })} · {timeStr}
         </div>
       </div>
       <button

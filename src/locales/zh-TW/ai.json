@@ -16,7 +16,8 @@
       "start_conversation": "開始對話",
       "start_conversation_hint": "詢問有關 shell 命令、腳本或獲取終端機操作的幫助。",
       "delete_conversation": "刪除對話",
-      "messages_count": "{{count}} 則訊息"
+      "messages_count": "{{count}} 則訊息",
+      "double_click_rename": "雙擊重新命名"
     },
     "quick_prompts": {
       "explain_command": "解釋命令",
@@ -53,7 +54,15 @@
       "copy_code": "複製程式碼",
       "insert_to_terminal": "插入終端機",
       "regenerate": "重新生成",
-      "regenerating": "重新生成中..."
+      "regenerating": "重新生成中...",
+      "used_context": "已使用上下文",
+      "edit": "編輯",
+      "cancel": "取消",
+      "save_and_resend": "儲存並重新傳送",
+      "delete": "刪除",
+      "delete_confirm": "刪除此訊息？",
+      "edit_failed": "訊息編輯失敗：無法清除後端歷史記錄。",
+      "delete_failed": "訊息刪除失敗：後端錯誤。"
     },
     "thinking": {
       "thinking": "思考中...",

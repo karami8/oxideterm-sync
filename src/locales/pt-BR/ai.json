@@ -16,7 +16,8 @@
       "start_conversation": "Iniciar uma conversa",
       "start_conversation_hint": "Faça perguntas sobre comandos shell, scripts ou operações de terminal.",
       "delete_conversation": "Excluir conversa",
-      "messages_count": "{{count}} mensagens"
+      "messages_count": "{{count}} mensagens",
+      "double_click_rename": "Clique duplo para renomear"
     },
     "quick_prompts": {
       "explain_command": "Explicar um comando",
@@ -53,7 +54,15 @@
       "copy_code": "Copiar código",
       "insert_to_terminal": "Inserir no terminal",
       "regenerate": "Regenerar resposta",
-      "regenerating": "Regenerando..."
+      "regenerating": "Regenerando...",
+      "used_context": "contexto utilizado",
+      "edit": "Editar",
+      "cancel": "Cancelar",
+      "save_and_resend": "Salvar e reenviar",
+      "delete": "Excluir",
+      "delete_confirm": "Excluir esta mensagem?",
+      "edit_failed": "Falha ao editar mensagem: não foi possível limpar o histórico no backend.",
+      "delete_failed": "Falha ao excluir mensagem: erro de backend."
     },
     "thinking": {
       "thinking": "Pensando...",

@@ -305,7 +305,11 @@
       "available_models": "可用模型",
       "refresh_models": "重新整理模型列表",
       "refresh_failed": "重新整理模型失敗：{{error}}",
-      "click_to_set_default": "點擊設為預設模型"
+      "click_to_set_default": "點擊設為預設模型",
+      "system_prompt_title": "系統提示詞",
+      "custom_system_prompt": "自訂系統提示詞",
+      "system_prompt_placeholder": "輸入自訂系統提示詞...（留空使用預設值）",
+      "system_prompt_hint": "自訂 AI 助手的行為。留空將使用預設的終端助手提示詞。"
     },
     "sftp": {
       "title": "SFTP 傳輸",

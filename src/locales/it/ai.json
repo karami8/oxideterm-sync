@@ -16,7 +16,8 @@
       "start_conversation": "Inizia una conversazione",
       "start_conversation_hint": "Fai domande sui comandi shell, script o ottieni aiuto con le operazioni del terminale.",
       "delete_conversation": "Elimina conversazione",
-      "messages_count": "{{count}} messaggi"
+      "messages_count": "{{count}} messaggi",
+      "double_click_rename": "Doppio clic per rinominare"
     },
     "quick_prompts": {
       "explain_command": "Spiega un comando",
@@ -53,7 +54,15 @@
       "copy_code": "Copia codice",
       "insert_to_terminal": "Inserisci nel terminale",
       "regenerate": "Rigenera risposta",
-      "regenerating": "Rigenerazione..."
+      "regenerating": "Rigenerazione...",
+      "used_context": "contesto utilizzato",
+      "edit": "Modifica",
+      "cancel": "Annulla",
+      "save_and_resend": "Salva e reinvia",
+      "delete": "Elimina",
+      "delete_confirm": "Eliminare questo messaggio?",
+      "edit_failed": "Modifica messaggio fallita: impossibile cancellare la cronologia sul backend.",
+      "delete_failed": "Eliminazione messaggio fallita: errore backend."
     },
     "thinking": {
       "thinking": "Pensando...",

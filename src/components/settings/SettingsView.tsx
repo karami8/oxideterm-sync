@@ -2002,6 +2002,21 @@ export const SettingsView = () => {
                                             <p className="text-xs text-theme-text-muted">{t('settings_view.ai.buffer_history_hint')}</p>
                                         </div>
                                     </div>
+
+                                    <Separator className="my-6 opacity-50" />
+
+                                    <h4 className="text-sm font-medium text-theme-text mb-4 uppercase tracking-wider">{t('settings_view.ai.system_prompt_title')}</h4>
+                                    <div className="max-w-3xl grid gap-2">
+                                        <Label>{t('settings_view.ai.custom_system_prompt')}</Label>
+                                        <textarea
+                                            value={ai.customSystemPrompt || ''}
+                                            onChange={(e) => updateAi('customSystemPrompt', e.target.value)}
+                                            placeholder={t('settings_view.ai.system_prompt_placeholder')}
+                                            rows={4}
+                                            className="w-full bg-theme-bg border border-theme-border rounded-md px-3 py-2 text-sm text-theme-text placeholder-theme-text-muted/40 resize-y min-h-[80px] max-h-[200px] focus:outline-none focus:ring-1 focus:ring-theme-accent/40"
+                                        />
+                                        <p className="text-xs text-theme-text-muted">{t('settings_view.ai.system_prompt_hint')}</p>
+                                    </div>
                                 </div>
                             </div>
                         </div>

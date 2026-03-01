@@ -305,7 +305,11 @@
       "available_models": "利用可能なモデル",
       "refresh_models": "モデルリストを更新",
       "refresh_failed": "モデルの更新に失敗しました：{{error}}",
-      "click_to_set_default": "クリックしてデフォルトモデルに設定"
+      "click_to_set_default": "クリックしてデフォルトモデルに設定",
+      "system_prompt_title": "システムプロンプト",
+      "custom_system_prompt": "カスタムシステムプロンプト",
+      "system_prompt_placeholder": "カスタムシステムプロンプトを入力...（空白はデフォルト使用）",
+      "system_prompt_hint": "AIアシスタントの動作をカスタマイズします。空白のままにするとデフォルトのターミナルアシスタントプロンプトが使用されます。"
     },
     "sftp": {
       "title": "SFTP転送",

@@ -74,7 +74,12 @@ export const openaiProvider: AiStreamProvider = {
 
             try {
               const json = JSON.parse(data);
-              const content = json.choices?.[0]?.delta?.content || '';
+              const delta = json.choices?.[0]?.delta;
+              // Handle reasoning_content (DeepSeek-R1, QwQ, etc.)
+              if (delta?.reasoning_content) {
+                yield { type: 'thinking', content: delta.reasoning_content };
+              }
+              const content = delta?.content || '';
               if (content) {
                 yield { type: 'content', content };
               }

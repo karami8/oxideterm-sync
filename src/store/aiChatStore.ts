@@ -7,6 +7,7 @@ import { getProvider } from '../lib/ai/providerRegistry';
 import { estimateTokens, trimHistoryToTokenBudget, getModelContextWindow } from '../lib/ai/tokenUtils';
 import type { ChatMessage as ProviderChatMessage } from '../lib/ai/providers';
 import type { AiChatMessage, AiConversation } from '../types';
+import { DEFAULT_SYSTEM_PROMPT } from '../lib/ai/constants';
 import i18n from '../i18n';
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -85,6 +86,8 @@ interface AiChatStore {
   stopGeneration: () => void;
   regenerateLastResponse: () => Promise<void>;
   summarizeConversation: () => Promise<void>;
+  editAndResend: (messageId: string, newContent: string) => Promise<void>;
+  deleteMessage: (messageId: string) => Promise<void>;
 
   // Internal (persist to backend)
   _addMessage: (conversationId: string, message: AiChatMessage, sidebarContext?: SidebarContext | null) => Promise<void>;
@@ -147,6 +150,7 @@ function metaToConversation(meta: ConversationMetaDto): AiConversation {
     createdAt: meta.createdAt,
     updatedAt: meta.updatedAt,
     messages: [], // Will be loaded on demand
+    messageCount: meta.messageCount,
   };
 }
 
@@ -484,7 +488,8 @@ export const useAiChatStore = create<AiChatStore>()((set, get) => ({
     // Enhanced System Prompt with Environment Awareness
     // ════════════════════════════════════════════════════════════════════
 
-    let systemPrompt = `You are a helpful terminal assistant. You help users with shell commands, scripts, and terminal operations. Be concise and direct. When providing commands, format them clearly. You can use markdown for formatting.`;
+    const customSystemPrompt = useSettingsStore.getState().settings.ai.customSystemPrompt;
+    let systemPrompt = customSystemPrompt?.trim() || DEFAULT_SYSTEM_PROMPT;
 
     if (sidebarContext?.systemPromptSegment) {
       systemPrompt += `\n\n${sidebarContext.systemPromptSegment}`;
@@ -733,6 +738,173 @@ export const useAiChatStore = create<AiChatStore>()((set, get) => ({
 
     // Resend — skipUserMessage since user message is already persisted in both frontend and backend
     await sendMessage(lastUserMessage.content, lastUserMessage.context, { skipUserMessage: true });
+  },
+
+  // Edit a user message and resend — truncates conversation at that message
+  editAndResend: async (messageId, newContent) => {
+    const { activeConversationId, conversations, sendMessage } = get();
+    if (!activeConversationId) return;
+
+    const conversation = conversations.find((c) => c.id === activeConversationId);
+    if (!conversation) return;
+
+    const msgIndex = conversation.messages.findIndex((m) => m.id === messageId);
+    if (msgIndex === -1) return;
+
+    const originalMessage = conversation.messages[msgIndex];
+    if (originalMessage.role !== 'user') return;
+
+    // Truncate to messages before this one (optimistic local update)
+    set((state) => ({
+      conversations: state.conversations.map((c) =>
+        c.id === activeConversationId
+          ? { ...c, messages: c.messages.slice(0, msgIndex), updatedAt: Date.now() }
+          : c
+      ),
+    }));
+
+    // Delete from backend: everything from this message onwards
+    // If backend cleanup fails, roll back local state to avoid divergence.
+    try {
+      if (msgIndex > 0) {
+        const prevMessage = conversation.messages[msgIndex - 1];
+        await invoke('ai_chat_delete_messages_after', {
+          conversationId: activeConversationId,
+          afterMessageId: prevMessage.id,
+        });
+      } else {
+        // First message — delete all messages by recreating the conversation
+        await invoke('ai_chat_delete_conversation', { conversationId: activeConversationId });
+        await invoke('ai_chat_create_conversation', {
+          request: {
+            id: activeConversationId,
+            title: conversation.title,
+            sessionId: conversation.sessionId ?? null,
+          },
+        });
+      }
+    } catch (e) {
+      // Backend cleanup failed — restore original messages to stay consistent
+      console.warn('[AiChatStore] Failed to delete messages for edit, rolling back:', e);
+      set((state) => ({
+        conversations: state.conversations.map((c) =>
+          c.id === activeConversationId
+            ? { ...c, messages: conversation.messages, updatedAt: conversation.updatedAt }
+            : c
+        ),
+      }));
+      set({ error: i18n.t('ai.message.edit_failed') });
+      return;
+    }
+
+    // Send the edited content as a new message
+    await sendMessage(newContent, originalMessage.context);
+  },
+
+  // Delete a single message from conversation
+  deleteMessage: async (messageId) => {
+    const { activeConversationId, conversations } = get();
+    if (!activeConversationId) return;
+
+    const conversation = conversations.find((c) => c.id === activeConversationId);
+    if (!conversation) return;
+
+    const msgIndex = conversation.messages.findIndex((m) => m.id === messageId);
+    if (msgIndex === -1) return;
+
+    // Remove from local state (optimistic update)
+    const updatedMessages = conversation.messages.filter((m) => m.id !== messageId);
+    set((state) => ({
+      conversations: state.conversations.map((c) =>
+        c.id === activeConversationId
+          ? { ...c, messages: updatedMessages, updatedAt: Date.now() }
+          : c
+      ),
+    }));
+
+    // Persist: replace all messages in backend
+    // On failure, roll back local state to avoid divergence.
+    try {
+      // If there are remaining messages, we need to re-persist them all
+      // Using replace_conversation_messages with the last message
+      if (updatedMessages.length > 0) {
+        // Delete everything after the message before the deleted one, then re-add
+        // Simpler approach: use delete_messages_after with the message before deleted
+        if (msgIndex > 0) {
+          const prevMessage = conversation.messages[msgIndex - 1];
+          await invoke('ai_chat_delete_messages_after', {
+            conversationId: activeConversationId,
+            afterMessageId: prevMessage.id,
+          });
+          // Re-save messages that were after the deleted one
+          for (const msg of updatedMessages.slice(msgIndex)) {
+            await invoke('ai_chat_save_message', {
+              request: {
+                id: msg.id,
+                conversationId: activeConversationId,
+                role: msg.role,
+                content: msg.content,
+                timestamp: msg.timestamp,
+                contextSnapshot: null,
+              },
+            });
+          }
+        } else {
+          // Deleted message was the first — rebuild via replace + re-save
+          // Use replace_conversation_messages with the new first message to
+          // atomically clear all old messages and insert the new head.
+          const [head, ...rest] = updatedMessages;
+          await invoke('ai_chat_replace_conversation_messages', {
+            request: {
+              conversationId: activeConversationId,
+              title: conversation.title,
+              message: {
+                id: head.id,
+                conversationId: activeConversationId,
+                role: head.role,
+                content: head.content,
+                timestamp: head.timestamp,
+                contextSnapshot: null,
+              },
+            },
+          });
+          // Re-save the remaining messages after the new head
+          for (const msg of rest) {
+            await invoke('ai_chat_save_message', {
+              request: {
+                id: msg.id,
+                conversationId: activeConversationId,
+                role: msg.role,
+                content: msg.content,
+                timestamp: msg.timestamp,
+                contextSnapshot: null,
+              },
+            });
+          }
+        }
+      } else {
+        // No messages left — delete and recreate the conversation
+        await invoke('ai_chat_delete_conversation', { conversationId: activeConversationId });
+        await invoke('ai_chat_create_conversation', {
+          request: {
+            id: activeConversationId,
+            title: conversation.title,
+            sessionId: conversation.sessionId ?? null,
+          },
+        });
+      }
+    } catch (e) {
+      // Backend failed — restore original messages to keep local/persistent state in sync
+      console.warn('[AiChatStore] Failed to delete message from backend, rolling back:', e);
+      set((state) => ({
+        conversations: state.conversations.map((c) =>
+          c.id === activeConversationId
+            ? { ...c, messages: conversation.messages, updatedAt: conversation.updatedAt }
+            : c
+        ),
+      }));
+      set({ error: i18n.t('ai.message.delete_failed') });
+    }
   },
 
   // Summarize conversation — compress history into a single summary message

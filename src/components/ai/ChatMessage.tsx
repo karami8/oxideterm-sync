@@ -1,6 +1,6 @@
-import { memo, useMemo, useEffect, useRef, useCallback } from 'react';
+import { memo, useMemo, useEffect, useRef, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { RotateCcw } from 'lucide-react';
+import { RotateCcw, Pencil, Trash2, Check, X } from 'lucide-react';
 import { emit } from '@tauri-apps/api/event';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import type { AiChatMessage } from '../../types';
@@ -16,6 +16,10 @@ interface ChatMessageProps {
   onRegenerate?: () => void;
   /** Whether regeneration is in progress */
   isRegenerating?: boolean;
+  /** Callback to edit and resend a user message */
+  onEdit?: (messageId: string, newContent: string) => void;
+  /** Callback to delete a message */
+  onDelete?: (messageId: string) => void;
 }
 
 // Inject markdown styles once
@@ -57,10 +61,15 @@ export const ChatMessage = memo(function ChatMessage({
   isLastAssistant = false,
   onRegenerate,
   isRegenerating = false,
+  onEdit,
+  onDelete,
 }: ChatMessageProps) {
   const { t } = useTranslation();
   const isUser = message.role === 'user';
   const contentRef = useRef<HTMLDivElement>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState('');
+  const editTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Inject styles on mount
   useEffect(() => {
@@ -153,7 +162,7 @@ export const ChatMessage = memo(function ChatMessage({
   }, []);
 
   return (
-    <div className="py-3 px-3">
+    <div className="py-3 px-3 group/msg">
       {/* Header — user on right, AI on left */}
       <div className={`flex items-center gap-1.5 mb-0.5 ${isUser ? 'flex-row-reverse' : ''}`}>
         <span className="text-[11px] font-semibold text-theme-text-muted/50">
@@ -161,7 +170,7 @@ export const ChatMessage = memo(function ChatMessage({
         </span>
         {message.context && !isUser && (
           <span className="text-[10px] text-theme-text-muted/40 font-medium">
-            (used context)
+            ({t('ai.message.used_context')})
           </span>
         )}
         <span className={`text-[10px] text-theme-text-muted/25 font-mono shrink-0 ${isUser ? 'mr-auto' : 'ml-auto'}`}>
@@ -179,30 +188,115 @@ export const ChatMessage = memo(function ChatMessage({
           />
         )}
 
-        <div
-          ref={contentRef}
-          className="md-content selection:bg-theme-accent/20"
-          onClick={handleClick}
-          dangerouslySetInnerHTML={{ __html: renderedHtml }}
-        />
-        {message.isStreaming && (
-          <span className="inline-block w-1.5 h-4 ml-0.5 bg-theme-accent/60 animate-pulse align-middle" />
+        {/* Edit mode for user messages */}
+        {isUser && isEditing ? (
+          <div className="flex flex-col gap-1.5">
+            <textarea
+              ref={editTextareaRef}
+              value={editContent}
+              onChange={(e) => setEditContent(e.target.value)}
+              className="w-full bg-theme-bg/50 border border-theme-accent/40 text-[13px] text-theme-text px-2 py-1.5 resize-none focus:outline-none focus:border-theme-accent/60 min-h-[60px]"
+              rows={3}
+              onKeyDown={(e) => {
+                if (e.nativeEvent.isComposing || e.keyCode === 229) return;
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  const trimmed = editContent.trim();
+                  if (trimmed && onEdit) {
+                    onEdit(message.id, trimmed);
+                    setIsEditing(false);
+                  }
+                } else if (e.key === 'Escape') {
+                  setIsEditing(false);
+                }
+              }}
+            />
+            <div className="flex items-center gap-1 justify-end">
+              <button
+                onClick={() => setIsEditing(false)}
+                className="flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] text-theme-text-muted hover:text-theme-text hover:bg-theme-border/10"
+              >
+                <X className="w-3 h-3" />
+                {t('ai.message.cancel')}
+              </button>
+              <button
+                onClick={() => {
+                  const trimmed = editContent.trim();
+                  if (trimmed && onEdit) {
+                    onEdit(message.id, trimmed);
+                    setIsEditing(false);
+                  }
+                }}
+                disabled={!editContent.trim()}
+                className="flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] text-theme-accent hover:bg-theme-accent/10 disabled:opacity-30"
+              >
+                <Check className="w-3 h-3" />
+                {t('ai.message.save_and_resend')}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div
+              ref={contentRef}
+              className="md-content selection:bg-theme-accent/20"
+              onClick={handleClick}
+              dangerouslySetInnerHTML={{ __html: renderedHtml }}
+            />
+            {message.isStreaming && (
+              <span className="inline-block w-1.5 h-4 ml-0.5 bg-theme-accent/60 animate-pulse align-middle" />
+            )}
+          </>
         )}
 
-        {/* Regenerate Button */}
-        {!isUser && isLastAssistant && !message.isStreaming && onRegenerate && (
-          <div className="mt-1.5">
-            <button
-              onClick={onRegenerate}
-              disabled={isRegenerating}
-              className="flex items-center gap-1 text-[11px] text-theme-text-muted/40 
-                hover:text-theme-text-muted py-0.5 px-1.5
-                hover:bg-theme-border/10 disabled:opacity-50 disabled:cursor-not-allowed"
-              title={t('ai.message.regenerate')}
-            >
-              <RotateCcw className={`w-3 h-3 ${isRegenerating ? 'animate-spin' : ''}`} />
-              <span>{isRegenerating ? t('ai.message.regenerating') : t('ai.message.regenerate')}</span>
-            </button>
+        {/* Action Buttons */}
+        {!message.isStreaming && !isEditing && (
+          <div className="mt-1.5 flex items-center gap-0.5">
+            {/* Edit button — user messages only */}
+            {isUser && onEdit && (
+              <button
+                onClick={() => {
+                  setEditContent(message.content);
+                  setIsEditing(true);
+                  setTimeout(() => editTextareaRef.current?.focus(), 50);
+                }}
+                className="flex items-center gap-1 text-[11px] text-theme-text-muted/40 
+                  hover:text-theme-text-muted py-0.5 px-1.5
+                  hover:bg-theme-border/10 opacity-0 group-hover/msg:opacity-100 transition-opacity"
+                title={t('ai.message.edit')}
+              >
+                <Pencil className="w-3 h-3" />
+                <span>{t('ai.message.edit')}</span>
+              </button>
+            )}
+
+            {/* Regenerate Button — last assistant only */}
+            {!isUser && isLastAssistant && onRegenerate && (
+              <button
+                onClick={onRegenerate}
+                disabled={isRegenerating}
+                className="flex items-center gap-1 text-[11px] text-theme-text-muted/40 
+                  hover:text-theme-text-muted py-0.5 px-1.5
+                  hover:bg-theme-border/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                title={t('ai.message.regenerate')}
+              >
+                <RotateCcw className={`w-3 h-3 ${isRegenerating ? 'animate-spin' : ''}`} />
+                <span>{isRegenerating ? t('ai.message.regenerating') : t('ai.message.regenerate')}</span>
+              </button>
+            )}
+
+            {/* Delete button */}
+            {onDelete && (
+              <button
+                onClick={() => onDelete(message.id)}
+                className="flex items-center gap-1 text-[11px] text-theme-text-muted/40 
+                  hover:text-red-500 py-0.5 px-1.5
+                  hover:bg-red-500/5 opacity-0 group-hover/msg:opacity-100 transition-opacity"
+                title={t('ai.message.delete')}
+              >
+                <Trash2 className="w-3 h-3" />
+              </button>
+            )}
           </div>
         )}
       </div>
