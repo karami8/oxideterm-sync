@@ -29,6 +29,7 @@ export const openaiProvider: AiStreamProvider = {
         model: config.model,
         messages,
         stream: true,
+        ...(config.maxResponseTokens ? { max_tokens: config.maxResponseTokens } : {}),
       }),
       signal,
     });

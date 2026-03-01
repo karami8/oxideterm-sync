@@ -17,7 +17,9 @@
       "start_conversation_hint": "詢問有關 shell 命令、腳本或獲取終端機操作的幫助。",
       "delete_conversation": "刪除對話",
       "messages_count": "{{count}} 則訊息",
-      "double_click_rename": "雙擊重新命名"
+      "double_click_rename": "雙擊重新命名",
+      "branch_prev": "上一版本",
+      "branch_next": "下一版本"
     },
     "quick_prompts": {
       "explain_command": "解釋命令",
@@ -81,7 +83,12 @@
       "approaching_limit": "上下文即將達到限制，建議摘要對話或開始新對話。",
       "summarize": "摘要",
       "summarize_confirm": "將對話歷史壓縮為摘要？",
-      "summary_prefix": "{{count}} 則訊息的摘要"
+      "summary_prefix": "{{count}} 則訊息的摘要",
+      "messages_trimmed": "{{count}} 條舊訊息未傳送給 AI（超出上下文窗口）",
+      "model_switched_warning": "模型上下文已縮小，目前對話使用了新限制的 {{percentage}}%。",
+      "compact_button": "壓縮",
+      "view_original": "檢視原始訊息",
+      "compacted_messages": "已壓縮 {{count}} 條訊息"
     },
     "model_selector": {
       "no_key": "無金鑰",

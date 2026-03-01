@@ -1213,6 +1213,28 @@ export interface AiChatMessage {
   isThinkingExpanded?: boolean;
   /** Whether thinking is currently streaming */
   isThinkingStreaming?: boolean;
+  /** Optional metadata for special message types (e.g. compaction anchors) */
+  metadata?: {
+    /** Discriminator for special message types */
+    type: 'compaction-anchor';
+    /** Number of original messages that were compacted */
+    originalCount: number;
+    /** When the compaction occurred (ms) */
+    compactedAt: number;
+    /** Snapshot of the original messages that were compacted (read-only, capped at 50) */
+    originalMessages?: AiChatMessage[];
+  };
+  /** Branch data for edited-and-resent messages (frontend-only, not persisted) */
+  branches?: {
+    /** Total number of branches (including the currently active one) */
+    total: number;
+    /** Index of the currently active branch (0-based) */
+    activeIndex: number;
+    /** Saved conversation tails for each branch. Each tail starts from this
+     *  user message onwards. The active branch entry may be stale — the live
+     *  conversation is the source of truth until a switch occurs. */
+    tails: Record<number, AiChatMessage[]>;
+  };
 }
 
 /**

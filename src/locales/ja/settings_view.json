@@ -309,7 +309,9 @@
       "system_prompt_title": "システムプロンプト",
       "custom_system_prompt": "カスタムシステムプロンプト",
       "system_prompt_placeholder": "カスタムシステムプロンプトを入力...（空白はデフォルト使用）",
-      "system_prompt_hint": "AIアシスタントの動作をカスタマイズします。空白のままにするとデフォルトのターミナルアシスタントプロンプトが使用されます。"
+      "system_prompt_hint": "AIアシスタントの動作をカスタマイズします。空白のままにするとデフォルトのターミナルアシスタントプロンプトが使用されます。",
+      "max_response_tokens": "最大応答トークン数",
+      "max_response_tokens_hint": "AIの応答に使用できる最大トークン数。空欄の場合は自動計算されます。"
     },
     "sftp": {
       "title": "SFTP転送",

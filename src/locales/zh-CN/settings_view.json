@@ -309,7 +309,9 @@
       "system_prompt_title": "系统提示词",
       "custom_system_prompt": "自定义系统提示词",
       "system_prompt_placeholder": "输入自定义系统提示词...（留空使用默认值）",
-      "system_prompt_hint": "自定义 AI 助手的行为。留空将使用默认的终端助手提示词。"
+      "system_prompt_hint": "自定义 AI 助手的行为。留空将使用默认的终端助手提示词。",
+      "max_response_tokens": "最大响应 Token 数",
+      "max_response_tokens_hint": "AI 单次回复可使用的最大 Token 数。留空则自动计算。"
     },
     "sftp": {
       "title": "SFTP 传输",

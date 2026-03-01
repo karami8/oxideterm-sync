@@ -17,7 +17,9 @@
       "start_conversation_hint": "Haga preguntas sobre comandos de shell, scripts u operaciones de terminal.",
       "delete_conversation": "Eliminar conversación",
       "messages_count": "{{count}} mensajes",
-      "double_click_rename": "Doble clic para renombrar"
+      "double_click_rename": "Doble clic para renombrar",
+      "branch_prev": "Versión anterior",
+      "branch_next": "Versión siguiente"
     },
     "quick_prompts": {
       "explain_command": "Explicar un comando",
@@ -81,7 +83,12 @@
       "approaching_limit": "El contexto se acerca al límite. Resuma la conversación o inicie un nuevo chat.",
       "summarize": "Resumir",
       "summarize_confirm": "¿Comprimir el historial de conversación en un resumen?",
-      "summary_prefix": "Resumen de {{count}} mensajes"
+      "summary_prefix": "Resumen de {{count}} mensajes",
+      "messages_trimmed": "{{count}} mensajes antiguos no fueron enviados a la IA (ventana de contexto excedida)",
+      "model_switched_warning": "El contexto del modelo se ha reducido. La conversación actual usa el {{percentage}}% del nuevo límite.",
+      "compact_button": "Compactar",
+      "view_original": "Ver original",
+      "compacted_messages": "{{count}} mensajes compactados"
     },
     "model_selector": {
       "no_key": "Sin clave",

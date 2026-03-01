@@ -17,7 +17,9 @@
       "start_conversation_hint": "询问关于 Shell 命令、脚本或终端操作的问题。",
       "delete_conversation": "删除对话",
       "messages_count": "{{count}} 条消息",
-      "double_click_rename": "双击重命名"
+      "double_click_rename": "双击重命名",
+      "branch_prev": "上一版本",
+      "branch_next": "下一版本"
     },
     "quick_prompts": {
       "explain_command": "解释命令",
@@ -81,7 +83,12 @@
       "approaching_limit": "上下文即将达到限制，建议摘要对话或开始新对话。",
       "summarize": "摘要",
       "summarize_confirm": "将对话历史压缩为摘要？",
-      "summary_prefix": "{{count}} 条消息的摘要"
+      "summary_prefix": "{{count}} 条消息的摘要",
+      "messages_trimmed": "{{count}} 条旧消息未发送给 AI（超出上下文窗口）",
+      "model_switched_warning": "模型上下文已缩小，当前对话使用了新限制的 {{percentage}}%。",
+      "compact_button": "压缩",
+      "view_original": "查看原始消息",
+      "compacted_messages": "已压缩 {{count}} 条消息"
     },
     "model_selector": {
       "no_key": "无密钥",

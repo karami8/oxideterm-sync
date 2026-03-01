@@ -192,6 +192,12 @@ export interface AiSettings {
   modelContextWindows?: Record<string, Record<string, number>>;
   /** Custom system prompt override (empty = use default) */
   customSystemPrompt?: string;
+  /**
+   * Per-model maximum response tokens override.
+   * Shape: { [providerId]: { [modelId]: tokenCount } }
+   * If set, overrides the dynamic `responseReserve()` calculation.
+   */
+  modelMaxResponseTokens?: Record<string, Record<string, number>>;
 }
 
 /** Local terminal settings */

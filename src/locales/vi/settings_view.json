@@ -309,7 +309,9 @@
       "system_prompt_title": "Prompt hệ thống",
       "custom_system_prompt": "Prompt hệ thống tùy chỉnh",
       "system_prompt_placeholder": "Nhập prompt hệ thống tùy chỉnh... (để trống để sử dụng mặc định)",
-      "system_prompt_hint": "Tùy chỉnh hành vi của trợ lý AI. Để trống để sử dụng prompt trợ lý terminal mặc định."
+      "system_prompt_hint": "Tùy chỉnh hành vi của trợ lý AI. Để trống để sử dụng prompt trợ lý terminal mặc định.",
+      "max_response_tokens": "Token phản hồi tối đa",
+      "max_response_tokens_hint": "Số token tối đa AI có thể sử dụng cho phản hồi. Để trống để tính tự động."
     },
     "sftp": {
       "title": "Truyền file SFTP",

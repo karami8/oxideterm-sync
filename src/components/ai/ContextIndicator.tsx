@@ -4,7 +4,7 @@ import { Info } from 'lucide-react';
 import { useAiChatStore } from '../../store/aiChatStore';
 import { useSettingsStore } from '../../store/settingsStore';
 import { estimateTokens, getModelContextWindow } from '../../lib/ai/tokenUtils';
-import { DEFAULT_SYSTEM_PROMPT } from '../../lib/ai/constants';
+import { DEFAULT_SYSTEM_PROMPT, CONTEXT_WARNING_THRESHOLD, CONTEXT_DANGER_THRESHOLD } from '../../lib/ai/constants';
 
 interface TokenBreakdown {
   system: number;
@@ -68,8 +68,8 @@ export function ContextIndicator({ pendingInput = '' }: ContextIndicatorProps) {
   }, [activeModel, aiSettings.modelContextWindows, aiSettings.activeProviderId]);
   
   const percentage = Math.min((breakdown.total / maxTokens) * 100, 100);
-  const isWarning = percentage > 70;
-  const isDanger = percentage > 90;
+  const isWarning = percentage > CONTEXT_WARNING_THRESHOLD * 100;
+  const isDanger = percentage > CONTEXT_DANGER_THRESHOLD * 100;
   
   // Color based on usage
   const barColor = isDanger 

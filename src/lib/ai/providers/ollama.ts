@@ -6,6 +6,12 @@
  */
 
 import type { AiStreamProvider, AiRequestConfig, ChatMessage, AiStreamEvent } from '../providers';
+import { getModelContextWindow } from '../tokenUtils';
+
+/** Timeout for individual /api/show calls (ms) */
+const OLLAMA_SHOW_TIMEOUT = 2000;
+/** Max "wild" models to query via API (those not in the static lookup table) */
+const MAX_WILD_MODELS_QUERY = 20;
 
 export const ollamaProvider: AiStreamProvider = {
   type: 'ollama',
@@ -33,6 +39,7 @@ export const ollamaProvider: AiStreamProvider = {
           model: config.model,
           messages,
           stream: true,
+          ...(config.maxResponseTokens ? { max_tokens: config.maxResponseTokens } : {}),
         }),
         signal,
       });
@@ -145,28 +152,56 @@ export const ollamaProvider: AiStreamProvider = {
     if (!Array.isArray(data.models)) return {};
 
     const result: Record<string, number> = {};
-    // Query each model for its context size via /api/show
+
+    // Separate models into "known" (matched by static lookup table) and "wild" (unknown)
+    const wildModels: string[] = [];
     for (const m of data.models) {
-      try {
-        const showResp = await fetch(`${cleanBaseUrl}/api/show`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: m.name }),
-        });
-        if (showResp.ok) {
-          const showData = await showResp.json();
-          // Ollama returns model_info with context_length, or parameters with num_ctx
-          const ctx = showData.model_info?.['general.context_length']
-            ?? showData.model_info?.context_length
-            ?? showData.parameters?.num_ctx;
-          if (typeof ctx === 'number' && ctx > 0) {
-            result[m.name] = ctx;
-          }
-        }
-      } catch {
-        // Skip individual model errors
+      const staticCtx = getModelContextWindow(m.name);
+      // If static lookup returns the default 8192 fallback, it means no match → wild model
+      if (staticCtx !== 8192) {
+        result[m.name] = staticCtx;
+      } else {
+        wildModels.push(m.name);
       }
     }
+
+    // Only query wild models via API (parallel with timeout, capped)
+    const toQuery = wildModels.slice(0, MAX_WILD_MODELS_QUERY);
+    if (toQuery.length > 0) {
+      const queryResults = await Promise.allSettled(
+        toQuery.map(async (name) => {
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), OLLAMA_SHOW_TIMEOUT);
+          try {
+            const showResp = await fetch(`${cleanBaseUrl}/api/show`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ name }),
+              signal: controller.signal,
+            });
+            if (showResp.ok) {
+              const showData = await showResp.json();
+              const ctx = showData.model_info?.['general.context_length']
+                ?? showData.model_info?.context_length
+                ?? showData.parameters?.num_ctx;
+              if (typeof ctx === 'number' && ctx > 0) {
+                return { name, ctx };
+              }
+            }
+            return null;
+          } finally {
+            clearTimeout(timeout);
+          }
+        })
+      );
+
+      for (const r of queryResults) {
+        if (r.status === 'fulfilled' && r.value) {
+          result[r.value.name] = r.value.ctx;
+        }
+      }
+    }
+
     return result;
   },
 };

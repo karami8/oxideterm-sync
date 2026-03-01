@@ -17,7 +17,9 @@
       "start_conversation_hint": "Ask questions about shell commands, scripts, or get help with terminal operations.",
       "delete_conversation": "Delete conversation",
       "messages_count": "{{count}} messages",
-      "double_click_rename": "Double-click to rename"
+      "double_click_rename": "Double-click to rename",
+      "branch_prev": "Previous version",
+      "branch_next": "Next version"
     },
     "quick_prompts": {
       "explain_command": "Explain a command",
@@ -81,7 +83,12 @@
       "approaching_limit": "Context approaching limit. Consider summarizing or starting a new chat.",
       "summarize": "Summarize",
       "summarize_confirm": "Compress conversation history into a summary?",
-      "summary_prefix": "Summary of {{count}} messages"
+      "summary_prefix": "Summary of {{count}} messages",
+      "messages_trimmed": "{{count}} old messages were not sent to AI (exceeded context window)",
+      "model_switched_warning": "Model context reduced. Current conversation uses {{percentage}}% of the new limit.",
+      "compact_button": "Compact",
+      "view_original": "View original",
+      "compacted_messages": "{{count}} messages compacted"
     },
     "model_selector": {
       "no_key": "No Key",

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback, useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus, Trash2, MessageSquare, MoreVertical, Settings, Terminal, HelpCircle, FileCode, Zap, AlertTriangle, Shrink } from 'lucide-react';
+import { Plus, Trash2, MessageSquare, MoreVertical, Settings, Terminal, HelpCircle, FileCode, Zap, AlertTriangle, Shrink, Scissors } from 'lucide-react';
 import { useAiChatStore } from '../../store/aiChatStore';
 import { useSettingsStore } from '../../store/settingsStore';
 import { useAppStore } from '../../store/appStore';
@@ -9,6 +9,7 @@ import { ChatMessage } from './ChatMessage';
 import { ChatInput } from './ChatInput';
 import { ModelSelector } from './ModelSelector';
 import { estimateTokens, getModelContextWindow } from '../../lib/ai/tokenUtils';
+import { CONTEXT_WARNING_THRESHOLD, CONTEXT_DANGER_THRESHOLD } from '../../lib/ai/constants';
 import type { AiConversation } from '../../types';
 
 export function AiChatPanel() {
@@ -29,9 +30,12 @@ export function AiChatPanel() {
     getActiveConversation,
     regenerateLastResponse,
     summarizeConversation,
+    compactConversation,
     editAndResend,
+    switchBranch,
     deleteMessage,
     renameConversation,
+    trimInfo,
   } = useAiChatStore();
 
   const aiEnabled = useSettingsStore((state) => state.settings.ai.enabled);
@@ -43,6 +47,16 @@ export function AiChatPanel() {
   const [showMenu, setShowMenu] = useState(false);
   const [inputValue, setInputValue] = useState('');
   const [isRegenerating, setIsRegenerating] = useState(false);
+  const [showTrimNotice, setShowTrimNotice] = useState(false);
+
+  // Auto-show trim notification when trimInfo changes, auto-dismiss after 5s
+  useEffect(() => {
+    if (trimInfo && trimInfo.count > 0) {
+      setShowTrimNotice(true);
+      const timer = setTimeout(() => setShowTrimNotice(false), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [trimInfo?.timestamp]);
 
   const activeConversation = getActiveConversation();
 
@@ -65,12 +79,34 @@ export function AiChatPanel() {
     const percentage = Math.min((totalTokens / maxTokens) * 100, 100);
     return {
       percentage,
-      isWarning: percentage > 70,
-      isDanger: percentage > 85,
+      isWarning: percentage > CONTEXT_WARNING_THRESHOLD * 100,
+      isDanger: percentage > CONTEXT_DANGER_THRESHOLD * 100,
       totalTokens,
       maxTokens,
     };
   }, [activeConversation?.messages, activeModel, aiSettings.modelContextWindows, aiSettings.activeProviderId]);
+
+  // ─── Model Switch Detection ─────────────────────────────────────────────
+  const [modelSwitchWarning, setModelSwitchWarning] = useState<{
+    percentage: number;
+  } | null>(null);
+  const prevModelRef = useRef(activeModel);
+
+  useEffect(() => {
+    const prevModel = prevModelRef.current;
+    prevModelRef.current = activeModel;
+
+    // Skip on initial render or same model
+    if (!prevModel || prevModel === activeModel || !activeConversation) return;
+
+    // Check if the current conversation exceeds the warning threshold in the new model
+    if (contextUsage.totalTokens && contextUsage.maxTokens) {
+      const pct = (contextUsage.totalTokens / contextUsage.maxTokens) * 100;
+      if (pct > CONTEXT_WARNING_THRESHOLD * 100) {
+        setModelSwitchWarning({ percentage: Math.round(pct) });
+      }
+    }
+  }, [activeModel]); // intentionally narrow deps — only fire on model change
 
   // Find the last assistant message index for regenerate button
   const lastAssistantIndex = activeConversation?.messages
@@ -155,12 +191,25 @@ export function AiChatPanel() {
     }
   }, [deleteMessage, isLoading, confirm, t]);
 
+  // Handle branch switch — reset scroll position after switching
+  const handleSwitchBranch = useCallback(async (messageId: string, branchIndex: number) => {
+    if (isLoading) return;
+    await switchBranch(messageId, branchIndex);
+    // Reset scroll to bottom after branch content changes
+    setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
+  }, [switchBranch, isLoading]);
+
   const handleSummarize = useCallback(async () => {
     if (isLoading) return;
     if (await confirm({ title: t('ai.context.summarize_confirm') })) {
       await summarizeConversation();
     }
   }, [summarizeConversation, isLoading, confirm, t]);
+
+  const handleCompact = useCallback(async () => {
+    if (isLoading) return;
+    await compactConversation();
+  }, [compactConversation, isLoading]);
 
   // Not enabled state
   if (!aiEnabled) {
@@ -308,6 +357,15 @@ export function AiChatPanel() {
           </div>
         ) : (
           <div className="flex flex-col">
+            {/* Trim notification — shown when messages were silently dropped from API context */}
+            {showTrimNotice && trimInfo && (
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-500/10 border-b border-amber-500/20 animate-in fade-in duration-200">
+                <Scissors className="w-3 h-3 text-amber-500 shrink-0" />
+                <span className="text-[10px] text-amber-400 flex-1">
+                  {t('ai.context.messages_trimmed', { count: trimInfo.count })}
+                </span>
+              </div>
+            )}
             {activeConversation.messages.map((msg, index) => (
               <ChatMessage
                 key={msg.id}
@@ -317,6 +375,7 @@ export function AiChatPanel() {
                 isRegenerating={isRegenerating}
                 onEdit={handleEdit}
                 onDelete={handleDeleteMessage}
+                onSwitchBranch={handleSwitchBranch}
               />
             ))}
             <div ref={messagesEndRef} className="h-4" />
@@ -331,6 +390,39 @@ export function AiChatPanel() {
         </div>
       )}
 
+      {/* Model switch warning banner — shown when switching to a smaller model overflows context */}
+      {modelSwitchWarning && (
+        <div className="flex-shrink-0 px-3 py-2 bg-amber-500/10 border-t border-amber-500/20 flex items-center gap-2">
+          <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+          <span className="text-[11px] text-amber-400 flex-1">
+            {t('ai.context.model_switched_warning', { percentage: modelSwitchWarning.percentage })}
+          </span>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              onClick={() => { handleCompact(); setModelSwitchWarning(null); }}
+              disabled={isLoading}
+              className="flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 rounded disabled:opacity-50"
+            >
+              <Shrink className="w-3 h-3" />
+              {t('ai.context.compact_button')}
+            </button>
+            <button
+              onClick={() => { handleNewChat(); setModelSwitchWarning(null); }}
+              className="flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 rounded"
+            >
+              <Plus className="w-3 h-3" />
+              {t('ai.chat.new_chat_tooltip')}
+            </button>
+            <button
+              onClick={() => setModelSwitchWarning(null)}
+              className="px-1.5 py-0.5 text-[10px] text-amber-400/60 hover:text-amber-300 rounded"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Context limit warning banner */}
       {contextUsage.isDanger && activeConversation && activeConversation.messages.length >= 4 && (
         <div className="flex-shrink-0 px-3 py-2 bg-amber-500/10 border-t border-amber-500/20 flex items-center gap-2">
@@ -339,6 +431,14 @@ export function AiChatPanel() {
             {t('ai.context.approaching_limit')}
           </span>
           <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              onClick={handleCompact}
+              disabled={isLoading}
+              className="flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 rounded disabled:opacity-50"
+            >
+              <Shrink className="w-3 h-3" />
+              {t('ai.context.compact_button')}
+            </button>
             <button
               onClick={handleSummarize}
               disabled={isLoading}

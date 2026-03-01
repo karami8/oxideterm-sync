@@ -2017,6 +2017,39 @@ export const SettingsView = () => {
                                         />
                                         <p className="text-xs text-theme-text-muted">{t('settings_view.ai.system_prompt_hint')}</p>
                                     </div>
+
+                                    <Separator className="my-6 opacity-50" />
+
+                                    <h4 className="text-sm font-medium text-theme-text mb-4 uppercase tracking-wider">{t('settings_view.ai.max_response_tokens')}</h4>
+                                    <div className="max-w-3xl grid gap-2">
+                                        <p className="text-xs text-theme-text-muted mb-2">{t('settings_view.ai.max_response_tokens_hint')}</p>
+                                        {ai.activeProviderId && ai.activeModel && (
+                                          <div className="flex items-center gap-3">
+                                            <Label className="shrink-0 text-xs">{ai.activeModel}:</Label>
+                                            <input
+                                              type="number"
+                                              min={256}
+                                              max={65536}
+                                              step={256}
+                                              value={ai.modelMaxResponseTokens?.[ai.activeProviderId]?.[ai.activeModel] ?? ''}
+                                              placeholder="Auto"
+                                              onChange={(e) => {
+                                                const val = e.target.value ? parseInt(e.target.value, 10) : undefined;
+                                                const existing = ai.modelMaxResponseTokens ?? {};
+                                                const providerOverrides = existing[ai.activeProviderId!] ?? {};
+                                                const updated = { ...existing, [ai.activeProviderId!]: { ...providerOverrides } };
+                                                if (val && val >= 256) {
+                                                  updated[ai.activeProviderId!][ai.activeModel!] = val;
+                                                } else {
+                                                  delete updated[ai.activeProviderId!][ai.activeModel!];
+                                                }
+                                                updateAi('modelMaxResponseTokens', updated);
+                                              }}
+                                              className="w-32 bg-theme-bg border border-theme-border rounded-md px-2 py-1 text-sm text-theme-text placeholder-theme-text-muted/40 focus:outline-none focus:ring-1 focus:ring-theme-accent/40"
+                                            />
+                                          </div>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         </div>

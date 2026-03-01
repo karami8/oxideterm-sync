@@ -17,7 +17,9 @@
       "start_conversation_hint": "シェルコマンド、スクリプト、ターミナル操作についてご質問ください。",
       "delete_conversation": "会話を削除",
       "messages_count": "{{count}} 件のメッセージ",
-      "double_click_rename": "ダブルクリックで名前を変更"
+      "double_click_rename": "ダブルクリックで名前を変更",
+      "branch_prev": "前のバージョン",
+      "branch_next": "次のバージョン"
     },
     "quick_prompts": {
       "explain_command": "コマンドを説明",
@@ -81,7 +83,12 @@
       "approaching_limit": "コンテキストが上限に近付いています。要約するか新しいチャットを開始してください。",
       "summarize": "要約",
       "summarize_confirm": "会話履歴を要約に圧縮しますか？",
-      "summary_prefix": "{{count}} 件のメッセージの要約"
+      "summary_prefix": "{{count}} 件のメッセージの要約",
+      "messages_trimmed": "{{count}} 件の古いメッセージがAIに送信されませんでした（コンテキストウィンドウ超過）",
+      "model_switched_warning": "モデルのコンテキストが縮小しました。現在の会話は新しい制限の {{percentage}}% を使用しています。",
+      "compact_button": "圧縮",
+      "view_original": "元のメッセージを表示",
+      "compacted_messages": "{{count}} 件のメッセージを圧縮しました"
     },
     "model_selector": {
       "no_key": "キーなし",

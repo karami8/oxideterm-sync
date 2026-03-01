@@ -4,17 +4,18 @@ import { api } from '../lib/api';
 import { useSettingsStore } from './settingsStore';
 import { gatherSidebarContext, type SidebarContext } from '../lib/sidebarContextProvider';
 import { getProvider } from '../lib/ai/providerRegistry';
-import { estimateTokens, trimHistoryToTokenBudget, getModelContextWindow } from '../lib/ai/tokenUtils';
+import { estimateTokens, trimHistoryToTokenBudget, getModelContextWindow, responseReserve } from '../lib/ai/tokenUtils';
 import type { ChatMessage as ProviderChatMessage } from '../lib/ai/providers';
 import type { AiChatMessage, AiConversation } from '../types';
-import { DEFAULT_SYSTEM_PROMPT } from '../lib/ai/constants';
+import { DEFAULT_SYSTEM_PROMPT, COMPACTION_TRIGGER_THRESHOLD } from '../lib/ai/constants';
 import i18n from '../i18n';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Constants
 // ═══════════════════════════════════════════════════════════════════════════
 
-const MAX_MESSAGES_PER_CONVERSATION = 200;
+/** Max original messages to preserve in a compaction anchor snapshot */
+const MAX_ANCHOR_SNAPSHOT = 50;
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Backend Types (matching Rust structs)
@@ -46,7 +47,7 @@ interface FullConversationDto {
   sessionId: string | null;
   messages: Array<{
     id: string;
-    role: 'user' | 'assistant';
+    role: 'user' | 'assistant' | 'system';
     content: string;
     timestamp: number;
     context: string | null; // Backend returns just the buffer_tail as 'context'
@@ -70,6 +71,8 @@ interface AiChatStore {
   isInitialized: boolean;
   error: string | null;
   abortController: AbortController | null;
+  /** Set when messages are trimmed from API context — UI shows notification */
+  trimInfo: { count: number; timestamp: number } | null;
 
   // Initialization
   init: () => Promise<void>;
@@ -86,7 +89,9 @@ interface AiChatStore {
   stopGeneration: () => void;
   regenerateLastResponse: () => Promise<void>;
   summarizeConversation: () => Promise<void>;
+  compactConversation: (conversationId?: string, options?: { silent?: boolean }) => Promise<void>;
   editAndResend: (messageId: string, newContent: string) => Promise<void>;
+  switchBranch: (messageId: string, branchIndex: number) => Promise<void>;
   deleteMessage: (messageId: string) => Promise<void>;
 
   // Internal (persist to backend)
@@ -131,6 +136,20 @@ function dtoToConversation(dto: FullConversationDto): AiConversation {
           timestamp: m.timestamp,
           context: m.context || undefined,
         };
+      }
+      // Re-parse anchor metadata from persisted content
+      if (m.role === 'system') {
+        const anchor = decodeAnchorContent(m.content);
+        if (anchor) {
+          return {
+            id: m.id,
+            role: m.role as 'system',
+            content: anchor.content,
+            timestamp: m.timestamp,
+            context: m.context || undefined,
+            metadata: anchor.metadata,
+          };
+        }
       }
       return {
         id: m.id,
@@ -194,6 +213,41 @@ function parseThinkingContent(rawContent: string): ParsedResponse {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// Anchor Metadata Serialization
+// ═══════════════════════════════════════════════════════════════════════════
+
+const ANCHOR_META_HEADER = '$$ANCHOR_B64$$';
+
+/**
+ * Encode anchor metadata into the content field for backend persistence.
+ * Uses base64-encoded JSON to avoid any delimiter collision with content.
+ */
+function encodeAnchorContent(content: string, metadata: NonNullable<AiChatMessage['metadata']>): string {
+  const metaJson = JSON.stringify(metadata);
+  const b64 = btoa(unescape(encodeURIComponent(metaJson)));
+  return `${ANCHOR_META_HEADER}${b64}\n${content}`;
+}
+
+/**
+ * Decode anchor metadata from persisted content.
+ * Returns the original summary text and parsed metadata, or null if not an anchor.
+ */
+function decodeAnchorContent(content: string): { content: string; metadata: NonNullable<AiChatMessage['metadata']> } | null {
+  if (!content.startsWith(ANCHOR_META_HEADER)) return null;
+  const newlineIdx = content.indexOf('\n');
+  if (newlineIdx === -1) return null;
+  try {
+    const b64 = content.slice(ANCHOR_META_HEADER.length, newlineIdx);
+    const jsonStr = decodeURIComponent(escape(atob(b64)));
+    const metadata = JSON.parse(jsonStr);
+    const realContent = content.slice(newlineIdx + 1);
+    return { content: realContent, metadata };
+  } catch {
+    return null;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // Provider-based Streaming API
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -204,6 +258,10 @@ type ChatCompletionMessage = ProviderChatMessage;
 // Store Implementation (redb Backend)
 // ═══════════════════════════════════════════════════════════════════════════
 
+// Per-conversation compaction in-flight lock — prevents concurrent silent compactions
+// on the same conversation when multiple sendMessage finally blocks fire together.
+const compactingConversations = new Set<string>();
+
 export const useAiChatStore = create<AiChatStore>()((set, get) => ({
   // Initial state
   conversations: [],
@@ -212,6 +270,7 @@ export const useAiChatStore = create<AiChatStore>()((set, get) => ({
   isInitialized: false,
   error: null,
   abortController: null,
+  trimInfo: null,
 
   // Initialize store from backend
   init: async () => {
@@ -508,7 +567,7 @@ export const useAiChatStore = create<AiChatStore>()((set, get) => ({
     }
 
     // ════════════════════════════════════════════════════════════════════
-    // Token-Aware History Trimming
+    // Token-Aware History Trimming (with compaction anchor awareness)
     // ════════════════════════════════════════════════════════════════════
 
     const systemTokens = estimateTokens(systemPrompt) + estimateTokens(effectiveContext);
@@ -519,11 +578,34 @@ export const useAiChatStore = create<AiChatStore>()((set, get) => ({
     );
 
     const historyMessages = get().conversations.find((c) => c.id === convId)?.messages || [];
-    const trimmed = trimHistoryToTokenBudget(historyMessages, contextWindow, systemTokens, 0);
-    for (const msg of trimmed) {
+
+    // Separate anchor messages from regular messages
+    const anchorMsg = historyMessages.find(m => m.metadata?.type === 'compaction-anchor');
+    const regularMessages = historyMessages.filter(m => !m.metadata || m.metadata.type !== 'compaction-anchor');
+
+    // Anchor content counts towards system tokens budget
+    const anchorTokens = anchorMsg ? estimateTokens(anchorMsg.content) : 0;
+    const totalSystemTokens = systemTokens + anchorTokens;
+
+    const trimResult = trimHistoryToTokenBudget(regularMessages, contextWindow, totalSystemTokens, 0);
+
+    // Inject anchor as system context if present
+    if (anchorMsg) {
+      apiMessages.push({
+        role: 'system',
+        content: `Previous conversation summary:\n${anchorMsg.content}`,
+      });
+    }
+
+    for (const msg of trimResult.messages) {
       if ((msg.role === 'user' || msg.role === 'assistant') && msg.content.trim() !== '') {
         apiMessages.push({ role: msg.role, content: msg.content });
       }
+    }
+
+    // Track trimmed messages for UI notification
+    if (trimResult.trimmedCount > 0) {
+      set({ trimInfo: { count: trimResult.trimmedCount, timestamp: Date.now() } });
     }
 
     // Create abort controller
@@ -563,8 +645,14 @@ export const useAiChatStore = create<AiChatStore>()((set, get) => ({
       const provider = getProvider(providerType);
       let thinkingContent = '';
 
+      // Calculate dynamic maxResponseTokens (user override > dynamic default)
+      const userOverride = providerId
+        ? aiSettings.modelMaxResponseTokens?.[providerId]?.[providerModel]
+        : undefined;
+      const maxResponseTokens = userOverride ?? responseReserve(contextWindow);
+
       for await (const event of provider.streamCompletion(
-        { baseUrl: providerBaseUrl, model: providerModel, apiKey: apiKey || '' },
+        { baseUrl: providerBaseUrl, model: providerModel, apiKey: apiKey || '', maxResponseTokens },
         apiMessages,
         abortController.signal
       )) {
@@ -679,6 +767,29 @@ export const useAiChatStore = create<AiChatStore>()((set, get) => ({
       }
     } finally {
       set({ isLoading: false, abortController: null });
+
+      // ── Auto-compaction ──
+      // After each completed message exchange, check if the conversation
+      // has exceeded the compaction threshold. If so, fire-and-forget
+      // compaction to keep context manageable for the next message.
+      const postConv = get().conversations.find((c) => c.id === convId);
+      if (postConv && postConv.messages.length >= 6) {
+        const cw = getModelContextWindow(
+          providerModel,
+          aiSettings.modelContextWindows,
+          providerId,
+        );
+        let totalTokens = 0;
+        for (const msg of postConv.messages) {
+          totalTokens += estimateTokens(msg.content);
+        }
+        if (totalTokens / cw >= COMPACTION_TRIGGER_THRESHOLD) {
+          // Fire-and-forget — silent mode doesn't touch isLoading
+          get().compactConversation(convId, { silent: true }).catch((e) => {
+            console.warn('[AiChatStore] Auto-compaction failed:', e);
+          });
+        }
+      }
     }
   },
 
@@ -741,6 +852,7 @@ export const useAiChatStore = create<AiChatStore>()((set, get) => ({
   },
 
   // Edit a user message and resend — truncates conversation at that message
+  // Creates a branch so the user can navigate back to previous versions.
   editAndResend: async (messageId, newContent) => {
     const { activeConversationId, conversations, sendMessage } = get();
     if (!activeConversationId) return;
@@ -753,6 +865,36 @@ export const useAiChatStore = create<AiChatStore>()((set, get) => ({
 
     const originalMessage = conversation.messages[msgIndex];
     if (originalMessage.role !== 'user') return;
+
+    // ── Branch bookkeeping ──
+    // Save the current conversation tail (from this message onwards) as a branch.
+    // Strip nested branches from tail to avoid deep nesting.
+    const currentTail = conversation.messages.slice(msgIndex).map((m) => {
+      const { branches: _b, ...rest } = m;
+      return rest as AiChatMessage;
+    });
+
+    let branchData: NonNullable<AiChatMessage['branches']>;
+    if (originalMessage.branches) {
+      // Already has branches — update active branch's tail, then add new branch
+      branchData = {
+        ...originalMessage.branches,
+        tails: {
+          ...originalMessage.branches.tails,
+          [originalMessage.branches.activeIndex]: currentTail,
+        },
+      };
+      branchData.total += 1;
+      branchData.activeIndex = branchData.total - 1;
+      // New (live) branch has no saved tail yet — it will be the live conversation
+    } else {
+      // First edit — old is branch 0, new (live) is branch 1
+      branchData = {
+        total: 2,
+        activeIndex: 1,
+        tails: { 0: currentTail },
+      };
+    }
 
     // Truncate to messages before this one (optimistic local update)
     set((state) => ({
@@ -799,6 +941,121 @@ export const useAiChatStore = create<AiChatStore>()((set, get) => ({
 
     // Send the edited content as a new message
     await sendMessage(newContent, originalMessage.context);
+
+    // After send completes, attach the branch data to the newly created user message
+    set((state) => {
+      const conv = state.conversations.find((c) => c.id === activeConversationId);
+      if (!conv || !conv.messages[msgIndex]) return state;
+      return {
+        conversations: state.conversations.map((c) =>
+          c.id === activeConversationId
+            ? {
+                ...c,
+                messages: c.messages.map((m, i) =>
+                  i === msgIndex ? { ...m, branches: branchData } : m
+                ),
+              }
+            : c
+        ),
+      };
+    });
+  },
+
+  // Switch to a different branch at a branch-point message
+  // Syncs backend so that regenerate/delete operate on correct message IDs.
+  switchBranch: async (messageId, branchIndex) => {
+    const { activeConversationId, conversations } = get();
+    if (!activeConversationId) return;
+
+    const conversation = conversations.find((c) => c.id === activeConversationId);
+    if (!conversation) return;
+
+    const msgIndex = conversation.messages.findIndex((m) => m.id === messageId);
+    if (msgIndex === -1) return;
+
+    const branchPoint = conversation.messages[msgIndex];
+    if (!branchPoint.branches) return;
+    if (branchIndex < 0 || branchIndex >= branchPoint.branches.total) return;
+    if (branchIndex === branchPoint.branches.activeIndex) return;
+
+    // Save current live tail into tails[activeIndex]
+    const liveTail = conversation.messages.slice(msgIndex).map((m) => {
+      const { branches: _b, ...rest } = m;
+      return rest as AiChatMessage;
+    });
+
+    const targetTail = branchPoint.branches.tails[branchIndex];
+    if (!targetTail || targetTail.length === 0) return;
+
+    const updatedBranches: NonNullable<AiChatMessage['branches']> = {
+      ...branchPoint.branches,
+      activeIndex: branchIndex,
+      tails: {
+        ...branchPoint.branches.tails,
+        [branchPoint.branches.activeIndex]: liveTail,
+      },
+    };
+
+    // Rebuild conversation: messages before branch point + target branch tail
+    // Attach updated branches data to the first message of the target tail
+    const newMessages = [
+      ...conversation.messages.slice(0, msgIndex),
+      ...targetTail.map((m, i) =>
+        i === 0 ? { ...m, branches: updatedBranches } : m
+      ),
+    ];
+
+    // ── Backend sync ──
+    // Delete everything from the branch point onwards, then re-save the target tail.
+    // This ensures regenerate/delete operate on IDs the backend knows about.
+    try {
+      if (msgIndex > 0) {
+        const prevMessage = conversation.messages[msgIndex - 1];
+        await invoke('ai_chat_delete_messages_after', {
+          conversationId: activeConversationId,
+          afterMessageId: prevMessage.id,
+        });
+      } else {
+        // Branch point is the first message — recreate conversation
+        await invoke('ai_chat_delete_conversation', { conversationId: activeConversationId });
+        await invoke('ai_chat_create_conversation', {
+          request: {
+            id: activeConversationId,
+            title: conversation.title,
+            sessionId: conversation.sessionId ?? null,
+          },
+        });
+      }
+
+      // Re-save target branch messages to backend
+      for (const msg of targetTail) {
+        const persistContent = msg.metadata?.type === 'compaction-anchor'
+          ? encodeAnchorContent(msg.content, msg.metadata)
+          : msg.content;
+        await invoke('ai_chat_save_message', {
+          request: {
+            id: msg.id,
+            conversationId: activeConversationId,
+            role: msg.role,
+            content: persistContent,
+            timestamp: msg.timestamp,
+            contextSnapshot: null,
+          },
+        });
+      }
+      // Backend sync succeeded — apply to frontend
+      set((state) => ({
+        conversations: state.conversations.map((c) =>
+          c.id === activeConversationId
+            ? { ...c, messages: newMessages, updatedAt: Date.now() }
+            : c
+        ),
+      }));
+    } catch (e) {
+      console.warn('[AiChatStore] Branch switch backend sync failed, aborting switch:', e);
+      set({ error: i18n.t('ai.message.edit_failed') });
+      // Do NOT update frontend — keep it consistent with backend
+    }
   },
 
   // Delete a single message from conversation
@@ -1021,17 +1278,240 @@ export const useAiChatStore = create<AiChatStore>()((set, get) => ({
     }
   },
 
+  // ════════════════════════════════════════════════════════════════════════
+  // Incremental Compaction — sliding window with summary anchor
+  // ════════════════════════════════════════════════════════════════════════
+
+  compactConversation: async (conversationId?: string, options?: { silent?: boolean }) => {
+    const silent = options?.silent ?? false;
+    const convId = conversationId ?? get().activeConversationId;
+    if (!convId) return;
+
+    // Guard: skip if a compaction is already in-flight for this conversation
+    if (compactingConversations.has(convId)) return;
+    compactingConversations.add(convId);
+
+    // Outer try/finally guarantees lock release on every exit path
+    try {
+
+    const conversation = get().conversations.find((c) => c.id === convId);
+    if (!conversation || conversation.messages.length < 6) return;
+
+    // Resolve provider settings
+    const aiSettings = useSettingsStore.getState().settings.ai;
+    if (!aiSettings.enabled) return;
+
+    const activeProvider = aiSettings.providers?.find(p => p.id === aiSettings.activeProviderId);
+    const providerType = activeProvider?.type || 'openai';
+    const providerBaseUrl = activeProvider?.baseUrl || aiSettings.baseUrl;
+    const providerModel = aiSettings.activeModel || activeProvider?.defaultModel || aiSettings.model;
+    const providerId = activeProvider?.id;
+
+    if (!providerModel) return;
+
+    // Get context window
+    const contextWindow = getModelContextWindow(
+      providerModel,
+      aiSettings.modelContextWindows,
+      providerId,
+    );
+
+    // Calculate current usage
+    let totalTokens = 0;
+    for (const msg of conversation.messages) {
+      totalTokens += estimateTokens(msg.content);
+    }
+
+    const usageRatio = totalTokens / contextWindow;
+    if (usageRatio < COMPACTION_TRIGGER_THRESHOLD) return; // Not yet at threshold
+
+    // Get API key
+    let apiKey: string | null = null;
+    try {
+      if (providerId) {
+        apiKey = await api.getAiProviderApiKey(providerId);
+      }
+      if (!apiKey && providerType !== 'ollama') return;
+    } catch {
+      if (providerType !== 'ollama') return;
+    }
+
+    // Determine split point: keep the most recent messages that fit in ~40% of context
+    const keepBudget = Math.floor(contextWindow * 0.4);
+    let keepTokens = 0;
+    let keepFrom = conversation.messages.length;
+    for (let i = conversation.messages.length - 1; i >= 0; i--) {
+      const tokens = estimateTokens(conversation.messages[i].content);
+      if (keepTokens + tokens > keepBudget && i < conversation.messages.length - 1) break;
+      keepTokens += tokens;
+      keepFrom = i;
+    }
+
+    // Need at least 2 messages to compact (the front portion)
+    if (keepFrom < 2) return;
+
+    const toCompact = conversation.messages.slice(0, keepFrom);
+    const toKeep = conversation.messages.slice(keepFrom);
+
+    // Find and remove any existing anchor from the compact set
+    // (previous anchor gets folded into the new summary)
+    const existingAnchors = toCompact.filter(m => m.metadata?.type === 'compaction-anchor');
+    const nonAnchorMessages = toCompact.filter(m => !m.metadata || m.metadata.type !== 'compaction-anchor');
+
+    // Build history text for summarization
+    const historyParts: string[] = [];
+
+    // Include previous anchor summaries as context
+    for (const anchor of existingAnchors) {
+      historyParts.push(`[Previous Summary]: ${anchor.content}`);
+    }
+
+    for (const msg of nonAnchorMessages) {
+      if (msg.role === 'user' || msg.role === 'assistant') {
+        historyParts.push(`${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.content}`);
+      }
+    }
+
+    const summaryPrompt: ChatCompletionMessage[] = [
+      {
+        role: 'system',
+        content: 'Summarize the following conversation in a concise paragraph. Capture the key topics, questions asked, solutions provided, and any important context. Write in the same language as the conversation. Keep it under 200 words. If there is a "[Previous Summary]" section, integrate it into your summary.',
+      },
+      {
+        role: 'user',
+        content: historyParts.join('\n\n'),
+      },
+    ];
+
+    // Compute maxResponseTokens for the compaction summary request
+    const compactMaxResponseTokens = aiSettings.modelMaxResponseTokens?.[providerId ?? '']?.[providerModel]
+      ?? responseReserve(contextWindow);
+
+    if (!silent) {
+      set({ isLoading: true, error: null });
+    }
+
+    try {
+      const provider = getProvider(providerType);
+      let summaryContent = '';
+      const abortController = new AbortController();
+      if (!silent) {
+        set({ abortController });
+      }
+
+      for await (const event of provider.streamCompletion(
+        { baseUrl: providerBaseUrl, model: providerModel, apiKey: apiKey || '', maxResponseTokens: compactMaxResponseTokens },
+        summaryPrompt,
+        abortController.signal,
+      )) {
+        if (event.type === 'content') {
+          summaryContent += event.content;
+        } else if (event.type === 'error') {
+          throw new Error(event.message);
+        }
+      }
+
+      if (!summaryContent.trim()) return;
+
+      // Build the anchor message with snapshot of original messages
+      const totalCompacted = existingAnchors.reduce(
+        (acc, a) => acc + (a.metadata?.originalCount ?? 0), 0
+      ) + nonAnchorMessages.length;
+
+      // Snapshot: keep at most MAX_ANCHOR_SNAPSHOT recent messages (without nested metadata to avoid bloat)
+      const snapshotMessages: AiChatMessage[] = nonAnchorMessages
+        .slice(-MAX_ANCHOR_SNAPSHOT)
+        .map(m => ({ id: m.id, role: m.role, content: m.content, timestamp: m.timestamp }));
+
+      const anchorMessage: AiChatMessage = {
+        id: generateId(),
+        role: 'system',
+        content: summaryContent,
+        timestamp: Date.now(),
+        metadata: {
+          type: 'compaction-anchor',
+          originalCount: totalCompacted,
+          compactedAt: Date.now(),
+          originalMessages: snapshotMessages,
+        },
+      };
+
+      const newMessages = [anchorMessage, ...toKeep];
+
+      // Persist: replace all messages with anchor + kept messages
+      // Encode metadata into content so it survives the round-trip through the backend.
+      const persistedAnchorContent = encodeAnchorContent(anchorMessage.content, anchorMessage.metadata!);
+
+      // First message goes into the replace call, rest are saved individually
+      await invoke('ai_chat_replace_conversation_messages', {
+        request: {
+          conversationId: convId,
+          title: conversation.title,
+          message: {
+            id: anchorMessage.id,
+            conversationId: convId,
+            role: anchorMessage.role,
+            content: persistedAnchorContent,
+            timestamp: anchorMessage.timestamp,
+            contextSnapshot: null,
+          },
+        },
+      });
+
+      // Save kept messages
+      // If a kept message is itself a compaction anchor, re-encode its metadata
+      // so the $$ANCHOR_B64$$ prefix is preserved through the backend round-trip.
+      for (const msg of toKeep) {
+        const persistContent = msg.metadata?.type === 'compaction-anchor'
+          ? encodeAnchorContent(msg.content, msg.metadata)
+          : msg.content;
+        await invoke('ai_chat_save_message', {
+          request: {
+            id: msg.id,
+            conversationId: convId,
+            role: msg.role,
+            content: persistContent,
+            timestamp: msg.timestamp,
+            contextSnapshot: null,
+          },
+        });
+      }
+
+      // Update local state
+      set((state) => ({
+        conversations: state.conversations.map((c) => {
+          if (c.id !== convId) return c;
+          return { ...c, messages: newMessages, updatedAt: Date.now() };
+        }),
+      }));
+    } catch (e) {
+      if (!(e instanceof Error && e.name === 'AbortError')) {
+        const errorMessage = e instanceof Error ? e.message : String(e);
+        if (!silent) {
+          set({ error: errorMessage });
+        } else {
+          console.warn('[AiChatStore] Silent compaction error:', errorMessage);
+        }
+      }
+    } finally {
+      if (!silent) {
+        set({ isLoading: false, abortController: null });
+      }
+    }
+
+    } finally {
+      // Outer finally — always release the per-conversation compaction lock
+      compactingConversations.delete(convId);
+    }
+  },
+
   // Internal: Add message to conversation and persist
   _addMessage: async (conversationId, message, sidebarContext) => {
-    // Update local state immediately
+    // Update local state immediately (no hard cap — compaction handles limits)
     set((state) => ({
       conversations: state.conversations.map((c) => {
         if (c.id !== conversationId) return c;
-        let messages = [...c.messages, message];
-        if (messages.length > MAX_MESSAGES_PER_CONVERSATION) {
-          messages = messages.slice(-MAX_MESSAGES_PER_CONVERSATION);
-        }
-        return { ...c, messages, updatedAt: Date.now() };
+        return { ...c, messages: [...c.messages, message], updatedAt: Date.now() };
       }),
     }));
 

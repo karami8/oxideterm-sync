@@ -61,6 +61,9 @@ export const geminiProvider: AiStreamProvider = {
     if (systemInstruction) {
       body.system_instruction = { parts: [{ text: systemInstruction }] };
     }
+    if (config.maxResponseTokens) {
+      body.generationConfig = { maxOutputTokens: config.maxResponseTokens };
+    }
 
     const response = await fetch(url, {
       method: 'POST',

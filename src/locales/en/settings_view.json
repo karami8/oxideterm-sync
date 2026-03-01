@@ -309,7 +309,9 @@
       "system_prompt_title": "System Prompt",
       "custom_system_prompt": "Custom System Prompt",
       "system_prompt_placeholder": "Enter a custom system prompt... (leave empty to use default)",
-      "system_prompt_hint": "Customize the AI assistant's behavior. Leave empty to use the default terminal assistant prompt."
+      "system_prompt_hint": "Customize the AI assistant's behavior. Leave empty to use the default terminal assistant prompt.",
+      "max_response_tokens": "Max Response Tokens",
+      "max_response_tokens_hint": "Maximum tokens the AI can use for its response. Leave empty for automatic calculation."
     },
     "sftp": {
       "title": "SFTP Transfer",

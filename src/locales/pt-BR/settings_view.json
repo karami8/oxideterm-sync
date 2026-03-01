@@ -309,7 +309,9 @@
       "system_prompt_title": "Prompt do sistema",
       "custom_system_prompt": "Prompt do sistema personalizado",
       "system_prompt_placeholder": "Digite um prompt do sistema personalizado... (deixe vazio para usar o padrão)",
-      "system_prompt_hint": "Personalize o comportamento do assistente de IA. Deixe vazio para usar o prompt padrão do assistente de terminal."
+      "system_prompt_hint": "Personalize o comportamento do assistente de IA. Deixe vazio para usar o prompt padrão do assistente de terminal.",
+      "max_response_tokens": "Tokens de resposta máx.",
+      "max_response_tokens_hint": "Número máximo de tokens que a IA pode usar na resposta. Deixe vazio para cálculo automático."
     },
     "sftp": {
       "title": "Transferências SFTP",

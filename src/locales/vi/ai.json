@@ -17,7 +17,9 @@
       "start_conversation_hint": "Đặt câu hỏi về lệnh shell, script hoặc các thao tác terminal.",
       "delete_conversation": "Xóa cuộc trò chuyện",
       "messages_count": "{{count}} tin nhắn",
-      "double_click_rename": "Nhấp đúp để đổi tên"
+      "double_click_rename": "Nhấp đúp để đổi tên",
+      "branch_prev": "Phiên bản trước",
+      "branch_next": "Phiên bản sau"
     },
     "quick_prompts": {
       "explain_command": "Giải thích lệnh",
@@ -81,7 +83,12 @@
       "approaching_limit": "Ngữ cảnh sắp đạt giới hạn. Hãy tóm tắt cuộc trò chuyện hoặc bắt đầu cuộc trò chuyện mới.",
       "summarize": "Tóm tắt",
       "summarize_confirm": "Nén lịch sử cuộc trò chuyện thành bản tóm tắt?",
-      "summary_prefix": "Tóm tắt {{count}} tin nhắn"
+      "summary_prefix": "Tóm tắt {{count}} tin nhắn",
+      "messages_trimmed": "{{count}} tin nhắn cũ không được gửi cho AI (vượt quá cửa sổ ngữ cảnh)",
+      "model_switched_warning": "Ngữ cảnh mô hình đã thu nhỏ. Cuộc hội thoại hiện tại sử dụng {{percentage}}% giới hạn mới.",
+      "compact_button": "Nén",
+      "view_original": "Xem bản gốc",
+      "compacted_messages": "Đã nén {{count}} tin nhắn"
     },
     "model_selector": {
       "no_key": "Không có khóa",

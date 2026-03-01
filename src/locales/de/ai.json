@@ -17,7 +17,9 @@
       "start_conversation_hint": "Stellen Sie Fragen zu Shell-Befehlen, Skripten oder Terminal-Operationen.",
       "delete_conversation": "Unterhaltung löschen",
       "messages_count": "{{count}} Nachrichten",
-      "double_click_rename": "Doppelklicken zum Umbenennen"
+      "double_click_rename": "Doppelklicken zum Umbenennen",
+      "branch_prev": "Vorherige Version",
+      "branch_next": "Nächste Version"
     },
     "quick_prompts": {
       "explain_command": "Befehl erklären",
@@ -81,7 +83,12 @@
       "approaching_limit": "Kontextlimit fast erreicht. Fassen Sie die Konversation zusammen oder starten Sie einen neuen Chat.",
       "summarize": "Zusammenfassen",
       "summarize_confirm": "Gesprächsverlauf in eine Zusammenfassung komprimieren?",
-      "summary_prefix": "Zusammenfassung von {{count}} Nachrichten"
+      "summary_prefix": "Zusammenfassung von {{count}} Nachrichten",
+      "messages_trimmed": "{{count}} alte Nachrichten wurden nicht an die KI gesendet (Kontextfenster überschritten)",
+      "model_switched_warning": "Der Modellkontext wurde verkleinert. Die aktuelle Konversation nutzt {{percentage}}% des neuen Limits.",
+      "compact_button": "Komprimieren",
+      "view_original": "Original anzeigen",
+      "compacted_messages": "{{count}} Nachrichten komprimiert"
     },
     "model_selector": {
       "no_key": "Kein Schlüssel",

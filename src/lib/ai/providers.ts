@@ -31,6 +31,8 @@ export type AiRequestConfig = {
   baseUrl: string;
   model: string;
   apiKey: string;
+  /** Maximum tokens the model may generate in its response. Provider-specific default if omitted. */
+  maxResponseTokens?: number;
 };
 
 /**

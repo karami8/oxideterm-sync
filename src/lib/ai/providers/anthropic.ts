@@ -66,7 +66,7 @@ export const anthropicProvider: AiStreamProvider = {
     const body: Record<string, unknown> = {
       model: config.model,
       messages: apiMessages,
-      max_tokens: 8192,
+      max_tokens: config.maxResponseTokens ?? 8192,
       stream: true,
     };
 

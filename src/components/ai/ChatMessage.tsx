@@ -1,6 +1,6 @@
 import { memo, useMemo, useEffect, useRef, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { RotateCcw, Pencil, Trash2, Check, X } from 'lucide-react';
+import { RotateCcw, Pencil, Trash2, Check, X, ChevronDown, ChevronRight, ChevronLeft, Archive } from 'lucide-react';
 import { emit } from '@tauri-apps/api/event';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import type { AiChatMessage } from '../../types';
@@ -20,6 +20,8 @@ interface ChatMessageProps {
   onEdit?: (messageId: string, newContent: string) => void;
   /** Callback to delete a message */
   onDelete?: (messageId: string) => void;
+  /** Callback to switch branch at a branch-point message */
+  onSwitchBranch?: (messageId: string, branchIndex: number) => void;
 }
 
 // Inject markdown styles once
@@ -51,6 +53,8 @@ function arePropsEqual(prev: ChatMessageProps, next: ChatMessageProps): boolean 
     prev.message.isStreaming === next.message.isStreaming &&
     prev.message.thinkingContent === next.message.thinkingContent &&
     prev.message.isThinkingStreaming === next.message.isThinkingStreaming &&
+    prev.message.branches?.activeIndex === next.message.branches?.activeIndex &&
+    prev.message.branches?.total === next.message.branches?.total &&
     prev.isLastAssistant === next.isLastAssistant &&
     prev.isRegenerating === next.isRegenerating
   );
@@ -63,6 +67,7 @@ export const ChatMessage = memo(function ChatMessage({
   isRegenerating = false,
   onEdit,
   onDelete,
+  onSwitchBranch,
 }: ChatMessageProps) {
   const { t } = useTranslation();
   const isUser = message.role === 'user';
@@ -161,6 +166,66 @@ export const ChatMessage = memo(function ChatMessage({
     }
   }, []);
 
+  // ═══════════════════════════════════════════════════════════════════════
+  // Compaction Anchor — special rendering for compacted message summaries
+  // ═══════════════════════════════════════════════════════════════════════
+  const [anchorExpanded, setAnchorExpanded] = useState(false);
+
+  if (message.metadata?.type === 'compaction-anchor') {
+    const originalMessages = message.metadata.originalMessages || [];
+    const originalCount = message.metadata.originalCount ?? 0;
+
+    return (
+      <div className="py-2 px-3">
+        <div className="border border-dashed border-theme-border/40 rounded-md overflow-hidden">
+          {/* Collapsed header */}
+          <button
+            onClick={() => setAnchorExpanded(!anchorExpanded)}
+            className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-theme-bg-hover/30 transition-colors"
+          >
+            <Archive className="w-3.5 h-3.5 text-theme-text-muted/50 shrink-0" />
+            <span className="text-[11px] text-theme-text-muted/60 font-medium flex-1">
+              {t('ai.context.compacted_messages', { count: originalCount })}
+            </span>
+            {anchorExpanded
+              ? <ChevronDown className="w-3 h-3 text-theme-text-muted/40" />
+              : <ChevronRight className="w-3 h-3 text-theme-text-muted/40" />
+            }
+          </button>
+
+          {/* Summary content (always visible below header) */}
+          <div className="px-3 pb-2 text-[12px] text-theme-text-muted/70 leading-relaxed">
+            {message.content}
+          </div>
+
+          {/* Expanded: original messages snapshot (read-only) */}
+          {anchorExpanded && originalMessages.length > 0 && (
+            <div className="border-t border-dashed border-theme-border/30 mx-2 mb-2">
+              <div className="px-2 py-1.5 text-[10px] text-theme-text-muted/40 font-medium">
+                {t('ai.context.view_original')} ({originalMessages.length})
+              </div>
+              <div className="max-h-[300px] overflow-y-auto space-y-1 px-2 pb-2">
+                {originalMessages.map((orig) => (
+                  <div
+                    key={orig.id}
+                    className="text-[11px] text-theme-text-muted/50 bg-theme-bg/30 rounded px-2 py-1"
+                  >
+                    <span className="font-semibold text-theme-text-muted/40 mr-1.5">
+                      {orig.role === 'user' ? t('ai.message.you') : 'AI'}:
+                    </span>
+                    <span className="whitespace-pre-wrap break-words">
+                      {orig.content.length > 500 ? orig.content.slice(0, 500) + '…' : orig.content}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="py-3 px-3 group/msg">
       {/* Header — user on right, AI on left */}
@@ -247,6 +312,31 @@ export const ChatMessage = memo(function ChatMessage({
               <span className="inline-block w-1.5 h-4 ml-0.5 bg-theme-accent/60 animate-pulse align-middle" />
             )}
           </>
+        )}
+
+        {/* Branch Navigator — shown on user messages with multiple branches */}
+        {isUser && message.branches && message.branches.total > 1 && !isEditing && (
+          <div className="mt-1 flex items-center gap-1 z-0">
+            <button
+              onClick={() => onSwitchBranch?.(message.id, message.branches!.activeIndex - 1)}
+              disabled={message.branches.activeIndex <= 0}
+              className="p-0.5 text-theme-text-muted/40 hover:text-theme-text-muted disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
+              aria-label={t('ai.chat.branch_prev')}
+            >
+              <ChevronLeft className="w-3 h-3" />
+            </button>
+            <span className="text-[10px] text-theme-text-muted/50 font-mono tabular-nums select-none min-w-[28px] text-center">
+              {message.branches.activeIndex + 1}/{message.branches.total}
+            </span>
+            <button
+              onClick={() => onSwitchBranch?.(message.id, message.branches!.activeIndex + 1)}
+              disabled={message.branches.activeIndex >= message.branches.total - 1}
+              className="p-0.5 text-theme-text-muted/40 hover:text-theme-text-muted disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
+              aria-label={t('ai.chat.branch_next')}
+            >
+              <ChevronRight className="w-3 h-3" />
+            </button>
+          </div>
         )}
 
         {/* Action Buttons */}
