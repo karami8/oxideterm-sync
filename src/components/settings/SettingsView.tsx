@@ -4,7 +4,7 @@ import { getVersion } from '@tauri-apps/api/app';
 import { invoke, convertFileSrc } from '@tauri-apps/api/core';
 import { open as openFileDialog } from '@tauri-apps/plugin-dialog';
 import { useAppStore } from '../../store/appStore';
-import { useSettingsStore, type RendererType, type FontFamily, type CursorStyle, type Language, type BackgroundFit } from '../../store/settingsStore';
+import { useSettingsStore, type RendererType, type FontFamily, type CursorStyle, type Language, type BackgroundFit, type UiDensity, type AnimationSpeed, type FrostedGlassMode } from '../../store/settingsStore';
 import { useTabBgActive } from '../../hooks/useTabBackground';
 import { Button } from '../ui/button';
 import { Label } from '../ui/label';
@@ -29,11 +29,11 @@ import {
     SelectLabel,
     SelectSeparator
 } from '../ui/select';
-import { Monitor, Key, Terminal as TerminalIcon, Shield, Plus, Trash2, FolderInput, Sparkles, Square, HardDrive, HelpCircle, Github, ExternalLink, Keyboard, RefreshCw, ImageIcon, X, Code2, WifiOff } from 'lucide-react';
+import { Monitor, Key, Terminal as TerminalIcon, Shield, Plus, Trash2, FolderInput, Sparkles, Square, HardDrive, HelpCircle, Github, ExternalLink, Keyboard, RefreshCw, ImageIcon, X, Code2, WifiOff, Download, Upload, Network, ArrowLeftRight, Settings, Folder, ListTree, Rocket, Puzzle, Activity } from 'lucide-react';
 import { api } from '../../lib/api';
 import { useLocalTerminalStore } from '../../store/localTerminalStore';
 import { SshKeyInfo, SshHostInfo } from '../../types';
-import { themes, getTerminalTheme, getCustomThemes, isCustomTheme } from '../../lib/themes';
+import { themes, getTerminalTheme, getCustomThemes, isCustomTheme, exportTheme, importTheme } from '../../lib/themes';
 import { platform } from '../../lib/platform';
 import { cn } from '../../lib/utils';
 import { getShortcutCategories } from '../../lib/shortcuts';
@@ -749,39 +749,45 @@ const BackgroundImageSection = ({ terminal, updateTerminal }: BackgroundImageSec
                         {/* Tab type toggles */}
                         <div>
                             <Label className="text-theme-text">{t('settings_view.terminal.bg_tabs')}</Label>
-                            <p className="text-xs text-theme-text-muted mt-0.5 mb-2">{t('settings_view.terminal.bg_tabs_hint')}</p>
-                            <div className="flex flex-col gap-1.5">
+                            <p className="text-xs text-theme-text-muted mt-0.5 mb-3">{t('settings_view.terminal.bg_tabs_hint')}</p>
+                            <div className="grid grid-cols-3 gap-2">
                                 {([
-                                    ['terminal', t('settings_view.terminal.bg_tab_terminal')],
-                                    ['local_terminal', t('settings_view.terminal.bg_tab_local')],
-                                    ['sftp', t('settings_view.terminal.bg_tab_sftp')],
-                                    ['forwards', t('settings_view.terminal.bg_tab_forwards')],
-                                    ['settings', t('settings_view.terminal.bg_tab_settings')],
-                                    ['ide', t('settings_view.terminal.bg_tab_ide')],
-                                    ['connection_monitor', t('settings_view.terminal.bg_tab_monitor')],
-                                    ['connection_pool', t('settings_view.terminal.bg_tab_connections')],
-                                    ['topology', t('settings_view.terminal.bg_tab_topology')],
-                                    ['file_manager', t('settings_view.terminal.bg_tab_files')],
-                                    ['session_manager', t('settings_view.terminal.bg_tab_sessions')],
-                                    // Launcher: only macOS has a transparent-capable launcher; Windows uses WSLg (opaque VNC canvas)
-                                    ...(platform.isMac ? [['launcher', t('settings_view.terminal.bg_tab_launcher')] as const] : []),
-                                    ['plugin_manager', t('settings_view.terminal.bg_tab_plugins')],
-                                ] as const).map(([type, label]) => {
+                                    ['terminal', t('settings_view.terminal.bg_tab_terminal'), TerminalIcon],
+                                    ['local_terminal', t('settings_view.terminal.bg_tab_local'), Monitor],
+                                    ['sftp', t('settings_view.terminal.bg_tab_sftp'), FolderInput],
+                                    ['forwards', t('settings_view.terminal.bg_tab_forwards'), ArrowLeftRight],
+                                    ['settings', t('settings_view.terminal.bg_tab_settings'), Settings],
+                                    ['ide', t('settings_view.terminal.bg_tab_ide'), Code2],
+                                    ['connection_monitor', t('settings_view.terminal.bg_tab_monitor'), Activity],
+                                    ['connection_pool', t('settings_view.terminal.bg_tab_connections'), Network],
+                                    ['topology', t('settings_view.terminal.bg_tab_topology'), Network],
+                                    ['file_manager', t('settings_view.terminal.bg_tab_files'), Folder],
+                                    ['session_manager', t('settings_view.terminal.bg_tab_sessions'), ListTree],
+                                    ...(platform.isMac ? [['launcher', t('settings_view.terminal.bg_tab_launcher'), Rocket] as const] : []),
+                                    ['plugin_manager', t('settings_view.terminal.bg_tab_plugins'), Puzzle],
+                                ] as const).map(([type, label, Icon]) => {
                                     const enabledTabs = terminal.backgroundEnabledTabs ?? ['terminal', 'local_terminal'];
                                     const checked = enabledTabs.includes(type);
                                     return (
-                                        <label key={type} className="flex items-center gap-2 text-sm text-theme-text cursor-pointer hover:text-theme-text-bright py-0.5">
-                                            <Checkbox
-                                                checked={checked}
-                                                onCheckedChange={(v) => {
-                                                    const next = v
-                                                        ? [...enabledTabs, type]
-                                                        : enabledTabs.filter((t: string) => t !== type);
-                                                    updateTerminal('backgroundEnabledTabs', next);
-                                                }}
-                                            />
-                                            {label}
-                                        </label>
+                                        <button
+                                            key={type}
+                                            type="button"
+                                            onClick={() => {
+                                                const next = checked
+                                                    ? enabledTabs.filter((t: string) => t !== type)
+                                                    : [...enabledTabs, type];
+                                                updateTerminal('backgroundEnabledTabs', next);
+                                            }}
+                                            className={cn(
+                                                "flex items-center gap-2 rounded-md border px-3 py-2 text-xs transition-colors cursor-pointer select-none",
+                                                checked
+                                                    ? "border-theme-accent/60 bg-theme-accent/10 text-theme-accent"
+                                                    : "border-theme-border bg-theme-bg-panel/30 text-theme-text-muted hover:border-theme-border hover:bg-theme-bg-hover/50"
+                                            )}
+                                        >
+                                            <Icon className="size-3.5 shrink-0" />
+                                            <span className="truncate">{label}</span>
+                                        </button>
                                     );
                                 })}
                             </div>
@@ -801,8 +807,8 @@ export const SettingsView = () => {
     const [activeTab, setActiveTab] = useState('general');
 
     // Use unified settings store
-    const { settings, updateTerminal, updateConnectionDefaults, updateAi, updateSftp, updateIde, updateReconnect, setLanguage, addProvider, removeProvider, updateProvider, setActiveProvider, refreshProviderModels } = useSettingsStore();
-    const { general, terminal, connectionDefaults, ai, sftp, ide, reconnect } = settings;
+    const { settings, updateTerminal, updateAppearance, updateConnectionDefaults, updateAi, updateSftp, updateIde, updateReconnect, setLanguage, addProvider, removeProvider, updateProvider, setActiveProvider, refreshProviderModels } = useSettingsStore();
+    const { general, terminal, appearance, connectionDefaults, ai, sftp, ide, reconnect } = settings;
 
     // AI enable confirmation dialog
     const [showAiConfirm, setShowAiConfirm] = useState(false);
@@ -811,6 +817,34 @@ export const SettingsView = () => {
     // Custom theme editor state
     const [themeEditorOpen, setThemeEditorOpen] = useState(false);
     const [editingThemeId, setEditingThemeId] = useState<string | null>(null);
+
+    // Local slider state for border radius (debounced like opacity/blur)
+    const [localBorderRadius, setLocalBorderRadius] = useState(() => appearance.borderRadius);
+    const borderRadiusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    useEffect(() => { setLocalBorderRadius(appearance.borderRadius); }, [appearance.borderRadius]);
+    const handleBorderRadiusChange = useCallback((val: number) => {
+        setLocalBorderRadius(val);
+        if (borderRadiusTimerRef.current) clearTimeout(borderRadiusTimerRef.current);
+        borderRadiusTimerRef.current = setTimeout(() => updateAppearance('borderRadius', val), 150);
+    }, [updateAppearance]);
+    const localBorderRadiusRef = useRef(localBorderRadius);
+    localBorderRadiusRef.current = localBorderRadius;
+    useEffect(() => () => {
+        if (borderRadiusTimerRef.current) {
+            clearTimeout(borderRadiusTimerRef.current);
+            updateAppearance('borderRadius', localBorderRadiusRef.current);
+        }
+    }, []);
+
+    // Local state for UI font (debounced commit)
+    const [localUiFont, setLocalUiFont] = useState(() => appearance.uiFontFamily);
+    const uiFontTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    useEffect(() => { setLocalUiFont(appearance.uiFontFamily); }, [appearance.uiFontFamily]);
+    const handleUiFontChange = useCallback((val: string) => {
+        setLocalUiFont(val);
+        if (uiFontTimerRef.current) clearTimeout(uiFontTimerRef.current);
+        uiFontTimerRef.current = setTimeout(() => updateAppearance('uiFontFamily', val), 300);
+    }, [updateAppearance]);
 
     // Data State
     const [keys, setKeys] = useState<SshKeyInfo[]>([]);
@@ -1293,6 +1327,51 @@ export const SettingsView = () => {
                                 <div className="flex items-center justify-between mb-4">
                                     <h4 className="text-sm font-medium text-theme-text uppercase tracking-wider">{t('settings_view.appearance.theme')}</h4>
                                     <div className="flex gap-2">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="h-7 text-xs text-theme-text border-theme-border"
+                                            onClick={async () => {
+                                                try {
+                                                    const selected = await openFileDialog({
+                                                        multiple: false,
+                                                        filters: [{ name: 'JSON', extensions: ['json'] }],
+                                                    });
+                                                    if (!selected || typeof selected !== 'string') return;
+                                                    const { readTextFile } = await import('@tauri-apps/plugin-fs');
+                                                    const content = await readTextFile(selected);
+                                                    const { theme: imported } = importTheme(content);
+                                                    toastSuccess(t('settings_view.appearance.theme_import_success', { name: imported.name }));
+                                                } catch (e: unknown) {
+                                                    toastError(t('settings_view.appearance.theme_import_error', { error: e instanceof Error ? e.message : String(e) }));
+                                                }
+                                            }}
+                                        >
+                                            <Upload className="w-3 h-3 mr-1" />
+                                            {t('settings_view.appearance.theme_import')}
+                                        </Button>
+                                        {isCustomTheme(terminal.theme) && (
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="h-7 text-xs text-theme-text border-theme-border"
+                                                onClick={() => {
+                                                    const json = exportTheme(terminal.theme);
+                                                    if (!json) return;
+                                                    const blob = new Blob([json], { type: 'application/json' });
+                                                    const url = URL.createObjectURL(blob);
+                                                    const a = document.createElement('a');
+                                                    a.href = url;
+                                                    a.download = `${formatThemeName(terminal.theme).replace(/\s+/g, '-').toLowerCase()}.oxtheme.json`;
+                                                    a.click();
+                                                    URL.revokeObjectURL(url);
+                                                    toastSuccess(t('settings_view.appearance.theme_export_success'));
+                                                }}
+                                            >
+                                                <Download className="w-3 h-3 mr-1" />
+                                                {t('settings_view.appearance.theme_export')}
+                                            </Button>
+                                        )}
                                         {isCustomTheme(terminal.theme) && (
                                             <Button
                                                 variant="outline"
@@ -1384,12 +1463,130 @@ export const SettingsView = () => {
                                 </div>
                             </div>
 
-                            {/* Layout Section */}
+                            {/* Layout & UI Customization Section */}
                             <div className="rounded-lg border border-theme-border bg-theme-bg-panel/50 p-5">
                                 <h4 className="text-sm font-medium text-theme-text mb-4 uppercase tracking-wider">{t('settings_view.appearance.layout')}</h4>
-                                <p className="text-xs text-theme-text-muted">
-                                    {t('settings_view.appearance.layout_hint')}
-                                </p>
+                                <div className="space-y-5">
+                                    {/* UI Density */}
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <Label className="text-theme-text">{t('settings_view.appearance.density')}</Label>
+                                            <p className="text-xs text-theme-text-muted mt-0.5">{t('settings_view.appearance.density_hint')}</p>
+                                        </div>
+                                        <Select
+                                            value={appearance.uiDensity}
+                                            onValueChange={(val) => updateAppearance('uiDensity', val as UiDensity)}
+                                        >
+                                            <SelectTrigger className="w-[180px] text-theme-text">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent className="bg-theme-bg-panel border-theme-border">
+                                                <SelectItem value="compact" className="text-theme-text focus:bg-theme-bg-hover focus:text-theme-text">
+                                                    <div className="flex flex-col">
+                                                        <span>{t('settings_view.appearance.density_compact')}</span>
+                                                        <span className="text-xs text-theme-text-muted">{t('settings_view.appearance.density_compact_desc')}</span>
+                                                    </div>
+                                                </SelectItem>
+                                                <SelectItem value="comfortable" className="text-theme-text focus:bg-theme-bg-hover focus:text-theme-text">
+                                                    <div className="flex flex-col">
+                                                        <span>{t('settings_view.appearance.density_comfortable')}</span>
+                                                        <span className="text-xs text-theme-text-muted">{t('settings_view.appearance.density_comfortable_desc')}</span>
+                                                    </div>
+                                                </SelectItem>
+                                                <SelectItem value="spacious" className="text-theme-text focus:bg-theme-bg-hover focus:text-theme-text">
+                                                    <div className="flex flex-col">
+                                                        <span>{t('settings_view.appearance.density_spacious')}</span>
+                                                        <span className="text-xs text-theme-text-muted">{t('settings_view.appearance.density_spacious_desc')}</span>
+                                                    </div>
+                                                </SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
+                                    {/* Border Radius */}
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <Label className="text-theme-text">{t('settings_view.appearance.border_radius')}</Label>
+                                            <p className="text-xs text-theme-text-muted mt-0.5">{t('settings_view.appearance.border_radius_hint')}</p>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-6 h-6 border border-theme-border bg-theme-bg-hover" style={{ borderRadius: `${localBorderRadius}px` }} />
+                                            <input
+                                                type="range"
+                                                min={0}
+                                                max={16}
+                                                value={localBorderRadius}
+                                                onChange={(e) => handleBorderRadiusChange(parseInt(e.target.value))}
+                                                className="w-28 accent-orange-500"
+                                            />
+                                            <span className="text-xs text-theme-text-muted w-12 text-right">
+                                                {localBorderRadius}{t('settings_view.appearance.border_radius_unit')}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {/* UI Font */}
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <Label className="text-theme-text">{t('settings_view.appearance.ui_font')}</Label>
+                                            <p className="text-xs text-theme-text-muted mt-0.5">{t('settings_view.appearance.ui_font_hint')}</p>
+                                        </div>
+                                        <Input
+                                            value={localUiFont}
+                                            onChange={(e) => handleUiFontChange(e.target.value)}
+                                            placeholder={t('settings_view.appearance.ui_font_placeholder')}
+                                            className="w-[200px]"
+                                        />
+                                    </div>
+
+                                    {/* Animation Speed */}
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <Label className="text-theme-text">{t('settings_view.appearance.animation')}</Label>
+                                            <p className="text-xs text-theme-text-muted mt-0.5">{t('settings_view.appearance.animation_hint')}</p>
+                                        </div>
+                                        <Select
+                                            value={appearance.animationSpeed}
+                                            onValueChange={(val) => updateAppearance('animationSpeed', val as AnimationSpeed)}
+                                        >
+                                            <SelectTrigger className="w-[140px] text-theme-text">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent className="bg-theme-bg-panel border-theme-border">
+                                                <SelectItem value="off" className="text-theme-text focus:bg-theme-bg-hover focus:text-theme-text">{t('settings_view.appearance.animation_off')}</SelectItem>
+                                                <SelectItem value="reduced" className="text-theme-text focus:bg-theme-bg-hover focus:text-theme-text">{t('settings_view.appearance.animation_reduced')}</SelectItem>
+                                                <SelectItem value="normal" className="text-theme-text focus:bg-theme-bg-hover focus:text-theme-text">{t('settings_view.appearance.animation_normal')}</SelectItem>
+                                                <SelectItem value="fast" className="text-theme-text focus:bg-theme-bg-hover focus:text-theme-text">{t('settings_view.appearance.animation_fast')}</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
+                                    {/* Frosted Glass */}
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <Label className="text-theme-text">{t('settings_view.appearance.frosted_glass')}</Label>
+                                            <p className="text-xs text-theme-text-muted mt-0.5">{t('settings_view.appearance.frosted_glass_hint')}</p>
+                                        </div>
+                                        <Select
+                                            value={appearance.frostedGlass}
+                                            onValueChange={(val) => updateAppearance('frostedGlass', val as FrostedGlassMode)}
+                                        >
+                                            <SelectTrigger className="w-[180px] text-theme-text">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent className="bg-theme-bg-panel border-theme-border">
+                                                <SelectItem value="off" className="text-theme-text focus:bg-theme-bg-hover focus:text-theme-text">{t('settings_view.appearance.frosted_glass_off')}</SelectItem>
+                                                <SelectItem value="css" className="text-theme-text focus:bg-theme-bg-hover focus:text-theme-text">{t('settings_view.appearance.frosted_glass_css')}</SelectItem>
+                                                <SelectItem value="native" className="text-theme-text focus:bg-theme-bg-hover focus:text-theme-text">
+                                                    <div className="flex flex-col">
+                                                        <span>{t('settings_view.appearance.frosted_glass_native')}</span>
+                                                        <span className="text-xs text-theme-text-muted">{t('settings_view.appearance.frosted_glass_native_hint')}</span>
+                                                    </div>
+                                                </SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
                             </div>
 
                             {/* Background Image Section */}
@@ -1997,7 +2194,7 @@ export const SettingsView = () => {
                     {activeTab === 'ide' && (
                         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
                             <div>
-                                <h3 className="text-2xl font-medium text-theme-text mb-2">{t('settings_view.ide.title', 'IDE Mode')}</h3>
+                                <h3 className="text-2xl font-medium text-theme-text mb-2">{t('settings_view.ide.title', 'IDE Mode (Mini)')}</h3>
                                 <p className="text-theme-text-muted">{t('settings_view.ide.description', 'Configure the built-in code editor behavior.')}</p>
                             </div>
                             <Separator />

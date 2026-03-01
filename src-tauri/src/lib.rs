@@ -689,6 +689,8 @@ pub fn run() {
         terminal_bg::delete_terminal_background,
         terminal_bg::clear_terminal_background,
         terminal_bg::init_terminal_background,
+        // Appearance commands
+        commands::set_window_vibrancy,
     ]);
     #[cfg(not(feature = "local-terminal"))]
     let builder = builder.invoke_handler(tauri::generate_handler![
@@ -949,6 +951,8 @@ pub fn run() {
         terminal_bg::delete_terminal_background,
         terminal_bg::clear_terminal_background,
         terminal_bg::init_terminal_background,
+        // Appearance commands
+        commands::set_window_vibrancy,
     ]);
 
     builder

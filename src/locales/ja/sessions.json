@@ -29,7 +29,7 @@
       "reconnect": "再接続",
       "new_terminal": "新規ターミナル",
       "sftp_explorer": "SFTPエクスプローラー",
-      "ide_mode": "IDEモード",
+      "ide_mode": "IDE モード (Mini)",
       "open_sftp": "SFTPを開く",
       "port_forwards": "ポート転送",
       "port_forwarding": "ポートフォワーディング",

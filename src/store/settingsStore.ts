@@ -113,9 +113,23 @@ export interface BufferSettings {
   saveOnDisconnect: boolean; // Save buffer on disconnect
 }
 
+/** UI density control */
+export type UiDensity = 'compact' | 'comfortable' | 'spacious';
+
+/** Animation speed control */
+export type AnimationSpeed = 'off' | 'reduced' | 'normal' | 'fast';
+
+/** Frosted glass mode */
+export type FrostedGlassMode = 'off' | 'css' | 'native';
+
 /** Appearance settings */
 export interface AppearanceSettings {
   sidebarCollapsedDefault: boolean;
+  uiDensity: UiDensity;              // UI spacing density
+  borderRadius: number;               // Global border-radius base (0-16 px)
+  uiFontFamily: string;               // Custom UI font family (empty = system default)
+  animationSpeed: AnimationSpeed;     // Animation speed multiplier
+  frostedGlass: FrostedGlassMode;     // Frosted glass effect mode
 }
 
 /** Connection defaults */
@@ -283,6 +297,11 @@ const defaultBufferSettings: BufferSettings = {
 
 const defaultAppearanceSettings: AppearanceSettings = {
   sidebarCollapsedDefault: false,
+  uiDensity: 'comfortable',
+  borderRadius: 6,
+  uiFontFamily: '',
+  animationSpeed: 'normal',
+  frostedGlass: 'off',
 };
 
 const defaultConnectionDefaults: ConnectionDefaults = {
@@ -1135,6 +1154,54 @@ useSettingsStore.subscribe(
   }
 );
 
+// Subscribe to appearance settings changes - apply CSS variables & data attributes
+useSettingsStore.subscribe(
+  (state) => state.settings.appearance,
+  (appearance) => {
+    applyAppearanceToDOM(appearance);
+  }
+);
+
+/** Apply all appearance settings to the DOM (used by subscriber + init) */
+function applyAppearanceToDOM(appearance: AppearanceSettings): void {
+  const root = document.documentElement;
+
+  // UI Density
+  root.setAttribute('data-density', appearance.uiDensity);
+
+  // Border Radius
+  const r = appearance.borderRadius;
+  root.style.setProperty('--ui-radius', `${r}px`);
+  root.style.setProperty('--radius-sm', `max(1px, ${Math.round(r * 0.33)}px)`);
+  root.style.setProperty('--radius-md', `${r}px`);
+  root.style.setProperty('--radius-lg', `${Math.round(r * 1.33)}px`);
+
+  // UI Font
+  if (appearance.uiFontFamily) {
+    root.style.setProperty('--font-sans', `"${appearance.uiFontFamily}", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`);
+  } else {
+    root.style.removeProperty('--font-sans');
+  }
+
+  // Animation Speed
+  root.setAttribute('data-animation', appearance.animationSpeed);
+  const speedMap: Record<AnimationSpeed, string> = { off: '0', reduced: '2', normal: '1', fast: '0.5' };
+  root.style.setProperty('--animation-speed', speedMap[appearance.animationSpeed] || '1');
+
+  // Frosted Glass
+  root.setAttribute('data-frosted', appearance.frostedGlass);
+
+  // Native vibrancy — call Tauri backend to apply/remove window vibrancy
+  import('@tauri-apps/api/core').then(({ invoke }) => {
+    invoke('set_window_vibrancy', { mode: appearance.frostedGlass }).catch((e: unknown) => {
+      // Silently ignore on unsupported platforms
+      if (appearance.frostedGlass === 'native') {
+        console.warn('[Appearance] Failed to set native vibrancy:', e);
+      }
+    });
+  });
+}
+
 // ============================================================================
 // Initialization
 // ============================================================================
@@ -1162,6 +1229,9 @@ export function initializeSettings(): void {
     ? customFontFamily
     : getFontFamilyCSS(fontFamily);
   document.documentElement.style.setProperty('--terminal-font-family', fontCSS);
+
+  // Apply appearance settings (density, radius, font, animation, frosted glass)
+  applyAppearanceToDOM(settings.appearance);
 
   // Initialize previousRenderer for Toast tracking
   previousRenderer = settings.terminal.renderer;

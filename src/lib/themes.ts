@@ -97,6 +97,55 @@ export function isCustomTheme(id: string): boolean {
 }
 
 // ============================================================================
+// Theme Import / Export
+// ============================================================================
+
+/** Exported theme file format */
+type ExportedTheme = {
+  version: 1;
+  name: string;
+  terminalColors: ITheme;
+  uiColors: AppUiColors;
+};
+
+/** Export a custom theme as a JSON string */
+export function exportTheme(themeId: string): string | null {
+  const theme = customThemesRegistry[themeId];
+  if (!theme) return null;
+  const exported: ExportedTheme = {
+    version: 1,
+    name: theme.name,
+    terminalColors: theme.terminalColors,
+    uiColors: theme.uiColors,
+  };
+  return JSON.stringify(exported, null, 2);
+}
+
+/** Import a theme from a JSON string. Returns the new theme id, or throws on invalid input. */
+export function importTheme(jsonString: string): { id: string; theme: CustomTheme } {
+  const parsed = JSON.parse(jsonString);
+
+  // Validate required fields
+  if (!parsed || typeof parsed !== 'object') throw new Error('Invalid theme file');
+  if (!parsed.name || typeof parsed.name !== 'string') throw new Error('Missing theme name');
+  if (!parsed.terminalColors || typeof parsed.terminalColors !== 'object') throw new Error('Missing terminalColors');
+  if (!parsed.uiColors || typeof parsed.uiColors !== 'object') throw new Error('Missing uiColors');
+
+  const theme: CustomTheme = {
+    name: parsed.name,
+    terminalColors: parsed.terminalColors as ITheme,
+    uiColors: parsed.uiColors as AppUiColors,
+  };
+
+  // Generate unique id
+  const slug = parsed.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  const id = `custom:${slug}-${Date.now()}`;
+
+  saveCustomTheme(id, theme);
+  return { id, theme };
+}
+
+// ============================================================================
 // Unified Theme Resolution
 // ============================================================================
 

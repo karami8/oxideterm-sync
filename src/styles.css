@@ -131,13 +131,16 @@
   --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-mono: "JetBrains Mono", "SF Mono", "Fira Code", monospace;
 
-  /* Spacing - High Density overrides if needed, or just use standard tight scales */
+  /* Spacing — Tailwind v4 base multiplier (all p-*, m-*, gap-* scale from this) */
+  /* Overridden by [data-density] selectors for compact / spacious modes */
 
-  /* Borders */
-  --radius-sm: 2px;
-  --radius-md: 0px;
-  /* Force sharp corners generally */
-  --radius-lg: 0px;
+  /* Borders — dynamically driven by --ui-radius CSS property (set via JS) */
+  --radius-sm: max(1px, calc(var(--ui-radius, 6px) * 0.33));
+  --radius-md: var(--ui-radius, 6px);
+  --radius-lg: calc(var(--ui-radius, 6px) * 1.33);
+
+  /* Animation speed multiplier (1 = normal, 0 = off) */
+  --animation-speed: 1;
 }
 
 /* Reset & Base Styles */
@@ -651,6 +654,12 @@ body {
   overflow: hidden;
   /* App-like feel */
   height: 100%;
+}
+
+/* When native vibrancy is active, make the body semi-transparent
+   so the OS vibrancy effect shows through */
+[data-frosted="native"] body {
+  background-color: color-mix(in srgb, var(--background) 80%, transparent);
 }
 
 html {
@@ -1173,4 +1182,72 @@ html {
   text-shadow:
     0 0 40px color-mix(in srgb, var(--theme-accent) 25%, transparent),
     0 0 80px color-mix(in srgb, var(--theme-accent) 10%, transparent);
+}
+
+/* ============================================================================
+   UI Density System
+   ============================================================================ */
+
+[data-density="compact"] {
+  --spacing: 0.2rem;    /* 80% of default 0.25rem — tighter spacing everywhere */
+  --text-xs: 0.6875rem;
+  --text-xs--line-height: 0.875rem;
+  --text-sm: 0.8125rem;
+  --text-sm--line-height: 1.125rem;
+}
+
+/* comfortable = Tailwind default (--spacing: 0.25rem) — no overrides needed */
+
+[data-density="spacious"] {
+  --spacing: 0.3125rem; /* 125% of default 0.25rem — more breathing room */
+  --text-xs: 0.8125rem;
+  --text-xs--line-height: 1.125rem;
+  --text-sm: 0.9375rem;
+  --text-sm--line-height: 1.375rem;
+}
+
+/* ============================================================================
+   Animation Speed Control
+   ============================================================================ */
+
+[data-animation="off"],
+[data-animation="off"] * {
+  animation-duration: 0s !important;
+  transition-duration: 0s !important;
+}
+
+[data-animation="reduced"] {
+  --animation-speed: 2;
+}
+
+/* normal = default (--animation-speed: 1) */
+
+[data-animation="fast"] {
+  --animation-speed: 0.5;
+}
+
+/* ============================================================================
+   Frosted Glass (CSS Mode)
+   ============================================================================ */
+
+[data-frosted="css"] aside,
+[data-frosted="css"] .frosted-panel {
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+}
+
+[data-frosted="css"] .bg-theme-bg-panel\/50 {
+  background-color: color-mix(in srgb, var(--theme-bg-panel) 65%, transparent);
+  backdrop-filter: blur(8px) saturate(160%);
+  -webkit-backdrop-filter: blur(8px) saturate(160%);
+}
+
+[data-frosted="native"] aside,
+[data-frosted="native"] .frosted-panel {
+  backdrop-filter: blur(4px) saturate(120%);
+  -webkit-backdrop-filter: blur(4px) saturate(120%);
+}
+
+[data-frosted="native"] .bg-theme-bg-panel\/50 {
+  background-color: color-mix(in srgb, var(--theme-bg-panel) 50%, transparent);
 }

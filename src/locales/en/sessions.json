@@ -29,7 +29,7 @@
       "reconnect": "Reconnect",
       "new_terminal": "New Terminal",
       "sftp_explorer": "SFTP Explorer",
-      "ide_mode": "IDE Mode",
+      "ide_mode": "IDE Mode (Mini)",
       "open_sftp": "Open SFTP",
       "port_forwards": "Port Forwards",
       "port_forwarding": "Port Forwarding",
