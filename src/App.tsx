@@ -26,6 +26,7 @@ import { KeyboardShortcutsModal } from './components/modals/KeyboardShortcutsMod
 import { TooltipProvider } from './components/ui/tooltip';
 import { useFontSizeHUD } from './components/ui/FontSizeHUD';
 import { useRecordingStore } from './store/recordingStore';
+import { useCommandPaletteStore } from './store/commandPaletteStore';
 
 function App() {
   // Initialize global event listeners
@@ -43,8 +44,9 @@ function App() {
   const { createTerminal, loadShells, shellsLoaded } = useLocalTerminalStore();
   const createTab = useAppStore(s => s.createTab);
   
-  // Command palette state
-  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  // Command palette state (lifted to store so other components can trigger it)
+  const commandPaletteOpen = useCommandPaletteStore((s) => s.open);
+  const setCommandPaletteOpen = useCommandPaletteStore((s) => s.setOpen);
 
   // Keyboard shortcuts modal state
   const [shortcutsModalOpen, setShortcutsModalOpen] = useState(false);

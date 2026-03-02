@@ -137,6 +137,8 @@
     "cmd_new_connection": "Kết nối SSH mới",
     "cmd_settings": "Mở cài đặt",
     "cmd_toggle_sidebar": "Chuyển đổi thanh bên",
+    "cmd_toggle_panel": "Bật/tắt bảng điều khiển",
+    "cmd_toggle_ai_sidebar": "Bật/tắt thanh bên AI",
     "cmd_zen_mode": "Chuyển đổi chế độ Zen",
     "cmd_close_tab": "Đóng tab hiện tại",
     "cmd_split_horizontal": "Chia ngang",

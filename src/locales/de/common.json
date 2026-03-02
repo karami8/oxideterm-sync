@@ -137,6 +137,8 @@
     "cmd_new_connection": "Neue SSH-Verbindung",
     "cmd_settings": "Einstellungen öffnen",
     "cmd_toggle_sidebar": "Seitenleiste umschalten",
+    "cmd_toggle_panel": "Panel umschalten",
+    "cmd_toggle_ai_sidebar": "AI-Seitenleiste umschalten",
     "cmd_zen_mode": "Zen-Modus umschalten",
     "cmd_close_tab": "Aktuellen Tab schließen",
     "cmd_split_horizontal": "Horizontal teilen",
@@ -187,5 +189,6 @@
     "no_results": "Keine passenden Tastaturkürzel",
     "footer_hint": "Esc zum Schließen drücken",
     "shortcut_count": "Tastaturkürzel"
+
   }
 }

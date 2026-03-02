@@ -137,6 +137,8 @@
     "cmd_new_connection": "新建 SSH 连接",
     "cmd_settings": "打开设置",
     "cmd_toggle_sidebar": "切换侧边栏",
+    "cmd_toggle_panel": "切换面板",
+    "cmd_toggle_ai_sidebar": "切换 AI 侧边栏",
     "cmd_zen_mode": "切换 Zen 模式",
     "cmd_close_tab": "关闭当前标签页",
     "cmd_split_horizontal": "水平分屏",

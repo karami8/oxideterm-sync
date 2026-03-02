@@ -47,6 +47,7 @@ import { useSettingsStore } from '@/store/settingsStore';
 import { useBroadcastStore } from '@/store/broadcastStore';
 import { useLocalTerminalStore } from '@/store/localTerminalStore';
 import { usePluginStore } from '@/store/pluginStore';
+import { useEventLogStore } from '@/store/eventLogStore';
 import { connectToSaved } from '@/lib/connectToSaved';
 import { useToast } from '@/hooks/useToast';
 import type { ConnectionInfo } from '@/types';
@@ -95,6 +96,8 @@ const SHORTCUT_MAP: Record<string, { mac: string; other: string }> = {
   'cmd:settings': { mac: '⌘,', other: 'Ctrl+,' },
   'cmd:toggle_sidebar': { mac: '⌘\\', other: 'Ctrl+\\' },
   'cmd:zen_mode': { mac: '⌘⇧Z', other: 'Ctrl+Shift+Z' },
+  'cmd:toggle_panel': { mac: '⌘J', other: 'Ctrl+J' },
+  'cmd:toggle_ai_sidebar': { mac: '⌘⇧A', other: 'Ctrl+Shift+A' },
   'cmd:close_tab': { mac: '⌘W', other: 'Ctrl+W' },
   'cmd:split_horizontal': { mac: '⌘⇧E', other: 'Ctrl+Shift+E' },
   'cmd:split_vertical': { mac: '⌘⇧D', other: 'Ctrl+Shift+D' },
@@ -221,6 +224,24 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ open, onOpenChan
         icon: <Maximize2 className="h-4 w-4" />,
         shortcut: SHORTCUT_MAP['cmd:zen_mode'],
         action: () => useSettingsStore.getState().toggleZenMode(),
+      },
+      {
+        id: 'cmd:toggle_panel',
+        label: t('command_palette.cmd_toggle_panel'),
+        section: 'commands',
+        icon: <Rows className="h-4 w-4" />,
+        shortcut: SHORTCUT_MAP['cmd:toggle_panel'],
+        action: () => {
+          useEventLogStore.getState().togglePanel();
+        },
+      },
+      {
+        id: 'cmd:toggle_ai_sidebar',
+        label: t('command_palette.cmd_toggle_ai_sidebar'),
+        section: 'commands',
+        icon: <PanelLeft className="h-4 w-4" />,
+        shortcut: SHORTCUT_MAP['cmd:toggle_ai_sidebar'],
+        action: () => useSettingsStore.getState().toggleAiSidebar(),
       },
       {
         id: 'cmd:close_tab',
@@ -432,7 +453,8 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ open, onOpenChan
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-w-[560px] p-0 gap-0 top-[20%] translate-y-0 overflow-hidden"
+        className="max-w-[560px] p-0 gap-0 top-[15%] translate-y-0 overflow-hidden rounded-lg shadow-2xl"
+        overlayClassName="bg-black/40"
         onOpenAutoFocus={(e) => e.preventDefault()}
         aria-describedby={undefined}
       >

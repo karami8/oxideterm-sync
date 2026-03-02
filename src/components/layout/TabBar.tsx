@@ -662,7 +662,10 @@ export const TabBar = () => {
 
   return (
     // 最外层（限制层）：w-full + overflow-hidden 限制总宽度
-    <div className="w-full h-9 overflow-hidden bg-theme-bg border-b border-theme-border flex items-center">
+    <div
+      className="w-full h-9 overflow-hidden bg-theme-bg border-b border-theme-border flex items-center"
+    >
+
       {/* Network status indicator - 固定不滚动 */}
       {!networkOnline && (
         <div className="flex-shrink-0 flex items-center gap-1.5 px-3 h-full border-r border-theme-border bg-amber-900/30 text-amber-400 text-xs">

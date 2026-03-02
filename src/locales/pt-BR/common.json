@@ -137,6 +137,8 @@
     "cmd_new_connection": "Nova conexão SSH",
     "cmd_settings": "Abrir configurações",
     "cmd_toggle_sidebar": "Alternar barra lateral",
+    "cmd_toggle_panel": "Alternar painel",
+    "cmd_toggle_ai_sidebar": "Alternar barra lateral IA",
     "cmd_zen_mode": "Alternar modo Zen",
     "cmd_close_tab": "Fechar aba atual",
     "cmd_split_horizontal": "Dividir horizontalmente",

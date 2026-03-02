@@ -219,11 +219,12 @@ export const AppLayout = () => {
   }, [flushEventLogPanelSize]);
 
   return (
-    <div className="flex h-full w-full bg-theme-bg text-oxide-text overflow-hidden">
+    <div className="flex flex-col h-screen w-screen bg-theme-bg text-oxide-text overflow-hidden">
       {/* Modals */}
       <NewConnectionModal />
-      {/* SettingsModal removed - now a Tab View */}
 
+      {/* Main horizontal layout */}
+      <div className="flex flex-1 min-h-0 overflow-hidden">
       {/* Sidebar — hidden in zen mode */}
       {!zenMode && <Sidebar />}
 
@@ -408,6 +409,7 @@ export const AppLayout = () => {
 
       {/* AI Sidebar - Right side (hidden in zen mode) */}
       {!zenMode && <AiSidebar />}
+      </div>
 
       {/* Zen mode hint overlay */}
       {showZenHint && (

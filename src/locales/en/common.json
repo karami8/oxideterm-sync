@@ -138,6 +138,8 @@
     "cmd_settings": "Open Settings",
     "cmd_toggle_sidebar": "Toggle Sidebar",
     "cmd_zen_mode": "Toggle Zen Mode",
+    "cmd_toggle_panel": "Toggle Panel",
+    "cmd_toggle_ai_sidebar": "Toggle AI Sidebar",
     "cmd_close_tab": "Close Current Tab",
     "cmd_split_horizontal": "Split Pane Horizontally",
     "cmd_split_vertical": "Split Pane Vertically",

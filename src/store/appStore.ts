@@ -99,12 +99,23 @@ interface AppStore {
   prevTab: () => void;
   goToTab: (index: number) => void;
   moveTab: (fromIndex: number, toIndex: number) => void;
+
+  // Actions - Tab Navigation History
+  /** Tab navigation history stack */
+  tabHistory: string[];
+  /** Current position in navigation history (-1 = no history) */
+  tabHistoryCursor: number;
+  /** Whether a tab switch is currently triggered by back/forward navigation */
+  _isNavigating: boolean;
+  navigateBack: () => void;
+  navigateForward: () => void;
   
   // Actions - Split Panes
   splitPane: (tabId: string, direction: SplitDirection, newSessionId: string, newTerminalType: PaneTerminalType) => void;
   closePane: (tabId: string, paneId: string) => void;
   setActivePaneId: (tabId: string, paneId: string) => void;
   getPaneCount: (tabId: string) => number;
+  resetToSinglePane: (tabId: string) => void;
   
   /**
    * Replace old sessionId with new sessionId across ALL pane trees.
@@ -166,6 +177,9 @@ export const useAppStore = create<AppStore>((set, get) => ({
   connections: new Map(), // 新增：连接池状态
   tabs: persistedState.tabs,
   activeTabId: persistedState.activeTabId,
+  tabHistory: [],
+  tabHistoryCursor: -1,
+  _isNavigating: false,
   // Sidebar state is now delegated to settingsStore
   // These getters provide backwards compatibility for components that read from appStore
   get sidebarCollapsed() {
@@ -789,7 +803,22 @@ export const useAppStore = create<AppStore>((set, get) => ({
   },
 
   setActiveTab: (tabId) => {
-    set({ activeTabId: tabId });
+    const state = get();
+    // Push to navigation history unless we're navigating via back/forward
+    if (!state._isNavigating && tabId !== state.activeTabId) {
+      // Truncate any forward history beyond cursor
+      const newHistory = state.tabHistory.slice(0, state.tabHistoryCursor + 1);
+      // Don't push duplicate consecutive entries
+      if (newHistory[newHistory.length - 1] !== state.activeTabId && state.activeTabId) {
+        newHistory.push(state.activeTabId);
+      }
+      newHistory.push(tabId);
+      // Cap history size at 50
+      if (newHistory.length > 50) newHistory.splice(0, newHistory.length - 50);
+      set({ activeTabId: tabId, tabHistory: newHistory, tabHistoryCursor: newHistory.length - 1 });
+    } else {
+      set({ activeTabId: tabId });
+    }
   },
 
   nextTab: () => {
@@ -797,7 +826,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
     if (tabs.length === 0) return;
     const currentIndex = tabs.findIndex(t => t.id === activeTabId);
     const nextIndex = (currentIndex + 1) % tabs.length;
-    set({ activeTabId: tabs[nextIndex].id });
+    get().setActiveTab(tabs[nextIndex].id);
   },
 
   prevTab: () => {
@@ -805,13 +834,45 @@ export const useAppStore = create<AppStore>((set, get) => ({
     if (tabs.length === 0) return;
     const currentIndex = tabs.findIndex(t => t.id === activeTabId);
     const prevIndex = (currentIndex - 1 + tabs.length) % tabs.length;
-    set({ activeTabId: tabs[prevIndex].id });
+    get().setActiveTab(tabs[prevIndex].id);
   },
 
   goToTab: (index: number) => {
     const { tabs } = get();
     if (index >= 0 && index < tabs.length) {
-      set({ activeTabId: tabs[index].id });
+      get().setActiveTab(tabs[index].id);
+    }
+  },
+
+  navigateBack: () => {
+    const { tabHistory, tabHistoryCursor, tabs } = get();
+    if (tabHistoryCursor <= 0) return;
+    // Find the previous valid entry (tab might have been closed)
+    let newCursor = tabHistoryCursor - 1;
+    while (newCursor >= 0) {
+      const targetTabId = tabHistory[newCursor];
+      if (tabs.find(t => t.id === targetTabId)) {
+        set({ _isNavigating: true, tabHistoryCursor: newCursor, activeTabId: targetTabId });
+        set({ _isNavigating: false });
+        return;
+      }
+      newCursor--;
+    }
+  },
+
+  navigateForward: () => {
+    const { tabHistory, tabHistoryCursor, tabs } = get();
+    if (tabHistoryCursor >= tabHistory.length - 1) return;
+    // Find the next valid entry
+    let newCursor = tabHistoryCursor + 1;
+    while (newCursor < tabHistory.length) {
+      const targetTabId = tabHistory[newCursor];
+      if (tabs.find(t => t.id === targetTabId)) {
+        set({ _isNavigating: true, tabHistoryCursor: newCursor, activeTabId: targetTabId });
+        set({ _isNavigating: false });
+        return;
+      }
+      newCursor++;
     }
   },
 
@@ -828,6 +889,68 @@ export const useAppStore = create<AppStore>((set, get) => ({
   // ═══════════════════════════════════════════════════════════════════════════
   // Split Pane Actions
   // ═══════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Reset tab to single-pane mode, keeping only the active pane.
+   * Closes all other pane sessions.
+   */
+  resetToSinglePane: (tabId) => {
+    const tab = get().tabs.find(t => t.id === tabId);
+    if (!tab || !tab.rootPane) return;  // already single pane
+
+    // Find the active pane leaf
+    const activeLeaf = tab.activePaneId
+      ? findPaneById(tab.rootPane, tab.activePaneId)
+      : findFirstLeaf(tab.rootPane);
+    if (!activeLeaf) return;
+
+    // Collect all other pane sessions to close
+    const allSessions = collectAllPaneSessions(tab.rootPane);
+    const keepSessionId = activeLeaf.sessionId;
+
+    // Close other sessions asynchronously
+    (async () => {
+      for (const id of allSessions.localTerminalIds) {
+        if (id === keepSessionId) continue;
+        try {
+          const { useLocalTerminalStore } = await import('./localTerminalStore');
+          await useLocalTerminalStore.getState().closeTerminal(id);
+        } catch (e) {
+          console.warn(`[resetToSinglePane] Failed to close local terminal ${id}:`, e);
+        }
+      }
+      for (const id of allSessions.sshTerminalIds) {
+        if (id === keepSessionId) continue;
+        try {
+          const { useSessionTreeStore } = await import('./sessionTreeStore');
+          useSessionTreeStore.getState().purgeTerminalMapping(id);
+          useAppStore.setState((s) => {
+            const newSessions = new Map(s.sessions);
+            newSessions.delete(id);
+            return { sessions: newSessions };
+          });
+          await api.closeTerminal(id);
+        } catch (e) {
+          console.warn(`[resetToSinglePane] Failed to close SSH terminal ${id}:`, e);
+        }
+      }
+    })();
+
+    // Immediately update the tab to single-pane mode
+    set((state) => {
+      const idx = state.tabs.findIndex(t => t.id === tabId);
+      if (idx === -1) return state;
+      const newTabs = [...state.tabs];
+      newTabs[idx] = {
+        ...state.tabs[idx],
+        rootPane: undefined,
+        activePaneId: activeLeaf.id,
+        sessionId: activeLeaf.sessionId,
+        type: activeLeaf.terminalType,
+      };
+      return { tabs: newTabs };
+    });
+  },
 
   /**
    * Count total panes in a layout tree
