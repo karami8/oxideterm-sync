@@ -157,7 +157,9 @@
         "list_saved_connections": "Kết nối đã lưu",
         "search_saved_connections": "Tìm kết nối",
         "get_session_tree": "Cây phiên",
-        "list_plugins": "Danh sách plugin"
+        "list_plugins": "Danh sách plugin",
+        "send_control_sequence": "Gửi tín hiệu điều khiển",
+        "batch_exec": "Thực thi hàng loạt"
       }
     },
     "tool_selector": {

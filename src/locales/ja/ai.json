@@ -157,7 +157,9 @@
         "list_saved_connections": "保存済み接続",
         "search_saved_connections": "接続検索",
         "get_session_tree": "セッションツリー",
-        "list_plugins": "プラグイン一覧"
+        "list_plugins": "プラグイン一覧",
+        "send_control_sequence": "制御信号送信",
+        "batch_exec": "一括実行"
       }
     },
     "tool_selector": {

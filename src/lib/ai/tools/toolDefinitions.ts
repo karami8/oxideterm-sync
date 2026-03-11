@@ -396,6 +396,47 @@ export const BUILTIN_TOOLS: AiToolDefinition[] = [
       required: ['node_id', 'forward_id'],
     },
   },
+  // ── Meta Tools ──────────────────────────────────────────────────────────
+  {
+    name: 'send_control_sequence',
+    description:
+      'Send a control sequence (signal) to an open terminal session. Use ctrl-c to cancel a running command, ctrl-d to send EOF, ctrl-z to suspend, ctrl-l to clear screen.',
+    parameters: {
+      type: 'object',
+      properties: {
+        session_id: {
+          type: 'string',
+          description: 'Target terminal session ID.',
+        },
+        sequence: {
+          type: 'string',
+          enum: ['ctrl-c', 'ctrl-d', 'ctrl-z', 'ctrl-l', 'ctrl-\\'],
+          description: 'The control sequence to send.',
+        },
+      },
+      required: ['session_id', 'sequence'],
+    },
+  },
+  {
+    name: 'batch_exec',
+    description:
+      'Execute multiple commands sequentially in a terminal session, returning individual output for each command. More efficient than calling terminal_exec multiple times. Commands run in order; failures do not stop subsequent commands.',
+    parameters: {
+      type: 'object',
+      properties: {
+        session_id: {
+          type: 'string',
+          description: 'Target terminal session ID.',
+        },
+        commands: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Array of shell commands to execute sequentially. Max 10.',
+        },
+      },
+      required: ['session_id', 'commands'],
+    },
+  },
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -754,6 +795,9 @@ export const WRITE_TOOLS = new Set([
   'update_setting',
   // Connection pool (write)
   'set_pool_config',
+  // Meta tools (write)
+  'send_control_sequence',
+  'batch_exec',
 ]);
 
 /** Tools that do NOT require any node context — work globally or read from local stores */
@@ -794,6 +838,8 @@ export const SESSION_ID_TOOLS = new Set([
   'get_terminal_buffer',
   'search_terminal',
   'await_terminal_output',
+  'send_control_sequence',
+  'batch_exec',
 ]);
 
 /** Tools that only make sense for SSH connections (remote nodes) */
@@ -874,7 +920,7 @@ export const TOOL_GROUPS: { groupKey: string; readOnly: string[]; write: string[
   {
     groupKey: 'session',
     readOnly: ['list_tabs', 'list_sessions', 'get_terminal_buffer', 'search_terminal', 'await_terminal_output'],
-    write: [],
+    write: ['send_control_sequence', 'batch_exec'],
   },
   {
     groupKey: 'infrastructure',

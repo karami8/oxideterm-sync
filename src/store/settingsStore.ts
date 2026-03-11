@@ -424,6 +424,9 @@ const defaultAiSettings: AiSettings = {
       update_setting: false,
       // Connection pool (write)
       set_pool_config: false,
+      // Meta tools
+      send_control_sequence: false,
+      batch_exec: false,
     },
     disabledTools: [],
   },

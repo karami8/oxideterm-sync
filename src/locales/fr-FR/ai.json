@@ -157,7 +157,9 @@
         "list_saved_connections": "Connexions sauvées",
         "search_saved_connections": "Rechercher conn.",
         "get_session_tree": "Arbre sessions",
-        "list_plugins": "Liste plugins"
+        "list_plugins": "Lister les plugins",
+        "send_control_sequence": "Envoyer un signal",
+        "batch_exec": "Exécution par lot"
       }
     },
     "tool_selector": {

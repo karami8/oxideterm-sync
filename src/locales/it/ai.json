@@ -157,7 +157,9 @@
         "list_saved_connections": "Connessioni salvate",
         "search_saved_connections": "Cerca connessioni",
         "get_session_tree": "Albero sessioni",
-        "list_plugins": "Elenco plugin"
+        "list_plugins": "Elenco plugin",
+        "send_control_sequence": "Invia segnale di controllo",
+        "batch_exec": "Esecuzione batch"
       }
     },
     "tool_selector": {

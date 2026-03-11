@@ -168,6 +168,10 @@ export async function executeTool(
           return await execSearchTerminal(args, startTime, toolCallId);
         case 'await_terminal_output':
           return await execAwaitTerminalOutput(args, startTime, toolCallId);
+        case 'send_control_sequence':
+          return await execSendControlSequence(args, startTime, toolCallId);
+        case 'batch_exec':
+          return await execBatchExec(args, startTime, toolCallId);
         default:
           return { toolCallId, toolName, success: false, output: '', error: `Unknown session tool: ${toolName}`, durationMs: Date.now() - startTime };
       }
@@ -976,6 +980,145 @@ async function readBufferLines(sessionId: string): Promise<string[] | null> {
     if (buffer) return buffer.split('\n');
   }
   return null;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Meta Tool Executors (error recovery, batch operations)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Map control sequence names to actual bytes */
+const CONTROL_SEQUENCES: Record<string, string> = {
+  'ctrl-c': '\x03',
+  'ctrl-d': '\x04',
+  'ctrl-z': '\x1a',
+  'ctrl-l': '\x0c',
+  'ctrl-\\': '\x1c',
+};
+
+const CONTROL_LABELS: Record<string, string> = {
+  'ctrl-c': 'SIGINT (cancel)',
+  'ctrl-d': 'EOF',
+  'ctrl-z': 'SIGTSTP (suspend)',
+  'ctrl-l': 'Clear screen',
+  'ctrl-\\': 'SIGQUIT',
+};
+
+async function execSendControlSequence(
+  args: Record<string, unknown>,
+  startTime: number,
+  toolCallId: string,
+): Promise<AiToolResult> {
+  const toolName = 'send_control_sequence';
+  const sessionId = args.session_id as string;
+  const rawSequence = typeof args.sequence === 'string' ? args.sequence.toLowerCase() : '';
+
+  if (!sessionId) {
+    return { toolCallId, toolName, success: false, output: '', error: 'Missing required argument: session_id.', durationMs: Date.now() - startTime };
+  }
+  if (!rawSequence || !CONTROL_SEQUENCES[rawSequence]) {
+    return { toolCallId, toolName, success: false, output: '', error: `Invalid sequence. Must be one of: ${Object.keys(CONTROL_SEQUENCES).join(', ')}`, durationMs: Date.now() - startTime };
+  }
+
+  const paneId = findPaneBySessionId(sessionId);
+  if (!paneId) {
+    return { toolCallId, toolName, success: false, output: '', error: `Open terminal session not found: ${sessionId}`, durationMs: Date.now() - startTime };
+  }
+
+  const sent = writeToTerminal(paneId, CONTROL_SEQUENCES[rawSequence]);
+  if (!sent) {
+    return { toolCallId, toolName, success: false, output: '', error: `Terminal session is not writable: ${sessionId}`, durationMs: Date.now() - startTime };
+  }
+
+  // Wait briefly for terminal response
+  const waitResult = await waitForTerminalOutput(sessionId, 3, 1, null, startTime);
+
+  const label = CONTROL_LABELS[rawSequence] || rawSequence;
+  const output = waitResult.output
+    ? `Sent ${label} to session ${sessionId}.\n\nTerminal response:\n${waitResult.output}`
+    : `Sent ${label} to session ${sessionId}. No immediate terminal response.`;
+
+  return {
+    toolCallId,
+    toolName,
+    success: true,
+    output,
+    truncated: waitResult.truncated,
+    durationMs: Date.now() - startTime,
+  };
+}
+
+const MAX_BATCH_COMMANDS = 10;
+
+async function execBatchExec(
+  args: Record<string, unknown>,
+  startTime: number,
+  toolCallId: string,
+): Promise<AiToolResult> {
+  const toolName = 'batch_exec';
+  const sessionId = args.session_id as string;
+  const commands = args.commands as string[] | undefined;
+
+  if (!sessionId) {
+    return { toolCallId, toolName, success: false, output: '', error: 'Missing required argument: session_id.', durationMs: Date.now() - startTime };
+  }
+  if (!Array.isArray(commands) || commands.length === 0) {
+    return { toolCallId, toolName, success: false, output: '', error: 'Missing required argument: commands (non-empty array).', durationMs: Date.now() - startTime };
+  }
+  if (commands.length > MAX_BATCH_COMMANDS) {
+    return { toolCallId, toolName, success: false, output: '', error: `Too many commands (max ${MAX_BATCH_COMMANDS}).`, durationMs: Date.now() - startTime };
+  }
+
+  const paneId = findPaneBySessionId(sessionId);
+  if (!paneId) {
+    return { toolCallId, toolName, success: false, output: '', error: `Open terminal session not found: ${sessionId}`, durationMs: Date.now() - startTime };
+  }
+
+  const results: string[] = [];
+
+  for (let i = 0; i < commands.length; i++) {
+    const cmd = typeof commands[i] === 'string' ? commands[i].trim() : '';
+    if (!cmd) {
+      results.push(`[${i + 1}] (empty command — skipped)`);
+      continue;
+    }
+
+    if (isCommandDenied(cmd)) {
+      results.push(`[${i + 1}] $ ${cmd}\n⛔ Command rejected: matches deny-list pattern.`);
+      continue;
+    }
+
+    const sent = writeToTerminal(paneId, `${cmd}\r`);
+    if (!sent) {
+      results.push(`[${i + 1}] $ ${cmd}\n❌ Terminal is not writable.`);
+      break;
+    }
+
+    const waitResult = await waitForTerminalOutput(
+      sessionId,
+      AUTO_AWAIT_TIMEOUT_SECS,
+      AUTO_AWAIT_STABLE_SECS,
+      null,
+      Date.now(),
+    );
+
+    if (!waitResult.success) {
+      results.push(`[${i + 1}] $ ${cmd}\n❌ ${waitResult.error || 'Failed to read output.'}`);
+    } else {
+      results.push(`[${i + 1}] $ ${cmd}\n${waitResult.output}`);
+    }
+  }
+
+  const combinedOutput = results.join('\n\n');
+  const { text, truncated } = truncateOutput(combinedOutput);
+
+  return {
+    toolCallId,
+    toolName,
+    success: true,
+    output: text,
+    truncated,
+    durationMs: Date.now() - startTime,
+  };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

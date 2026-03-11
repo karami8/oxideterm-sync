@@ -157,7 +157,9 @@
         "list_saved_connections": "Saved Connections",
         "search_saved_connections": "Search Connections",
         "get_session_tree": "Session Tree",
-        "list_plugins": "List Plugins"
+        "list_plugins": "List Plugins",
+        "send_control_sequence": "Send Signal",
+        "batch_exec": "Batch Execute"
       }
     },
     "tool_selector": {

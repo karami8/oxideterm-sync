@@ -157,7 +157,9 @@
         "list_saved_connections": "已儲存連線",
         "search_saved_connections": "搜尋連線",
         "get_session_tree": "工作階段樹",
-        "list_plugins": "列出外掛"
+        "list_plugins": "列出外掛",
+        "send_control_sequence": "傳送控制信號",
+        "batch_exec": "批次執行"
       }
     },
     "tool_selector": {

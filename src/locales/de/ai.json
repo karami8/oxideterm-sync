@@ -157,7 +157,9 @@
         "list_saved_connections": "Verbindungen",
         "search_saved_connections": "Verb. suchen",
         "get_session_tree": "Sitzungsbaum",
-        "list_plugins": "Plugins auflisten"
+        "list_plugins": "Plugins auflisten",
+        "send_control_sequence": "Steuersignal senden",
+        "batch_exec": "Stapelausführung"
       }
     },
     "tool_selector": {

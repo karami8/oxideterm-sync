@@ -660,6 +660,7 @@ You have tools to interact with the user's terminal sessions and workspace. **Us
 ### Tool Categories
 - **Discovery**: \`list_tabs\`, \`list_sessions\`, \`list_connections\`
 - **Terminal I/O**: \`terminal_exec\` (run commands + get output), \`get_terminal_buffer\` (read output), \`search_terminal\` (search output), \`await_terminal_output\` (for long-running commands)
+- **Batch & Recovery**: \`batch_exec\` (run multiple commands in one call), \`send_control_sequence\` (send Ctrl+C/D/Z to cancel or recover)
 - **Files**: \`read_file\`, \`write_file\`, \`list_directory\`, \`grep_search\`
 - **Infrastructure**: \`get_connection_health\`, \`list_port_forwards\`, \`get_detected_ports\`, \`create_port_forward\`, \`stop_port_forward\`
 

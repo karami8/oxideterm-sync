@@ -157,7 +157,9 @@
         "list_saved_connections": "已保存连接",
         "search_saved_connections": "搜索连接",
         "get_session_tree": "会话树",
-        "list_plugins": "列出插件"
+        "list_plugins": "列出插件",
+        "send_control_sequence": "发送控制信号",
+        "batch_exec": "批量执行"
       }
     },
     "tool_selector": {

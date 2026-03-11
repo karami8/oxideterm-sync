@@ -157,7 +157,9 @@
         "list_saved_connections": "저장된 연결",
         "search_saved_connections": "연결 검색",
         "get_session_tree": "세션 트리",
-        "list_plugins": "플러그인 목록"
+        "list_plugins": "플러그인 목록",
+        "send_control_sequence": "제어 신호 전송",
+        "batch_exec": "일괄 실행"
       }
     },
     "tool_selector": {
