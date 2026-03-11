@@ -37,6 +37,8 @@
       "include_context": "Includi contesto",
       "include_all_panes": "Tutti i pannelli",
       "fetching_context": "Recupero...",
+      "ide_context": "IDE",
+      "sftp_context": "SFTP",
       "stop_generation": "Interrompi generazione",
       "send": "Invia messaggio",
       "context": "Contesto",

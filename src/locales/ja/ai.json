@@ -37,6 +37,8 @@
       "include_context": "コンテキストを含める",
       "include_all_panes": "全ペイン",
       "fetching_context": "取得中...",
+      "ide_context": "IDE",
+      "sftp_context": "SFTP",
       "stop_generation": "生成を停止",
       "send": "メッセージを送信",
       "context": "コンテキスト",

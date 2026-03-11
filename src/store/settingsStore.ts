@@ -214,6 +214,13 @@ export interface AiSettings {
      */
     disabledTools: string[];
   };
+  /** Context sources to auto-inject into AI system prompt */
+  contextSources?: {
+    /** Include IDE editor context (active file, language, cursor, code snippet) */
+    ide: boolean;
+    /** Include SFTP file browser context (CWD, selected files) */
+    sftp: boolean;
+  };
 }
 
 /** Local terminal settings */
@@ -433,6 +440,10 @@ const defaultAiSettings: AiSettings = {
       send_mouse: false,
     },
     disabledTools: [],
+  },
+  contextSources: {
+    ide: true,
+    sftp: true,
   },
 };
 

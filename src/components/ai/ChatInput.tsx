@@ -1,9 +1,10 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { StopCircle, Terminal, Layers, Sparkles } from 'lucide-react';
+import { StopCircle, Terminal, Layers, Sparkles, Code2, FolderOpen } from 'lucide-react';
 import { useAppStore } from '../../store/appStore';
 import { api } from '../../lib/api';
 import { useSettingsStore } from '../../store/settingsStore';
+import { useIdeStore } from '../../store/ideStore';
 import { ContextIndicator } from './ContextIndicator';
 import {
   getActiveTerminalBuffer,
@@ -11,6 +12,7 @@ import {
   getActivePaneMetadata,
   getCombinedPaneContext
 } from '../../lib/terminalRegistry';
+import { getSftpContext } from '../../lib/sftpContextRegistry';
 
 interface ChatInputProps {
   onSend: (content: string, context?: string) => void;
@@ -55,6 +57,17 @@ export function ChatInput({ onSend, onStop, isLoading, disabled, externalValue, 
 
   // Check if tab has multiple panes (split panes)
   const hasSplitPanes = hasActiveTerminal && activeTab?.rootPane?.type === 'group';
+
+  // Context source awareness
+  const contextSources = useSettingsStore((s) => s.settings.ai.contextSources);
+  const ideProject = useIdeStore((s) => s.project);
+  const ideActiveTabPath = useIdeStore((s) => {
+    const tab = s.activeTabId ? s.tabs.find(t => t.id === s.activeTabId) : undefined;
+    return tab?.path ?? null;
+  });
+  const hasIdeContext = contextSources?.ide !== false && !!ideProject;
+  const hasSftpContext = contextSources?.sftp !== false && !!activeTab?.nodeId && !!getSftpContext(activeTab.nodeId);
+  const showContextChips = hasActiveTerminal || hasSplitPanes || hasIdeContext || hasSftpContext;
 
   // Auto-resize textarea
   useEffect(() => {
@@ -137,7 +150,7 @@ export function ChatInput({ onSend, onStop, isLoading, disabled, externalValue, 
   return (
     <div className="bg-theme-bg border-t border-theme-border/40 px-3 py-2.5">
       {/* Context Toggles — Flat Rectangular Chips */}
-      {(hasActiveTerminal || hasSplitPanes) && (
+      {showContextChips && (
         <div className="flex flex-wrap items-center gap-1.5 mb-2">
           {hasActiveTerminal && (
             <button
@@ -167,6 +180,28 @@ export function ChatInput({ onSend, onStop, isLoading, disabled, externalValue, 
               <Layers className="w-3 h-3" />
               <span>{t('ai.input.panes')}</span>
             </button>
+          )}
+
+          {/* IDE context indicator — auto-injected when IDE mode is active */}
+          {hasIdeContext && (
+            <span
+              className="flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold tracking-tight uppercase border shrink-0 bg-emerald-500/10 border-emerald-500/30 text-emerald-500"
+              title={ideActiveTabPath ?? ideProject?.name ?? t('ai.input.ide_context')}
+            >
+              <Code2 className="w-3 h-3" />
+              <span>{t('ai.input.ide_context')}</span>
+            </span>
+          )}
+
+          {/* SFTP context indicator — auto-injected when browsing files */}
+          {hasSftpContext && (
+            <span
+              className="flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold tracking-tight uppercase border shrink-0 bg-orange-500/10 border-orange-500/30 text-orange-500"
+              title={getSftpContext(activeTab?.nodeId ?? '')?.remotePath ?? t('ai.input.sftp_context')}
+            >
+              <FolderOpen className="w-3 h-3" />
+              <span>{t('ai.input.sftp_context')}</span>
+            </span>
           )}
         </div>
       )}

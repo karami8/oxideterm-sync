@@ -20,6 +20,9 @@ import {
 import { useAppStore } from '../store/appStore';
 import { useSessionTreeStore } from '../store/sessionTreeStore';
 import { useLocalTerminalStore } from '../store/localTerminalStore';
+import { useIdeStore } from '../store/ideStore';
+import { useSettingsStore } from '../store/settingsStore';
+import { getSftpContext } from './sftpContextRegistry';
 import type { RemoteEnvInfo, TabType } from '../types';
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -78,12 +81,54 @@ export interface TerminalContext {
   hasSelection: boolean;
 }
 
+export interface IdeContext {
+  /** Project root path */
+  projectRoot: string;
+  /** Project name */
+  projectName: string;
+  /** Whether the project is a git repo */
+  isGitRepo: boolean;
+  /** Git branch if available */
+  gitBranch?: string;
+  /** Active file path (if any tab is open) */
+  activeFile?: string;
+  /** Active file language */
+  activeLanguage?: string;
+  /** Cursor position in active file */
+  cursor?: { line: number; col: number };
+  /** Whether the active file has unsaved changes */
+  isDirty?: boolean;
+  /** Number of open tabs */
+  openTabCount: number;
+  /** Open tab file paths */
+  openTabPaths: string[];
+  /** Code snippet around cursor (if available) */
+  codeSnippet?: string;
+}
+
+export interface SftpContext {
+  /** Current remote working directory */
+  remotePath: string;
+  /** Remote home directory */
+  remoteHome: string;
+  /** Selected file/folder names */
+  selectedFiles: string[];
+  /** Node ID for context linking */
+  nodeId: string;
+}
+
 export interface SidebarContext {
   /** Environment snapshot */
   env: EnvironmentSnapshot;
   
   /** Terminal buffer and selection */
   terminal: TerminalContext;
+  
+  /** IDE context (when IDE mode is active) */
+  ide: IdeContext | null;
+  
+  /** SFTP context (when SFTP tab is active) */
+  sftp: SftpContext | null;
   
   /** Formatted system prompt segment */
   systemPromptSegment: string;
@@ -323,14 +368,75 @@ export function gatherSidebarContext(config = DEFAULT_CONTEXT_CONFIG): SidebarCo
     hasSelection: !!selection,
   };
   
+  // ─── IDE Context ────────────────────────────────────────────────────────
+  
+  const contextSources = useSettingsStore.getState().settings.ai.contextSources;
+  
+  let ide: IdeContext | null = null;
+  if (contextSources?.ide !== false) {
+    try {
+      const ideState = useIdeStore.getState();
+      if (ideState.project && ideState.nodeId) {
+        const activeTab = ideState.activeTabId
+          ? ideState.tabs.find(t => t.id === ideState.activeTabId)
+          : undefined;
+        
+        ide = {
+          projectRoot: ideState.project.rootPath,
+          projectName: ideState.project.name,
+          isGitRepo: ideState.project.isGitRepo,
+          gitBranch: ideState.project.gitBranch,
+          activeFile: activeTab?.path,
+          activeLanguage: activeTab?.language,
+          cursor: activeTab?.cursor,
+          isDirty: activeTab?.isDirty,
+          openTabCount: ideState.tabs.length,
+          openTabPaths: ideState.tabs.map(t => t.path),
+        };
+
+        // Extract code snippet around cursor (±10 lines, max 4000 chars)
+        if (activeTab?.content && activeTab.cursor) {
+          const lines = activeTab.content.split('\n');
+          const cursorLine = activeTab.cursor.line - 1; // 0-based
+          const start = Math.max(0, cursorLine - 10);
+          const end = Math.min(lines.length, cursorLine + 11);
+          const snippet = lines.slice(start, end).join('\n');
+          ide.codeSnippet = snippet.length > 4000 ? snippet.slice(0, 4000) + '\n... (truncated)' : snippet;
+        }
+      }
+    } catch {
+      // IDE store may not be available
+    }
+  }
+  
+  // ─── SFTP Context ───────────────────────────────────────────────────────
+  
+  let sftp: SftpContext | null = null;
+  if (contextSources?.sftp !== false) {
+    const nodeId = env.activeNodeId;
+    if (nodeId) {
+      const sftpSnapshot = getSftpContext(nodeId);
+      if (sftpSnapshot) {
+        sftp = {
+          remotePath: sftpSnapshot.remotePath,
+          remoteHome: sftpSnapshot.remoteHome,
+          selectedFiles: sftpSnapshot.selectedFiles,
+          nodeId: sftpSnapshot.nodeId,
+        };
+      }
+    }
+  }
+  
   // ─── Format System Prompt Segment ───────────────────────────────────────
   
-  const systemPromptSegment = formatSystemPromptSegment(env, terminal);
-  const contextBlock = formatContextBlock(env, terminal);
+  const systemPromptSegment = formatSystemPromptSegment(env, terminal, ide, sftp);
+  const contextBlock = formatContextBlock(env, terminal, ide);
   
   return {
     env,
     terminal,
+    ide,
+    sftp,
     systemPromptSegment,
     contextBlock,
     gatheredAt: Date.now(),
@@ -340,7 +446,12 @@ export function gatherSidebarContext(config = DEFAULT_CONTEXT_CONFIG): SidebarCo
 /**
  * Format environment info as a system prompt segment
  */
-function formatSystemPromptSegment(env: EnvironmentSnapshot, terminal: TerminalContext): string {
+function formatSystemPromptSegment(
+  env: EnvironmentSnapshot,
+  terminal: TerminalContext,
+  ide: IdeContext | null,
+  sftp: SftpContext | null,
+): string {
   const parts: string[] = [];
   
   // Environment header
@@ -391,14 +502,48 @@ function formatSystemPromptSegment(env: EnvironmentSnapshot, terminal: TerminalC
     parts.push('The user has selected specific text in the terminal. This selection should be treated as the PRIMARY subject of their query unless they explicitly ask about something else.');
   }
   
+  // IDE context
+  if (ide) {
+    parts.push('');
+    parts.push('## IDE Context');
+    parts.push(`- Project: ${ide.projectName} (${ide.projectRoot})`);
+    if (ide.isGitRepo) {
+      parts.push(`- Git: ${ide.gitBranch ?? 'unknown branch'}`);
+    }
+    if (ide.activeFile) {
+      const dirtyMark = ide.isDirty ? ' [unsaved]' : '';
+      parts.push(`- Editing: ${ide.activeFile} (${ide.activeLanguage ?? 'unknown'})${dirtyMark}`);
+      if (ide.cursor) {
+        parts.push(`- Cursor: line ${ide.cursor.line}, col ${ide.cursor.col}`);
+      }
+    }
+    if (ide.openTabCount > 1) {
+      parts.push(`- Open tabs (${ide.openTabCount}): ${ide.openTabPaths.join(', ')}`);
+    }
+  }
+  
+  // SFTP file browser context
+  if (sftp) {
+    parts.push('');
+    parts.push('## File Browser Context');
+    parts.push(`- CWD: ${sftp.remotePath}`);
+    if (sftp.selectedFiles.length > 0) {
+      const maxShow = 20;
+      const shown = sftp.selectedFiles.slice(0, maxShow);
+      const suffix = sftp.selectedFiles.length > maxShow ? ` ... +${sftp.selectedFiles.length - maxShow} more` : '';
+      parts.push(`- Selected (${sftp.selectedFiles.length}): [${shown.join(', ')}${suffix}]`);
+    }
+  }
+  
   return parts.join('\n');
 }
 
 /**
  * Format context as a code block for API messages.
  * Includes multi-pane context when split panes exist in the active tab.
+ * Includes IDE code snippet when IDE mode is active.
  */
-function formatContextBlock(_env: EnvironmentSnapshot, terminal: TerminalContext): string {
+function formatContextBlock(_env: EnvironmentSnapshot, terminal: TerminalContext, ide: IdeContext | null): string {
   const parts: string[] = [];
   
   // Selection first (priority)
@@ -447,6 +592,14 @@ function formatContextBlock(_env: EnvironmentSnapshot, terminal: TerminalContext
   } else if (terminal.buffer) {
     parts.push(`=== Terminal Output (last ${terminal.lineCount} lines) ===`);
     parts.push(terminal.buffer);
+  }
+  
+  // IDE code snippet (around cursor)
+  if (ide?.codeSnippet && ide.activeFile) {
+    const startLine = ide.cursor ? Math.max(1, ide.cursor.line - 10) : 1;
+    parts.push('');
+    parts.push(`=== Code: ${ide.activeFile} (${ide.activeLanguage ?? 'text'}, lines ${startLine}+) ===`);
+    parts.push(ide.codeSnippet);
   }
   
   if (parts.length === 0) {

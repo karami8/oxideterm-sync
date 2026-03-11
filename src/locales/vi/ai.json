@@ -37,6 +37,8 @@
       "include_context": "Bao gồm ngữ cảnh",
       "include_all_panes": "Tất cả khung",
       "fetching_context": "Đang tải...",
+      "ide_context": "IDE",
+      "sftp_context": "SFTP",
       "stop_generation": "Dừng tạo",
       "send": "Gửi tin nhắn",
       "context": "Ngữ cảnh",

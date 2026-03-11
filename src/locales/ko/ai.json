@@ -37,6 +37,8 @@
       "include_context": "컨텍스트 포함",
       "include_all_panes": "모든 창",
       "fetching_context": "가져오는 중...",
+      "ide_context": "IDE",
+      "sftp_context": "SFTP",
       "stop_generation": "생성 중지",
       "send": "메시지 보내기",
       "context": "컨텍스트",

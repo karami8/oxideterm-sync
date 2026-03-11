@@ -40,6 +40,8 @@
       "include_context": "包含上下文",
       "include_all_panes": "所有分屏",
       "fetching_context": "获取中...",
+      "ide_context": "IDE",
+      "sftp_context": "SFTP",
       "stop_generation": "停止生成",
       "stop": "停止",
       "send": "发送消息",

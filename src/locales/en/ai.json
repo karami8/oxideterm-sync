@@ -40,6 +40,8 @@
       "include_context": "Include context",
       "include_all_panes": "All panes",
       "fetching_context": "Fetching...",
+      "ide_context": "IDE",
+      "sftp_context": "SFTP",
       "stop_generation": "Stop generation",
       "stop": "Stop",
       "send": "Send message",

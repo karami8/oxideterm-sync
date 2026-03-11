@@ -2147,6 +2147,43 @@ export const SettingsView = () => {
                                         </div>
                                     </div>
 
+                                    {/* Context Sources */}
+                                    <div className="mt-6 max-w-3xl">
+                                        <h5 className="text-xs font-medium text-theme-text-muted mb-3 uppercase tracking-wider">{t('settings_view.ai.context_sources')}</h5>
+                                        <div className="space-y-3">
+                                            <label className="flex items-center gap-3 cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={ai.contextSources?.ide !== false}
+                                                    onChange={(e) => updateAi('contextSources', {
+                                                        ide: e.target.checked,
+                                                        sftp: ai.contextSources?.sftp !== false,
+                                                    })}
+                                                    className="rounded border-theme-border"
+                                                />
+                                                <div>
+                                                    <span className="text-sm text-theme-text">{t('settings_view.ai.context_source_ide')}</span>
+                                                    <p className="text-xs text-theme-text-muted">{t('settings_view.ai.context_source_ide_hint')}</p>
+                                                </div>
+                                            </label>
+                                            <label className="flex items-center gap-3 cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={ai.contextSources?.sftp !== false}
+                                                    onChange={(e) => updateAi('contextSources', {
+                                                        ide: ai.contextSources?.ide !== false,
+                                                        sftp: e.target.checked,
+                                                    })}
+                                                    className="rounded border-theme-border"
+                                                />
+                                                <div>
+                                                    <span className="text-sm text-theme-text">{t('settings_view.ai.context_source_sftp')}</span>
+                                                    <p className="text-xs text-theme-text-muted">{t('settings_view.ai.context_source_sftp_hint')}</p>
+                                                </div>
+                                            </label>
+                                        </div>
+                                    </div>
+
                                     <Separator className="my-6 opacity-50" />
 
                                     <h4 className="text-sm font-medium text-theme-text mb-4 uppercase tracking-wider">{t('settings_view.ai.system_prompt_title')}</h4>

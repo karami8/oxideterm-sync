@@ -51,6 +51,7 @@ import { listen } from '@tauri-apps/api/event';
 import { readDir, stat, remove, rename, mkdir } from '@tauri-apps/plugin-fs';
 import { homeDir } from '@tauri-apps/api/path';
 import { open } from '@tauri-apps/plugin-dialog';
+import { registerSftpContext, unregisterSftpContext } from '../../lib/sftpContextRegistry';
 
 // 🔴 Key-Driven: 全局路径记忆 Map — keyed by nodeId (stable across reconnects)
 const sftpPathMemory = new Map<string, string>();
@@ -887,6 +888,17 @@ export const SFTPView = ({ nodeId }: { nodeId: string }) => {
       }
     };
   }, [memoryKey, remotePath]);
+
+  // Register SFTP context for AI sidebar awareness
+  useEffect(() => {
+    return () => { unregisterSftpContext(nodeId); };
+  }, [nodeId]);
+
+  useEffect(() => {
+    if (remotePath) {
+      registerSftpContext(nodeId, remotePath, remoteHome, Array.from(remoteSelected));
+    }
+  }, [nodeId, remotePath, remoteHome, remoteSelected]);
 
   // 🔴 初始化模型（node-first 模式）
   // Max auto-retries: connection errors get 1 retry, channel errors get 2
