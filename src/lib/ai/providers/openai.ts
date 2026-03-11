@@ -34,7 +34,7 @@ function convertMessages(messages: ChatMessage[]): Array<Record<string, unknown>
       };
     }
     if (msg.role === 'assistant' && msg.tool_calls && msg.tool_calls.length > 0) {
-      return {
+      const assistantMsg: Record<string, unknown> = {
         role: 'assistant',
         content: msg.content || null,
         tool_calls: msg.tool_calls.map((tc) => ({
@@ -43,6 +43,11 @@ function convertMessages(messages: ChatMessage[]): Array<Record<string, unknown>
           function: { name: tc.name, arguments: tc.arguments },
         })),
       };
+      // Preserve reasoning_content for thinking models (Kimi K2.5, DeepSeek-R1)
+      if (msg.reasoning_content !== undefined) {
+        assistantMsg.reasoning_content = msg.reasoning_content;
+      }
+      return assistantMsg;
     }
     return { role: msg.role, content: msg.content };
   });

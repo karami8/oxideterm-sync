@@ -60,6 +60,8 @@ export type ChatMessage = {
   tool_call_id?: string;
   /** Tool name for providers that require it on tool result messages (e.g. Gemini) */
   tool_name?: string;
+  /** Reasoning/thinking content from thinking models (Kimi K2.5, DeepSeek-R1, etc.) */
+  reasoning_content?: string;
 };
 
 /**

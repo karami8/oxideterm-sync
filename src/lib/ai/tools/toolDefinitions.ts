@@ -33,6 +33,10 @@ export const BUILTIN_TOOLS: AiToolDefinition[] = [
           maximum: 60,
           description: 'Timeout in seconds. Default: 30. Max: 60.',
         },
+        node_id: {
+          type: 'string',
+          description: 'Target node ID. If omitted, uses the active terminal. Use list_sessions to discover nodes.',
+        },
       },
       required: ['command'],
     },
@@ -47,6 +51,10 @@ export const BUILTIN_TOOLS: AiToolDefinition[] = [
         path: {
           type: 'string',
           description: 'Absolute path to the file to read.',
+        },
+        node_id: {
+          type: 'string',
+          description: 'Target node ID. If omitted, uses the active terminal.',
         },
       },
       required: ['path'],
@@ -66,6 +74,10 @@ export const BUILTIN_TOOLS: AiToolDefinition[] = [
         content: {
           type: 'string',
           description: 'Content to write to the file.',
+        },
+        node_id: {
+          type: 'string',
+          description: 'Target node ID. If omitted, uses the active terminal.',
         },
       },
       required: ['path', 'content'],
@@ -87,6 +99,10 @@ export const BUILTIN_TOOLS: AiToolDefinition[] = [
           minimum: 1,
           maximum: 8,
           description: 'Maximum recursion depth. Default: 3. Max: 8.',
+        },
+        node_id: {
+          type: 'string',
+          description: 'Target node ID. If omitted, uses the active terminal.',
         },
       },
       required: ['path'],
@@ -117,6 +133,10 @@ export const BUILTIN_TOOLS: AiToolDefinition[] = [
           maximum: 200,
           description: 'Maximum number of matches to return. Default: 50. Max: 200.',
         },
+        node_id: {
+          type: 'string',
+          description: 'Target node ID. If omitted, uses the active terminal.',
+        },
       },
       required: ['pattern', 'path'],
     },
@@ -132,8 +152,199 @@ export const BUILTIN_TOOLS: AiToolDefinition[] = [
           type: 'string',
           description: 'Path to the git repository root.',
         },
+        node_id: {
+          type: 'string',
+          description: 'Target node ID. If omitted, uses the active terminal.',
+        },
       },
       required: ['path'],
+    },
+  },
+
+  // ── Session Discovery Tools ──
+  {
+    name: 'list_sessions',
+    description:
+      'List all open terminal sessions (SSH and local). Returns node IDs, hostnames, connection status, and terminal counts. Use this to discover available targets before using other tools.',
+    parameters: {
+      type: 'object',
+      properties: {
+        session_type: {
+          type: 'string',
+          enum: ['ssh', 'local', 'all'],
+          description: 'Filter by session type. Default: "all".',
+        },
+      },
+    },
+  },
+  {
+    name: 'get_terminal_buffer',
+    description:
+      'Read the terminal buffer (scrollback history) of a specific session. Returns recent output lines. Use list_sessions first to find session IDs.',
+    parameters: {
+      type: 'object',
+      properties: {
+        session_id: {
+          type: 'string',
+          description: 'The terminal session ID to read buffer from. Get this from list_sessions.',
+        },
+        max_lines: {
+          type: 'number',
+          minimum: 1,
+          maximum: 500,
+          description: 'Maximum number of lines to return. Default: 100. Max: 500.',
+        },
+      },
+      required: ['session_id'],
+    },
+  },
+  {
+    name: 'search_terminal',
+    description:
+      'Search for a text pattern in a terminal session\'s buffer. Returns matching lines with line numbers.',
+    parameters: {
+      type: 'object',
+      properties: {
+        session_id: {
+          type: 'string',
+          description: 'The terminal session ID to search in.',
+        },
+        query: {
+          type: 'string',
+          description: 'Search text or regex pattern.',
+        },
+        case_sensitive: {
+          type: 'boolean',
+          description: 'Case-sensitive search. Default: false.',
+        },
+        regex: {
+          type: 'boolean',
+          description: 'Treat query as regex. Default: false.',
+        },
+        max_results: {
+          type: 'number',
+          minimum: 1,
+          maximum: 100,
+          description: 'Maximum number of matches. Default: 50. Max: 100.',
+        },
+      },
+      required: ['session_id', 'query'],
+    },
+  },
+
+  // ── Infrastructure Tools ──
+  {
+    name: 'list_connections',
+    description:
+      'List all SSH connections in the connection pool with their status, remote OS, and usage counts.',
+    parameters: {
+      type: 'object',
+      properties: {},
+    },
+  },
+  {
+    name: 'list_port_forwards',
+    description:
+      'List all port forwarding rules for a specific node.',
+    parameters: {
+      type: 'object',
+      properties: {
+        node_id: {
+          type: 'string',
+          description: 'Node ID to list forwards for. Use list_sessions to find nodes.',
+        },
+      },
+      required: ['node_id'],
+    },
+  },
+  {
+    name: 'get_detected_ports',
+    description:
+      'List ports detected as listening on the remote server. Useful for discovering services that could be forwarded.',
+    parameters: {
+      type: 'object',
+      properties: {
+        node_id: {
+          type: 'string',
+          description: 'Node ID to check.',
+        },
+      },
+      required: ['node_id'],
+    },
+  },
+  {
+    name: 'get_connection_health',
+    description:
+      'Get health and latency metrics for SSH connections. If no node_id is specified, returns health for all connections.',
+    parameters: {
+      type: 'object',
+      properties: {
+        node_id: {
+          type: 'string',
+          description: 'Node ID to check. If omitted, returns health for all connections.',
+        },
+      },
+    },
+  },
+
+  // ── Port Forwarding Management Tools ──
+  {
+    name: 'create_port_forward',
+    description:
+      'Create a port forwarding rule on a remote node. Use get_detected_ports to find available services.',
+    parameters: {
+      type: 'object',
+      properties: {
+        node_id: {
+          type: 'string',
+          description: 'Node ID to create forward on.',
+        },
+        forward_type: {
+          type: 'string',
+          enum: ['local', 'remote', 'dynamic'],
+          description: 'Forwarding type: local (remote→local), remote (local→remote), or dynamic (SOCKS).',
+        },
+        bind_port: {
+          type: 'number',
+          minimum: 1,
+          maximum: 65535,
+          description: 'Local bind port.',
+        },
+        target_host: {
+          type: 'string',
+          description: 'Remote target hostname. Default: "localhost".',
+        },
+        target_port: {
+          type: 'number',
+          minimum: 1,
+          maximum: 65535,
+          description: 'Remote target port.',
+        },
+        bind_addr: {
+          type: 'string',
+          description: 'Bind address. Default: "127.0.0.1".',
+        },
+      },
+      required: ['node_id', 'forward_type', 'bind_port', 'target_port'],
+    },
+  },
+  {
+    name: 'stop_port_forward',
+    description:
+      'Stop an active port forwarding rule. Use list_port_forwards to find forward IDs.',
+    parameters: {
+      type: 'object',
+      properties: {
+        node_id: {
+          type: 'string',
+          description: 'Node ID the forward belongs to.',
+        },
+        forward_id: {
+          type: 'string',
+          description: 'Forward rule ID to stop.',
+        },
+      },
+      required: ['node_id', 'forward_id'],
     },
   },
 ];
@@ -148,12 +359,34 @@ export const READ_ONLY_TOOLS = new Set([
   'list_directory',
   'grep_search',
   'git_status',
+  'list_sessions',
+  'get_terminal_buffer',
+  'search_terminal',
+  'list_connections',
+  'list_port_forwards',
+  'get_detected_ports',
+  'get_connection_health',
 ]);
 
 /** Tools that modify state — require explicit user approval */
 export const WRITE_TOOLS = new Set([
   'terminal_exec',
   'write_file',
+  'create_port_forward',
+  'stop_port_forward',
+]);
+
+/** Tools that do NOT require any node context — work globally */
+export const CONTEXT_FREE_TOOLS = new Set([
+  'list_sessions',
+  'list_connections',
+  'get_connection_health',
+]);
+
+/** Tools that use session_id parameter instead of node_id */
+export const SESSION_ID_TOOLS = new Set([
+  'get_terminal_buffer',
+  'search_terminal',
 ]);
 
 /**

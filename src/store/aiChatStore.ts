@@ -10,7 +10,7 @@ import { estimateTokens, trimHistoryToTokenBudget, getModelContextWindow, respon
 import type { ChatMessage as ProviderChatMessage } from '../lib/ai/providers';
 import type { AiChatMessage, AiConversation, AiToolCall } from '../types';
 import { DEFAULT_SYSTEM_PROMPT, COMPACTION_TRIGGER_THRESHOLD } from '../lib/ai/constants';
-import { BUILTIN_TOOLS, READ_ONLY_TOOLS, executeTool, type ToolExecutionContext } from '../lib/ai/tools';
+import { BUILTIN_TOOLS, READ_ONLY_TOOLS, CONTEXT_FREE_TOOLS, SESSION_ID_TOOLS, executeTool, type ToolExecutionContext } from '../lib/ai/tools';
 import i18n from '../i18n';
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -563,6 +563,11 @@ export const useAiChatStore = create<AiChatStore>()((set, get) => ({
       systemPrompt += `\n\n${sidebarContext.systemPromptSegment}`;
     }
 
+    // Tool use guidance — let AI know how to discover sessions
+    if (aiSettings.toolUse?.enabled === true) {
+      systemPrompt += `\n\nYou have access to tools that can interact with multiple terminal sessions (SSH and local). Use list_sessions to discover all open sessions and their node IDs. For tools that operate on a specific node, pass the node_id parameter to target any session — not just the currently active one. Use get_terminal_buffer to read output from any session. Use list_connections for SSH connection health. Use list_port_forwards and get_detected_ports for port management.`;
+    }
+
     apiMessages.push({
       role: 'system',
       content: systemPrompt,
@@ -666,29 +671,30 @@ export const useAiChatStore = create<AiChatStore>()((set, get) => ({
       const autoApproveAll = aiSettings.toolUse?.autoApproveAll === true;
       const toolDefs = toolUseEnabled ? BUILTIN_TOOLS : undefined;
 
-      // Derive tool execution context (nodeId) from sidebar context
+      // Derive tool execution context from sidebar context
+      // activeNodeId can be null — context-free tools (list_sessions, etc.) still work
       let toolContext: ToolExecutionContext | null = null;
-      if (toolUseEnabled && sidebarContext?.env.sessionId) {
-        const node = useSessionTreeStore.getState().getNodeByTerminalId(sidebarContext.env.sessionId);
-        if (node) {
-          let agentAvailable = false;
-          let nodeReady = false;
-          try {
-            const nodeSnapshot = await nodeGetState(node.id);
-            if (nodeSnapshot.state.readiness !== 'ready') {
-              throw new Error('Node is not ready for tool execution');
+      if (toolUseEnabled) {
+        let activeNodeId: string | null = null;
+        let activeAgentAvailable = false;
+
+        if (sidebarContext?.env.sessionId) {
+          const node = useSessionTreeStore.getState().getNodeByTerminalId(sidebarContext.env.sessionId);
+          if (node) {
+            try {
+              const nodeSnapshot = await nodeGetState(node.id);
+              if (nodeSnapshot.state.readiness === 'ready') {
+                activeNodeId = node.id;
+                const agentStatus = await nodeAgentStatus(node.id);
+                activeAgentAvailable = agentStatus.type === 'ready';
+              }
+            } catch {
+              // Node not ready — activeNodeId stays null, context-free tools still work
             }
-            nodeReady = true;
-            const agentStatus = await nodeAgentStatus(node.id);
-            agentAvailable = agentStatus.type === 'ready';
-          } catch {
-            toolContext = null;
-            agentAvailable = false;
-          }
-          if (nodeReady) {
-            toolContext = { nodeId: node.id, agentAvailable };
           }
         }
+
+        toolContext = { activeNodeId, activeAgentAvailable };
       }
 
       const MAX_TOOL_ROUNDS = 10;
@@ -728,9 +734,22 @@ export const useAiChatStore = create<AiChatStore>()((set, get) => ({
         if (completedToolCalls.length === 0) break;
 
         if (!toolContext) {
-          fullContent += '\n\n[Tool execution unavailable: no active node context]';
+          // Tool use not enabled but model generated tool calls — append error and stop
+          fullContent += '\n\n[Tool execution unavailable: tool use is not enabled]';
           updateContent(accumulatedContent + fullContent, true, false);
           break;
+        }
+
+        // Check if all requested tools are context-free when no node is active
+        if (toolContext.activeNodeId === null) {
+          const needsNode = completedToolCalls.some(
+            tc => !CONTEXT_FREE_TOOLS.has(tc.name) && !SESSION_ID_TOOLS.has(tc.name)
+          );
+          if (needsNode) {
+            fullContent += '\n\n[Some tools require an active terminal session. Please open a terminal tab first, or use list_sessions to discover available sessions and pass node_id explicitly.]';
+            updateContent(accumulatedContent + fullContent, true, false);
+            break;
+          }
         }
 
         // Guard against infinite loops
@@ -826,11 +845,16 @@ export const useAiChatStore = create<AiChatStore>()((set, get) => ({
         }
 
         // Append assistant message (with tool calls) and tool results to API context
-        apiMessages.push({
+        // Include reasoning_content for thinking models (Kimi K2.5, DeepSeek-R1)
+        const assistantMsg: ProviderChatMessage = {
           role: 'assistant',
           content: fullContent,
           tool_calls: completedToolCalls.map((tc) => ({ id: tc.id, name: tc.name, arguments: tc.arguments })),
-        });
+        };
+        if (thinkingContent) {
+          assistantMsg.reasoning_content = thinkingContent;
+        }
+        apiMessages.push(assistantMsg);
         for (const trm of toolResultMessages) {
           apiMessages.push(trm);
         }
@@ -840,6 +864,7 @@ export const useAiChatStore = create<AiChatStore>()((set, get) => ({
           accumulatedContent += fullContent + '\n\n';
         }
         fullContent = '';
+        thinkingContent = '';
 
         // Token budget check: estimate apiMessages size and break if exceeding context window
         let apiTokenEstimate = 0;
