@@ -1798,7 +1798,7 @@ You have tools to interact with the user's terminal sessions and workspace. **Us
     try {
 
     const conversation = get().conversations.find((c) => c.id === convId);
-    if (!conversation || conversation.messages.length < 6) return;
+    if (!conversation || conversation.messages.length < 4) return;
 
     // Resolve provider settings
     const aiSettings = useSettingsStore.getState().settings.ai;
@@ -1825,8 +1825,10 @@ You have tools to interact with the user's terminal sessions and workspace. **Us
       totalTokens += estimateTokens(msg.content);
     }
 
+    // Only enforce threshold for auto-compaction (silent mode).
+    // Manual compaction (user clicked button) always proceeds.
     const usageRatio = totalTokens / contextWindow;
-    if (usageRatio < COMPACTION_TRIGGER_THRESHOLD) return; // Not yet at threshold
+    if (silent && usageRatio < COMPACTION_TRIGGER_THRESHOLD) return;
 
     // Get API key
     let apiKey: string | null = null;
@@ -1839,8 +1841,13 @@ You have tools to interact with the user's terminal sessions and workspace. **Us
       if (providerType !== 'ollama') return;
     }
 
-    // Determine split point: keep the most recent messages that fit in ~40% of context
-    const keepBudget = Math.floor(contextWindow * 0.4);
+    // Determine split point: keep the most recent messages that fit in the keep budget.
+    // For auto-compaction, keep ~40% of context window.
+    // For manual compaction, also cap to 60% of current tokens so we always compact something.
+    let keepBudget = Math.floor(contextWindow * 0.4);
+    if (!silent && totalTokens > 0) {
+      keepBudget = Math.min(keepBudget, Math.floor(totalTokens * 0.6));
+    }
     let keepTokens = 0;
     let keepFrom = conversation.messages.length;
     for (let i = conversation.messages.length - 1; i >= 0; i--) {
