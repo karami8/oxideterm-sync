@@ -35,7 +35,7 @@ function generateId(): string {
 }
 
 function StatusBadge({ status }: { status: McpServerStatus }) {
-  const { t } = useTranslation('settings_view');
+  const { t } = useTranslation();
   const styles: Record<McpServerStatus, string> = {
     disconnected: 'bg-zinc-500/20 text-zinc-400',
     connecting: 'bg-yellow-500/20 text-yellow-400',
@@ -59,7 +59,7 @@ function StatusBadge({ status }: { status: McpServerStatus }) {
 }
 
 export function McpServersPanel() {
-  const { t } = useTranslation('settings_view');
+  const { t } = useTranslation();
   const ai = useSettingsStore((s) => s.settings.ai);
   const updateAi = useSettingsStore((s) => s.updateAi);
   const servers = useMcpRegistry((s) => s.servers);
@@ -243,7 +243,7 @@ export function McpServersPanel() {
             <DialogDescription>{t('settings_view.mcp.add_server_description')}</DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-2">
+          <div className="px-4 py-2 space-y-4">
             <div className="space-y-2">
               <Label>{t('settings_view.mcp.server_name')}</Label>
               <Input

@@ -117,13 +117,13 @@ OxideTerm/
 │   └── fonts/              # 终端字体 (JetBrains Mono, Maple Mono, Meslo)
 ├── scripts/                # 构建与发布脚本
 ├── src/                    # 前端源码
-│   ├── components/         # React 组件 (18 个子目录)
+│   ├── components/         # React 组件 (20 个子目录)
 │   │   └── plugin/          # 插件 UI 视图
 │   ├── hooks/              # 自定义 Hooks
 │   ├── lib/                # 工具函数
 │   │   └── plugin/          # 插件运行时与 UI Kit
 │   ├── locales/            # i18n 翻译文件 (11 种语言)
-│   ├── store/              # Zustand 状态 (10 个 Store)
+│   ├── store/              # Zustand 状态 (16 个 Store)
 │   │   └── pluginStore.ts   # 插件运行时状态
 │   ├── styles.css          # CSS 样式 (Tailwind 4)
 │   └── types/              # TypeScript 类型

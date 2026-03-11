@@ -7,11 +7,11 @@
 <p align="center">
   <strong>Rust-Powered Terminal Engine — Beyond SSH</strong>
   <br>
-  <em>95,000+ lines of Rust &amp; TypeScript. Zero Electron. Zero C dependencies in the SSH stack.</em>
+  <em>130,000+ lines of Rust &amp; TypeScript. Zero Electron. Zero C dependencies in the SSH stack.</em>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.17.0-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-0.18.0-blue" alt="Version">
   <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-blue" alt="Platform">
   <img src="https://img.shields.io/badge/license-PolyForm%20Noncommercial-blueviolet" alt="License">
   <img src="https://img.shields.io/badge/rust-1.75+-orange" alt="Rust">
@@ -46,9 +46,9 @@ OxideTerm is a **cross-platform terminal application** that unifies local shells
 ┌─────────────────────────────────────┐
 │        Frontend (React 19)          │
 │                                     │
-│  SessionTreeStore ──► AppStore      │    10 Zustand stores
-│  IdeStore    LocalTerminalStore     │    17 component directories
-│  ReconnectOrchestratorStore         │    11 languages × 18 namespaces
+│  SessionTreeStore ──► AppStore      │    16 Zustand stores
+│  IdeStore    LocalTerminalStore     │    20 component directories
+│  ReconnectOrchestratorStore         │    11 languages × 21 namespaces
 │  PluginStore  AiChatStore  ...      │
 │                                     │
 │        xterm.js 6 + WebGL           │
@@ -57,7 +57,7 @@ OxideTerm is a **cross-platform terminal application** that unifies local shells
 ┌──────────▼──────────────▼───────────┐
 │         Backend (Rust)              │
 │                                     │
-│  NodeRouter ── resolve(nodeId) ──►  │    22 IPC command modules
+│  NodeRouter ── resolve(nodeId) ──►  │    24 IPC command modules
 │  ├─ SshConnectionRegistry          │    DashMap concurrent state
 │  ├─ SessionRegistry                │    Feature-gated local PTY
 │  ├─ ForwardingManager              │    ChaCha20-Poly1305 vault
@@ -158,6 +158,9 @@ Dual-mode AI with privacy-first design:
 - **Inline panel** (`⌘I`): quick commands, injected via bracketed paste
 - **Sidebar chat**: persistent conversation with history
 - **Context capture**: Terminal Registry gathers buffer from active or all split panes
+- **Multi-source context**: auto-inject IDE files, SFTP paths, and Git status into AI conversations
+- **Tool use**: 40+ built-in tools (file ops, process management, network, TUI interaction) the AI can invoke autonomously
+- **MCP support**: connect external [Model Context Protocol](https://modelcontextprotocol.io) servers (stdio & SSE) to extend AI with third-party tools — managed in Settings
 - **Compatible**: OpenAI, Ollama, DeepSeek, OneAPI, any `/v1/chat/completions` endpoint
 - **Secure**: API keys in OS keychain (macOS Keychain / Windows Credential Manager); on macOS, reads are gated behind **Touch ID** via `LAContext` — no entitlements or code-signing required
 
@@ -251,7 +254,7 @@ Full-depth theme customization beyond preset palettes:
 
 ### ⚛️ Multi-Store State Architecture
 
-Frontend adopts a **Multi-Store** pattern (10 stores) to handle drastically different state domains:
+Frontend adopts a **Multi-Store** pattern (16 stores) to handle drastically different state domains:
 
 | Store | Role |
 |---|---|
@@ -265,6 +268,12 @@ Frontend adopts a **Multi-Store** pattern (10 stores) to handle drastically diff
 | **ProfilerStore** | Resource profiler metrics |
 | **AiChatStore** | AI chat conversation state |
 | **SettingsStore** | Application settings |
+| **BroadcastStore** | Broadcast input — replicate keystrokes to multiple panes |
+| **CommandPaletteStore** | Command palette open/close state |
+| **EventLogStore** | Connection lifecycle & reconnect event log |
+| **LauncherStore** | Platform application launcher state |
+| **RecordingStore** | Terminal session recording & playback |
+| **UpdateStore** | Auto-update lifecycle (check → download → install) |
 
 Despite different state sources, rendering logic is unified through `TerminalView` and `IdeView` components.
 
@@ -279,13 +288,13 @@ Despite different state sources, rendering logic is unified through `TerminalVie
 | **SSH** | russh 0.54 (`ring`) | Pure Rust, zero C deps, SSH Agent |
 | **Local PTY** | portable-pty 0.8 | Feature-gated, ConPTY on Windows |
 | **Frontend** | React 19.1 + TypeScript 5.8 | Vite 7, Tailwind CSS 4 |
-| **State** | Zustand 5 | 10 specialized stores, event-driven sync |
+| **State** | Zustand 5 | 16 specialized stores, event-driven sync |
 | **Terminal** | xterm.js 6 + WebGL | GPU-accelerated, 60fps+ |
 | **Editor** | CodeMirror 6 | 16 language packs + legacy modes |
 | **Encryption** | ChaCha20-Poly1305 + Argon2id | AEAD + memory-hard KDF |
 | **Storage** | redb 2.1 | Embedded DB for sessions, forwards, transfers |
 | **Serialization** | MessagePack (rmp-serde) | Binary buffer/state persistence |
-| **i18n** | i18next 25 | 11 languages × 18 namespaces |
+| **i18n** | i18next 25 | 11 languages × 21 namespaces |
 | **SFTP** | russh-sftp 2.0 | SSH File Transfer Protocol |
 | **WebSocket** | tokio-tungstenite 0.24 | Async WebSocket for terminal data plane |
 | **Protocol** | Wire Protocol v1 | Binary `[Type:1][Length:4][Payload:n]` over WebSocket |
@@ -303,7 +312,7 @@ Despite different state sources, rendering logic is unified through `TerminalVie
 | **Files** | Dual-pane SFTP browser, drag-drop, preview (images/video/audio/PDF/code/hex), transfer queue |
 | **IDE** | File tree, CodeMirror editor, multi-tab, Git status, conflict resolution, integrated terminal |
 | **Forwarding** | Local (-L), Remote (-R), Dynamic SOCKS5 (-D), auto-restore, death reporting, lock-free I/O |
-| **AI** | Inline panel + sidebar chat, streaming SSE, code insertion, OpenAI/Ollama/DeepSeek |
+| **AI** | Inline panel + sidebar chat, streaming SSE, code insertion, 40+ tool use, MCP server integration, multi-source context, OpenAI/Ollama/DeepSeek |
 | **Plugins** | Runtime ESM loading, 8 API namespaces, 24 UI Kit, sandboxed, circuit breaker |
 | **WSL Graphics** ⚠️ | Built-in VNC viewer (Experimental): Desktop mode (9 DEs) + App mode (single GUI app), WSLg detection, Xtigervnc + noVNC, reconnect, feature-gated |
 | **Security** | .oxide encryption, OS keychain, `zeroize` memory, host key TOFU |
@@ -404,8 +413,8 @@ cd src-tauri && cargo build --no-default-features --release
 
 ```
 OxideTerm/
-├── src/                            # Frontend — 56K lines TypeScript
-│   ├── components/                 # 17 directories
+├── src/                            # Frontend — 83K lines TypeScript
+│   ├── components/                 # 20 directories
 │   │   ├── terminal/               #   Terminal views, split panes, search
 │   │   ├── sftp/                   #   Dual-pane file browser
 │   │   ├── ide/                    #   Editor, file tree, Git dialogs
@@ -417,13 +426,13 @@ OxideTerm/
 │   │   ├── topology/               #   Network topology graph
 │   │   ├── layout/                 #   Sidebar, header, split panes
 │   │   └── ...                     #   sessions, settings, modals, etc.
-│   ├── store/                      # 10 Zustand stores
+│   ├── store/                      # 16 Zustand stores
 │   ├── lib/                        # API layer, AI providers, plugin runtime
 │   ├── hooks/                      # React hooks (events, keyboard, toast)
 │   ├── types/                      # TypeScript type definitions
-│   └── locales/                    # 11 languages × 18 namespaces
+│   └── locales/                    # 11 languages × 21 namespaces
 │
-├── src-tauri/                      # Backend — 39K lines Rust
+├── src-tauri/                      # Backend — 51K lines Rust
 │   └── src/
 │       ├── router/                 #   NodeRouter (nodeId → resource)
 │       ├── ssh/                    #   SSH client (12 modules incl. Agent)
@@ -435,10 +444,10 @@ OxideTerm/
 │       ├── sftp/                   #   SFTP implementation
 │       ├── config/                 #   Vault, keychain, SSH config
 │       ├── oxide_file/             #   .oxide encryption (ChaCha20)
-│       ├── commands/               #   22 Tauri IPC command modules
+│       ├── commands/               #   24 Tauri IPC command modules
 │       └── state/                  #   Global state types
 │
-└── docs/                           # 28+ architecture & feature docs
+└── docs/                           # 27+ architecture & feature docs
 ```
 
 ---
@@ -458,10 +467,13 @@ OxideTerm/
 - [x] IDE mode (CodeMirror 6 + Git status)
 - [x] .oxide encrypted export with key embedding
 - [x] AI terminal assistant (inline + sidebar)
+- [x] AI tool use — 40+ built-in tools with auto-approval controls
+- [x] AI multi-source context injection (IDE / SFTP / Git)
+- [x] MCP (Model Context Protocol) — stdio & SSE transports, settings UI, per-server tool discovery
 - [x] Runtime plugin system (PluginContext + UI Kit)
 - [x] Terminal split panes with keyboard shortcuts
 - [x] Resource profiler (CPU / memory / network)
-- [x] i18n — 11 languages × 18 namespaces
+- [x] i18n — 11 languages × 21 namespaces
 - [x] Keyboard-Interactive auth (2FA/MFA)
 - [x] Deep history search (30K lines, Rust regex)
 - [x] WSL Graphics — desktop mode + app mode VNC viewer (⚠️ Experimental)
@@ -521,5 +533,5 @@ Full text: https://polyformproject.org/licenses/noncommercial/1.0.0/
 ---
 
 <p align="center">
-  <sub>Built with Rust and Tauri — 95,000+ lines of code</sub>
+  <sub>Built with Rust and Tauri — 130,000+ lines of code</sub>
 </p>

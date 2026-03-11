@@ -7,11 +7,11 @@
 <p align="center">
   <strong>Moteur de Terminal en Rust — Au-delà du SSH</strong>
   <br>
-  <em>95 000+ lignes de Rust &amp; TypeScript. Zéro Electron. Zéro dépendance C dans la pile SSH.</em>
+  <em>130 000+ lignes de Rust &amp; TypeScript. Zéro Electron. Zéro dépendance C dans la pile SSH.</em>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.17.0-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-0.18.0-blue" alt="Version">
   <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-blue" alt="Platform">
   <img src="https://img.shields.io/badge/license-PolyForm%20Noncommercial-blueviolet" alt="License">
   <img src="https://img.shields.io/badge/rust-1.75+-orange" alt="Rust">
@@ -46,9 +46,9 @@ OxideTerm est une **application terminal multiplateforme** qui unifie shells loc
 ┌─────────────────────────────────────┐
 │        Frontend (React 19)          │
 │                                     │
-│  SessionTreeStore ──► AppStore      │    10 stores Zustand
-│  IdeStore    LocalTerminalStore     │    17 répertoires composants
-│  ReconnectOrchestratorStore         │    11 langues × 18 espaces de noms
+│  SessionTreeStore ──► AppStore      │    16 stores Zustand
+│  IdeStore    LocalTerminalStore     │    20 répertoires composants
+│  ReconnectOrchestratorStore         │    11 langues × 21 espaces de noms
 │  PluginStore  AiChatStore  ...      │
 │                                     │
 │        xterm.js 6 + WebGL           │
@@ -57,7 +57,7 @@ OxideTerm est une **application terminal multiplateforme** qui unifie shells loc
 ┌──────────▼──────────────▼───────────┐
 │         Backend (Rust)              │
 │                                     │
-│  NodeRouter ── resolve(nodeId) ──►  │    22 modules commandes IPC
+│  NodeRouter ── resolve(nodeId) ──►  │    24 modules commandes IPC
 │  ├─ SshConnectionRegistry          │    État concurrent DashMap
 │  ├─ SessionRegistry                │    PTY local feature-gated
 │  ├─ ForwardingManager              │    Coffre ChaCha20-Poly1305
@@ -154,6 +154,9 @@ IA dual-mode, priorité à la vie privée :
 - **Panneau inline** (`⌘I`) : commandes rapides injectées via bracketed paste
 - **Chat latéral** : conversation persistante avec historique
 - **Capture de contexte** : Terminal Registry collecte le tampon des panneaux actifs ou tous les splits
+- **Contexte multi-sources** : injection automatique des fichiers IDE, chemins SFTP et statut Git dans les conversations IA
+- **Utilisation d'outils** : 40+ outils intégrés (opérations fichiers, gestion de processus, réseau, interaction TUI) invocables par l'IA
+- **Support MCP** : connexion à des serveurs [Model Context Protocol](https://modelcontextprotocol.io) externes (stdio & SSE) pour étendre l'IA avec des outils tiers — géré dans les Paramètres
 - **Compatible** : OpenAI, Ollama, DeepSeek, OneAPI, tout endpoint `/v1/chat/completions`
 - **Sécurisé** : clés API dans le trousseau système ; sous macOS, la lecture des clés est protégée par **Touch ID** via `LAContext` (`LocalAuthentication.framework`), sans entitlement ni signature de code requis
 
@@ -246,7 +249,7 @@ Personnalisation thématique en profondeur au-delà des palettes prédéfinies :
 
 ### ⚛️ Architecture Multi-Store
 
-Le frontend adopte un pattern **Multi-Store** (10 stores) pour gérer des domaines d’état radicalement différents :
+Le frontend adopte un pattern **Multi-Store** (16 stores) pour gérer des domaines d'état radicalement différents :
 
 | Store | Rôle |
 |---|---|
@@ -259,8 +262,13 @@ Le frontend adopte un pattern **Multi-Store** (10 stores) pour gérer des domain
 | **PluginStore** | État runtime des plugins et registre UI |
 | **ProfilerStore** | Métriques du profileur de ressources |
 | **AiChatStore** | État des conversations IA |
-| **SettingsStore** | Paramètres de l’application |
-
+| **SettingsStore** | Paramètres de l'application |
+| **BroadcastStore** | Diffusion clavier — répliquer frappes vers plusieurs panneaux |
+| **CommandPaletteStore** | État ouverture/fermeture palette de commandes |
+| **EventLogStore** | Journal cycle de vie connexions & reconnexion |
+| **LauncherStore** | État lanceur d'applications plateforme |
+| **RecordingStore** | Enregistrement & lecture sessions terminal |
+| **UpdateStore** | Cycle de vie mise à jour auto (vérifier → télécharger → installer) |
 Malgré des sources d’état différentes, la logique de rendu est unifiée via les composants `TerminalView` et `IdeView`.
 ---
 
@@ -273,13 +281,13 @@ Malgré des sources d’état différentes, la logique de rendu est unifiée via
 | **SSH** | russh 0.54 (`ring`) | Pur Rust, zéro deps C, SSH Agent |
 | **PTY local** | portable-pty 0.8 | Feature-gated, ConPTY sous Windows |
 | **Frontend** | React 19.1 + TypeScript 5.8 | Vite 7, Tailwind CSS 4 |
-| **État** | Zustand 5 | 10 stores spécialisés, sync événementielle |
+| **État** | Zustand 5 | 16 stores spécialisés, sync événementielle |
 | **Terminal** | xterm.js 6 + WebGL | Rendu GPU, 60fps+ |
 | **Éditeur** | CodeMirror 6 | 16 packs de langage + modes legacy |
 | **Chiffrement** | ChaCha20-Poly1305 + Argon2id | AEAD + KDF à dureté mémoire |
 | **Stockage** | redb 2.1 | DB embarquée (sessions, redirections, transferts) |
 | **Sérialisation** | MessagePack (rmp-serde) | Persistance binaire tampon/état |
-| **i18n** | i18next 25 | 11 langues × 18 espaces de noms |
+| **i18n** | i18next 25 | 11 langues × 21 espaces de noms |
 | **SFTP** | russh-sftp 2.0 | Protocole de transfert de fichiers SSH |
 | **WebSocket** | tokio-tungstenite 0.24 | WebSocket async pour le plan de données terminal |
 | **Protocole** | Wire Protocol v1 | Binaire `[Type:1][Length:4][Payload:n]` sur WebSocket |
@@ -297,7 +305,7 @@ Malgré des sources d’état différentes, la logique de rendu est unifiée via
 | **Fichiers** | Navigateur SFTP double panneau, glisser-déposer, aperçu (images/vidéo/audio/PDF/code/hex), file de transfert |
 | **IDE** | Arborescence, éditeur CodeMirror, multi-onglets, statut Git, résolution de conflits, terminal intégré |
 | **Redirection** | Locale (-L), distante (-R), SOCKS5 dynamique (-D), auto-restauration, rapport de décès, I/O sans verrou |
-| **IA** | Panneau inline + chat latéral, SSE streaming, insertion de code, OpenAI/Ollama/DeepSeek |
+| **IA** | Panneau inline + chat latéral, SSE streaming, insertion de code, 40+ outils, intégration serveurs MCP, contexte multi-sources, OpenAI/Ollama/DeepSeek |
 | **Plugins** | Chargement ESM runtime, 8 espaces API, 24 UI Kit, exécution sandboxée, disjoncteur |
 | **WSL Graphics** ⚠️ | Visionneuse VNC intégrée (Expérimental) : mode Bureau (9 DE) + mode Application (GUI unique), détection WSLg, Xtigervnc + noVNC, reconnexion, feature-gated |
 | **Sécurité** | Chiffrement .oxide, trousseau système, `zeroize` mémoire, TOFU clé d'hôte |
@@ -396,8 +404,8 @@ cd src-tauri && cargo build --no-default-features --release
 
 ```
 OxideTerm/
-├── src/                            # Frontend — 56K lignes TypeScript
-│   ├── components/                 # 17 répertoires
+├── src/                            # Frontend — 83K lignes TypeScript
+│   ├── components/                 # 20 répertoires
 │   │   ├── terminal/               #   Vues terminal, panneaux divisés
 │   │   ├── sftp/                   #   Navigateur fichiers double panneau
 │   │   ├── ide/                    #   Éditeur, arborescence, dialogues Git
@@ -409,13 +417,13 @@ OxideTerm/
 │   │   ├── topology/               #   Graphe de topologie réseau
 │   │   ├── layout/                 #   Barre latérale, en-tête, panneaux
 │   │   └── ...                     #   sessions, settings, modals, etc.
-│   ├── store/                      # 10 stores Zustand
+│   ├── store/                      # 16 stores Zustand
 │   ├── lib/                        # Couche API, fournisseurs IA, runtime plugins
 │   ├── hooks/                      # Hooks React (événements, clavier, toast)
 │   ├── types/                      # Définitions de types TypeScript
-│   └── locales/                    # 11 langues × 18 espaces de noms
+│   └── locales/                    # 11 langues × 21 espaces de noms
 │
-├── src-tauri/                      # Backend — 39K lignes Rust
+├── src-tauri/                      # Backend — 51K lignes Rust
 │   └── src/
 │       ├── router/                 #   NodeRouter (nodeId → ressource)
 │       ├── ssh/                    #   Client SSH (12 modules incl. Agent)
@@ -427,10 +435,10 @@ OxideTerm/
 │       ├── sftp/                   #   Implémentation SFTP
 │       ├── config/                 #   Coffre, trousseau, SSH Config
 │       ├── oxide_file/             #   Chiffrement .oxide (ChaCha20)
-│       ├── commands/               #   22 modules commandes Tauri IPC
+│       ├── commands/               #   24 modules commandes Tauri IPC
 │       └── state/                  #   Types d'état global
 │
-└── docs/                           # 28+ documents architecture & fonctionnalités
+└── docs/                           # 27+ documents architecture & fonctionnalités
 ```
 
 ---
@@ -450,10 +458,13 @@ OxideTerm/
 - [x] Mode IDE (CodeMirror 6 + statut Git)
 - [x] Export chiffré .oxide avec intégration de clés
 - [x] Assistant terminal IA (inline + latéral)
+- [x] Utilisation d'outils IA — 40+ outils intégrés avec contrôles d'approbation automatique
+- [x] Injection de contexte multi-sources IA (IDE / SFTP / Git)
+- [x] MCP (Model Context Protocol) — transports stdio & SSE, interface de configuration, découverte d'outils par serveur
 - [x] Système de plugins runtime (PluginContext + UI Kit)
 - [x] Panneaux terminaux divisés avec raccourcis clavier
 - [x] Profileur de ressources (CPU / mémoire / réseau)
-- [x] i18n — 11 langues × 18 espaces de noms
+- [x] i18n — 11 langues × 21 espaces de noms
 - [x] Auth Keyboard-Interactive (2FA/MFA)
 - [x] Recherche historique profonde (30K lignes, Rust regex)
 - [x] WSL Graphics — mode bureau + mode application VNC (⚠️ Expérimental)
@@ -513,5 +524,5 @@ Texte complet : https://polyformproject.org/licenses/noncommercial/1.0.0/
 ---
 
 <p align="center">
-  <sub>Construit en Rust et Tauri — 95 000+ lignes de code</sub>
+  <sub>Construit en Rust et Tauri — 130 000+ lignes de code</sub>
 </p>

@@ -2338,7 +2338,7 @@ export const SettingsView = () => {
                                                         )}
                                                     >
                                                         <Icon className="size-3.5 shrink-0" />
-                                                        <span className="truncate">{t(`tool_use.tool_names.${toolName}`, { defaultValue: toolName })}</span>
+                                                        <span className="truncate">{t(`ai.tool_use.tool_names.${toolName}`, { defaultValue: toolName })}</span>
                                                         {isExperimental && <FlaskConical className="size-3 shrink-0 text-purple-400/70" />}
                                                     </button>
                                                 );
