@@ -125,6 +125,7 @@
         "list_directory": "Liệt kê thư mục",
         "grep_search": "Tìm kiếm",
         "git_status": "Trạng thái Git",
+        "list_tabs": "Danh sách tab",
         "list_sessions": "Danh sách phiên",
         "get_terminal_buffer": "Đọc bộ đệm",
         "search_terminal": "Tìm kiếm terminal",

@@ -379,6 +379,7 @@ const defaultAiSettings: AiSettings = {
       list_directory: true,
       grep_search: true,
       git_status: true,
+      list_tabs: true,
       list_sessions: true,
       get_terminal_buffer: true,
       search_terminal: true,

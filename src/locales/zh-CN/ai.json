@@ -125,6 +125,7 @@
         "list_directory": "列出目录",
         "grep_search": "搜索",
         "git_status": "Git 状态",
+        "list_tabs": "列出标签页",
         "list_sessions": "列出会话",
         "get_terminal_buffer": "读取缓冲区",
         "search_terminal": "搜索终端",

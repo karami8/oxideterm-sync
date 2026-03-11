@@ -166,7 +166,16 @@ export const BUILTIN_TOOLS: AiToolDefinition[] = [
     },
   },
 
-  // ── Session Discovery Tools ──
+  // ── Tab & Session Discovery Tools ──
+  {
+    name: 'list_tabs',
+    description:
+      'List all open tabs in the application. Returns tab IDs, types (terminal, sftp, ide, local_terminal, settings, etc.), titles, and which tab is currently active. Use this to understand the user\'s workspace layout.',
+    parameters: {
+      type: 'object',
+      properties: {},
+    },
+  },
   {
     name: 'list_sessions',
     description:
@@ -692,6 +701,7 @@ export const READ_ONLY_TOOLS = new Set([
   'list_directory',
   'grep_search',
   'git_status',
+  'list_tabs',
   'list_sessions',
   'get_terminal_buffer',
   'search_terminal',
@@ -744,6 +754,7 @@ export const WRITE_TOOLS = new Set([
 
 /** Tools that do NOT require any node context — work globally or read from local stores */
 export const CONTEXT_FREE_TOOLS = new Set([
+  'list_tabs',
   'list_sessions',
   'list_connections',
   'get_connection_health',
@@ -858,7 +869,7 @@ export const TOOL_GROUPS: { groupKey: string; readOnly: string[]; write: string[
   },
   {
     groupKey: 'session',
-    readOnly: ['list_sessions', 'get_terminal_buffer', 'search_terminal', 'await_terminal_output'],
+    readOnly: ['list_tabs', 'list_sessions', 'get_terminal_buffer', 'search_terminal', 'await_terminal_output'],
     write: [],
   },
   {

@@ -102,6 +102,8 @@ export async function executeTool(
     // Context-free tools — no node required
     if (CONTEXT_FREE_TOOLS.has(toolName)) {
       switch (toolName) {
+        case 'list_tabs':
+          return execListTabs(startTime, toolCallId);
         case 'list_sessions':
           return await execListSessions(args, startTime, toolCallId);
         case 'list_connections':
@@ -505,6 +507,27 @@ async function execGitStatus(
 // ═══════════════════════════════════════════════════════════════════════════
 // Context-Free Tool Executors
 // ═══════════════════════════════════════════════════════════════════════════
+
+function execListTabs(
+  startTime: number,
+  toolCallId: string,
+): AiToolResult {
+  const { tabs, activeTabId } = useAppStore.getState();
+  if (tabs.length === 0) {
+    return { toolCallId, toolName: 'list_tabs', success: true, output: 'No tabs open.', durationMs: Date.now() - startTime };
+  }
+
+  const lines = tabs.map((tab, i) => {
+    const active = tab.id === activeTabId ? ' ★' : '';
+    const session = tab.sessionId ? ` session=${tab.sessionId}` : '';
+    const node = tab.nodeId ? ` node=${tab.nodeId}` : '';
+    return `${i + 1}. [${tab.type}] id=${tab.id} "${tab.title}"${session}${node}${active}`;
+  });
+
+  lines.push(`\nActive tab: ${activeTabId ?? '(none)'}`);
+  lines.push(`Total: ${tabs.length} tab(s)`);
+  return { toolCallId, toolName: 'list_tabs', success: true, output: lines.join('\n'), durationMs: Date.now() - startTime };
+}
 
 async function execListSessions(
   args: Record<string, unknown>,

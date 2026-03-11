@@ -125,6 +125,7 @@
         "list_directory": "ディレクトリ一覧",
         "grep_search": "検索",
         "git_status": "Git ステータス",
+        "list_tabs": "タブ一覧",
         "list_sessions": "セッション一覧",
         "get_terminal_buffer": "バッファ読取",
         "search_terminal": "ターミナル検索",

@@ -19,6 +19,7 @@ const TOOL_ICONS: Record<string, React.ElementType> = {
   list_directory: FolderOpen,
   grep_search: Search,
   git_status: GitBranch,
+  list_tabs: ListTree,
   list_sessions: Network,
   get_terminal_buffer: Terminal,
   search_terminal: Search,

@@ -125,6 +125,7 @@
         "list_directory": "Elenca directory",
         "grep_search": "Cerca",
         "git_status": "Stato Git",
+        "list_tabs": "Elenco schede",
         "list_sessions": "Elenco sessioni",
         "get_terminal_buffer": "Leggi buffer",
         "search_terminal": "Cerca terminale",

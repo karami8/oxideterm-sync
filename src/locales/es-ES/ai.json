@@ -125,6 +125,7 @@
         "list_directory": "Listar directorio",
         "grep_search": "Buscar",
         "git_status": "Estado Git",
+        "list_tabs": "Listar pestañas",
         "list_sessions": "Listar sesiones",
         "get_terminal_buffer": "Leer búfer",
         "search_terminal": "Buscar terminal",
