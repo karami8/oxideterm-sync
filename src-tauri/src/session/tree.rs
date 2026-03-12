@@ -28,6 +28,9 @@ use uuid::Uuid;
 
 use super::types::AuthMethod;
 
+/// 最大跳板链深度，防止无限嵌套
+pub const MAX_CHAIN_DEPTH: u32 = 32;
+
 // ============================================================================
 // 核心数据结构
 // ============================================================================
@@ -306,8 +309,9 @@ impl SessionTree {
             return Err(TreeError::ParentNotConnected(parent_id.to_string()));
         }
 
-        let depth = parent.depth + 1;
-        let id = Uuid::new_v4().to_string();
+        let depth = parent.depth + 1;        if depth > MAX_CHAIN_DEPTH {
+            return Err(TreeError::MaxDepthExceeded(MAX_CHAIN_DEPTH));
+        }        let id = Uuid::new_v4().to_string();
 
         let node = SessionNode {
             id: id.clone(),
@@ -376,6 +380,10 @@ impl SessionTree {
         if hops.is_empty() {
             // 无跳板，直接添加目标
             return Ok(self.add_root_node(target, NodeOrigin::Direct));
+        }
+
+        if hops.len() as u32 + 1 > MAX_CHAIN_DEPTH {
+            return Err(TreeError::MaxDepthExceeded(MAX_CHAIN_DEPTH));
         }
 
         // 第一跳作为根节点
@@ -708,6 +716,9 @@ pub enum TreeError {
 
     #[error("Parent node not connected: {0}")]
     ParentNotConnected(String),
+
+    #[error("Max chain depth exceeded: {0}")]
+    MaxDepthExceeded(u32),
 
     #[error("Invalid operation: {0}")]
     InvalidOperation(String),

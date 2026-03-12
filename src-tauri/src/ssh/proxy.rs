@@ -34,6 +34,8 @@ use super::client::ClientHandler;
 use super::config::AuthMethod;
 use super::error::SshError;
 
+use crate::session::tree::MAX_CHAIN_DEPTH;
+
 /// Expand ~ to home directory for path normalization
 /// This ensures paths like ~/... work correctly with russh::keys
 fn expand_tilde(path: &str) -> String {
@@ -516,6 +518,12 @@ pub async fn connect_via_proxy(
     }
 
     let num_hops = chain.hops.len();
+    if num_hops > MAX_CHAIN_DEPTH as usize {
+        return Err(SshError::ConnectionFailed(format!(
+            "Proxy chain too long: {} hops (max {})",
+            num_hops, MAX_CHAIN_DEPTH
+        )));
+    }
     info!(
         "Establishing multi-hop SSH: {} proxy hops to {}@{}:{}",
         num_hops, target_username, target_host, target_port

@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use tokio::fs;
+use tracing::warn;
 
 /// Port forwarding rule
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -313,6 +314,12 @@ pub fn parse_ssh_config_content(content: &str) -> Result<Vec<SshConfigHost>, Ssh
                 "proxycommand" => {
                     if value.to_lowercase() != "none" {
                         host.proxy_command = Some(value.to_string());
+                        warn!(
+                            "ProxyCommand is not supported by OxideTerm, use ProxyJump instead. \
+                             Host '{}' has ProxyCommand: {}",
+                            host.alias,
+                            value
+                        );
                     }
                 }
                 // LocalForward: [bind_address:]port host:hostport

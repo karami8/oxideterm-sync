@@ -344,6 +344,9 @@ impl NetworkTopology {
 
     /// Add a custom edge
     pub fn add_custom_edge(from: String, to: String, cost: i32) -> Result<(), String> {
+        if cost <= 0 {
+            return Err(format!("Edge cost must be positive, got {}", cost));
+        }
         let mut config = Self::load_edges_overlay().unwrap_or_default();
 
         let edge = TopologyEdge { from, to, cost };
@@ -431,7 +434,7 @@ impl NetworkTopology {
 
             if let Some(neighbors) = adj.get(&node) {
                 for (next, edge_cost) in neighbors {
-                    let next_cost = cost + edge_cost;
+                    let next_cost = cost.saturating_add(*edge_cost);
                     if next_cost < *dist.get(next).unwrap_or(&i32::MAX) {
                         dist.insert(next.clone(), next_cost);
                         prev.insert(next.clone(), node.clone());

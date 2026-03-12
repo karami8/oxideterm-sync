@@ -1529,7 +1529,51 @@ impl SshConnectionRegistry {
                     connection_id
                 );
 
-                // 断开连接
+                // 🔴 级联断开：递归收集所有后代连接（子、孙…），防止孤儿连接
+                let mut all_descendant_ids: Vec<String> = Vec::new();
+                let mut stack: Vec<String> = vec![connection_id.clone()];
+                while let Some(ancestor_id) = stack.pop() {
+                    let children: Vec<String> = connections
+                        .iter()
+                        .filter(|e| e.value().parent_connection_id.as_deref() == Some(&ancestor_id))
+                        .map(|e| e.key().clone())
+                        .collect();
+                    for child_id in children {
+                        all_descendant_ids.push(child_id.clone());
+                        stack.push(child_id);
+                    }
+                }
+
+                // 逆序断开（叶子节点先断开），确保子连接在父连接之前清理
+                all_descendant_ids.reverse();
+                for desc_id in &all_descendant_ids {
+                    info!(
+                        "Idle cascade: disconnecting descendant connection {} (ancestor: {})",
+                        desc_id, connection_id
+                    );
+                    if let Some(desc_entry) = connections.get(desc_id) {
+                        let desc_conn = desc_entry.value().clone();
+                        drop(desc_entry);
+                        desc_conn.cancel_idle_timer().await;
+                        desc_conn.cancel_heartbeat().await;
+                        desc_conn.cancel_reconnect().await;
+                        desc_conn.clear_sftp().await;
+                        desc_conn.handle_controller.disconnect().await;
+                        desc_conn.set_state(ConnectionState::Disconnected).await;
+                        if let Some(ref emitter) = node_emitter {
+                            emitter.emit_sftp_ready(desc_id, false, None);
+                            emitter.emit_state_from_connection(
+                                desc_id,
+                                &ConnectionState::Disconnected,
+                                "ancestor idle timeout cascade",
+                            );
+                            emitter.unregister(desc_id);
+                        }
+                        connections.remove(desc_id);
+                    }
+                }
+
+                // 断开当前连接
                 conn_clone.clear_sftp().await; // Oxide-Next Phase 1.5: 清理 SFTP
                 conn_clone.handle_controller.disconnect().await;
                 conn_clone.set_state(ConnectionState::Disconnected).await;
@@ -1550,7 +1594,7 @@ impl SshConnectionRegistry {
                     let event = ConnectionStatusEvent {
                         connection_id: connection_id.clone(),
                         status: "disconnected".to_string(),
-                        affected_children: vec![],
+                        affected_children: all_descendant_ids,
                         timestamp: std::time::SystemTime::now()
                             .duration_since(std::time::UNIX_EPOCH)
                             .unwrap_or_default()
