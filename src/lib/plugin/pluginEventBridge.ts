@@ -227,20 +227,18 @@ export function setupTransferBridge(): () => void {
     prevStates = new Map(
       Array.from(useTransferStore.getState().transfers.entries()).map(([k, v]) => [k, v.state]),
     );
-    unsub = useTransferStore.subscribe(
-      (state) => state.transfers,
-      (transfers) => {
-        for (const [id, t] of transfers) {
-          const prev = prevStates.get(id);
-          if (t.state === 'completed' && prev !== 'completed') {
-            pluginEventBridge.emit('transfer:complete', { id: t.id, nodeId: t.nodeId, name: t.name, direction: t.direction });
-          } else if (t.state === 'error' && prev !== 'error') {
-            pluginEventBridge.emit('transfer:error', { id: t.id, nodeId: t.nodeId, name: t.name, error: t.error });
-          }
+    unsub = useTransferStore.subscribe((state) => {
+      const transfers = state.transfers;
+      for (const [id, t] of transfers) {
+        const prev = prevStates.get(id);
+        if (t.state === 'completed' && prev !== 'completed') {
+          pluginEventBridge.emit('transfer:complete', { id: t.id, nodeId: t.nodeId, name: t.name, direction: t.direction });
+        } else if (t.state === 'error' && prev !== 'error') {
+          pluginEventBridge.emit('transfer:error', { id: t.id, nodeId: t.nodeId, name: t.name, error: t.error });
         }
-        prevStates = new Map(Array.from(transfers.entries()).map(([k, v]) => [k, v.state]));
-      },
-    );
+      }
+      prevStates = new Map(Array.from(transfers.entries()).map(([k, v]) => [k, v.state]));
+    });
   }).catch((err) => {
     console.error('[PluginEventBridge] Failed to setup transfer bridge:', err);
   });

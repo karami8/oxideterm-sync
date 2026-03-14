@@ -373,21 +373,18 @@ export function buildPluginContext(manifest: PluginManifest): PluginContext {
     },
     showProgress(title: string): ProgressReporter {
       let _progress = 0;
+      let _total = 100;
       let _disposed = false;
       const id = crypto.randomUUID();
       pluginEventBridge.emit('plugin:progress:start', { id, title, pluginId });
       return Object.freeze({
-        report(increment: number, message?: string) {
+        report(value: number, total: number, message?: string) {
           if (_disposed) return;
-          _progress = Math.min(100, _progress + increment);
-          pluginEventBridge.emit('plugin:progress:update', { id, progress: _progress, message });
+          _total = total || 100;
+          _progress = Math.min(_total, value);
+          pluginEventBridge.emit('plugin:progress:update', { id, progress: Math.round((_progress / _total) * 100), message });
         },
-        done() {
-          if (_disposed) return;
-          _disposed = true;
-          pluginEventBridge.emit('plugin:progress:end', { id });
-        },
-      });
+      }) as ProgressReporter;
     },
     getLayout() {
       const state = useAppStore.getState();
@@ -398,12 +395,12 @@ export function buildPluginContext(manifest: PluginManifest): PluginContext {
       });
     },
     onLayoutChange(handler) {
-      const unsub = useAppStore.subscribe(
-        (state) => ({ sidebarCollapsed: state.sidebarCollapsed, activeTabId: state.activeTabId, tabLen: state.tabs?.length }),
-        () => {
-          try { handler(ui.getLayout()); } catch { /* swallow */ }
-        },
-      );
+      let prev = JSON.stringify(ui.getLayout());
+      const unsub = useAppStore.subscribe((state) => {
+        const layout = { sidebarCollapsed: state.sidebarCollapsed ?? false, activeTabId: state.activeTabId ?? null, tabCount: state.tabs?.length ?? 0 };
+        const key = JSON.stringify(layout);
+        if (key !== prev) { prev = key; try { handler(Object.freeze(layout)); } catch { /* swallow */ } }
+      });
       return createDisposable(pluginId, unsub);
     },
     registerContextMenu(target: ContextMenuTarget, items: ContextMenuItem[]) {
@@ -420,7 +417,7 @@ export function buildPluginContext(manifest: PluginManifest): PluginContext {
       });
     },
     registerStatusBarItem(options: StatusBarItemOptions): StatusBarHandle {
-      const id = `${pluginId}:${options.id ?? crypto.randomUUID()}`;
+      const id = `${pluginId}:${(options as StatusBarItemOptions & { id?: string }).id ?? crypto.randomUUID()}`;
       const updateBar = (opts: StatusBarItemOptions) => {
         usePluginStore.setState((state) => ({
           statusBarItems: new Map(state.statusBarItems ?? new Map()).set(id, { pluginId, ...opts }),
@@ -756,19 +753,25 @@ export function buildPluginContext(manifest: PluginManifest): PluginContext {
   const sessions: PluginSessionsAPI = Object.freeze({
     getTree(): ReadonlyArray<SessionTreeNodeSnapshot> {
       const nodes = useSessionTreeStore.getState().nodes;
-      const connections = useAppStore.getState().connections;
+      const childMap = new Map<string, string[]>();
+      for (const n of nodes) {
+        if (n.parentId) {
+          const siblings = childMap.get(n.parentId) ?? [];
+          siblings.push(n.id);
+          childMap.set(n.parentId, siblings);
+        }
+      }
       return Object.freeze(nodes.map((n) => {
-        const conn = n.runtime.connectionId ? connections.get(n.runtime.connectionId) : undefined;
         return freezeSnapshot<SessionTreeNodeSnapshot>({
           id: n.id,
-          label: n.label,
+          label: n.displayName || `${n.username}@${n.host}`,
           host: n.host,
           port: n.port,
           username: n.username,
           parentId: n.parentId,
-          childIds: Object.freeze([...n.childIds]),
+          childIds: Object.freeze(childMap.get(n.id) ?? []),
           connectionState: n.runtime.status,
-          connectionId: n.runtime.connectionId,
+          connectionId: n.runtime.connectionId ?? null,
           terminalIds: Object.freeze([...n.runtime.terminalIds]),
           sftpSessionId: n.runtime.sftpSessionId,
           errorMessage: n.runtime.errorMessage,
@@ -855,14 +858,11 @@ export function buildPluginContext(manifest: PluginManifest): PluginContext {
       const throttled = createThrottledEmitter<TransferSnapshot>(500, handler);
       let unsub: (() => void) | null = null;
       void getTransferStore().then((store) => {
-        unsub = store.subscribe(
-          (state) => state.transfers,
-          (transfers) => {
-            for (const t of transfers.values()) {
-              if (t.state === 'active') throttled.push(toTransferSnapshot(t));
-            }
-          },
-        );
+        unsub = store.subscribe((state) => {
+          for (const t of state.transfers.values()) {
+            if (t.state === 'active') throttled.push(toTransferSnapshot(t));
+          }
+        });
       });
       return createDisposable(pluginId, () => { unsub?.(); throttled.dispose(); });
     },
@@ -871,17 +871,15 @@ export function buildPluginContext(manifest: PluginManifest): PluginContext {
       let prevStates = new Map<string, string>();
       void getTransferStore().then((store) => {
         prevStates = new Map(Array.from(store.getState().transfers.entries()).map(([k, v]) => [k, v.state]));
-        unsub = store.subscribe(
-          (state) => state.transfers,
-          (transfers) => {
-            for (const [id, t] of transfers) {
-              if (t.state === 'completed' && prevStates.get(id) !== 'completed') {
-                try { handler(toTransferSnapshot(t)); } catch { /* swallow */ }
-              }
+        unsub = store.subscribe((state) => {
+          const transfers = state.transfers;
+          for (const [id, t] of transfers) {
+            if (t.state === 'completed' && prevStates.get(id) !== 'completed') {
+              try { handler(toTransferSnapshot(t)); } catch { /* swallow */ }
             }
-            prevStates = new Map(Array.from(transfers.entries()).map(([k, v]) => [k, v.state]));
-          },
-        );
+          }
+          prevStates = new Map(Array.from(transfers.entries()).map(([k, v]) => [k, v.state]));
+        });
       });
       return createDisposable(pluginId, () => { unsub?.(); });
     },
@@ -890,17 +888,15 @@ export function buildPluginContext(manifest: PluginManifest): PluginContext {
       let prevStates = new Map<string, string>();
       void getTransferStore().then((store) => {
         prevStates = new Map(Array.from(store.getState().transfers.entries()).map(([k, v]) => [k, v.state]));
-        unsub = store.subscribe(
-          (state) => state.transfers,
-          (transfers) => {
-            for (const [id, t] of transfers) {
-              if (t.state === 'error' && prevStates.get(id) !== 'error') {
-                try { handler(toTransferSnapshot(t)); } catch { /* swallow */ }
-              }
+        unsub = store.subscribe((state) => {
+          const transfers = state.transfers;
+          for (const [id, t] of transfers) {
+            if (t.state === 'error' && prevStates.get(id) !== 'error') {
+              try { handler(toTransferSnapshot(t)); } catch { /* swallow */ }
             }
-            prevStates = new Map(Array.from(transfers.entries()).map(([k, v]) => [k, v.state]));
-          },
-        );
+          }
+          prevStates = new Map(Array.from(transfers.entries()).map(([k, v]) => [k, v.state]));
+        });
       });
       return createDisposable(pluginId, () => { unsub?.(); });
     },
@@ -948,13 +944,15 @@ export function buildPluginContext(manifest: PluginManifest): PluginContext {
     onMetrics(nodeId: string, handler) {
       const throttled = createThrottledEmitter<ProfilerMetricsSnapshot>(1000, handler);
       let unsub: (() => void) | null = null;
+      let prevTs = 0;
       void getProfilerStore().then((store) => {
-        unsub = store.subscribe(
-          (state) => state.connections.get(nodeId)?.metrics ?? null,
-          (metrics) => {
-            if (metrics) throttled.push(toMetricsSnapshot(metrics));
-          },
-        );
+        unsub = store.subscribe((state) => {
+          const metrics = state.connections.get(nodeId)?.metrics ?? null;
+          if (metrics && metrics.timestampMs !== prevTs) {
+            prevTs = metrics.timestampMs;
+            throttled.push(toMetricsSnapshot(metrics));
+          }
+        });
       });
       return createDisposable(pluginId, () => { unsub?.(); throttled.dispose(); });
     },
@@ -991,17 +989,15 @@ export function buildPluginContext(manifest: PluginManifest): PluginContext {
       let prevLength = 0;
       void getEventLogStore().then((store) => {
         prevLength = store.getState().entries.length;
-        unsub = store.subscribe(
-          (state) => state.entries,
-          (entries) => {
-            if (entries.length > prevLength) {
-              for (let i = prevLength; i < entries.length; i++) {
-                try { handler(toEventLogSnapshot(entries[i])); } catch { /* swallow */ }
-              }
+        unsub = store.subscribe((state) => {
+          const entries = state.entries;
+          if (entries.length > prevLength) {
+            for (let i = prevLength; i < entries.length; i++) {
+              try { handler(toEventLogSnapshot(entries[i])); } catch { /* swallow */ }
             }
-            prevLength = entries.length;
-          },
-        );
+          }
+          prevLength = entries.length;
+        });
       });
       return createDisposable(pluginId, () => { unsub?.(); });
     },
@@ -1143,45 +1139,43 @@ export function buildPluginContext(manifest: PluginManifest): PluginContext {
     },
     getActiveProvider(): Readonly<{ type: string; displayName: string }> | null {
       if (!_useSettingsStore) return null;
-      const settings = _useSettingsStore.getState();
-      const providerId = settings.ai.activeProviderId;
+      const s = _useSettingsStore.getState().settings;
+      const providerId = s.ai.activeProviderId;
       if (!providerId) return null;
-      const provider = settings.ai.providers?.find((p: { id: string; type: string; name: string }) => p.id === providerId);
+      const provider = s.ai.providers?.find((p: { id: string; type: string; name: string }) => p.id === providerId);
       if (!provider) return null;
       return Object.freeze({ type: provider.type, displayName: provider.name });
     },
     getAvailableModels(): ReadonlyArray<string> {
       if (!_useSettingsStore) return Object.freeze([]);
-      const settings = _useSettingsStore.getState();
-      const providerId = settings.ai.activeProviderId;
-      if (!providerId || !settings.ai.modelContextWindows) return Object.freeze([]);
-      const models = settings.ai.modelContextWindows[providerId];
+      const s = _useSettingsStore.getState().settings;
+      const providerId = s.ai.activeProviderId;
+      if (!providerId || !s.ai.modelContextWindows) return Object.freeze([]);
+      const models = s.ai.modelContextWindows[providerId];
       return models ? Object.freeze(Object.keys(models)) : Object.freeze([]);
     },
     onMessage(handler) {
       let unsub: (() => void) | null = null;
       let prevMessageCounts = new Map<string, number>();
       void getAiChatStore().then((store) => {
-        prevMessageCounts = new Map(store.getState().conversations.map((c) => [c.id, c.messages.length]));
-        unsub = store.subscribe(
-          (state) => state.conversations,
-          (conversations) => {
-            for (const conv of conversations) {
-              const prevCount = prevMessageCounts.get(conv.id) ?? 0;
-              if (conv.messages.length > prevCount) {
-                const newMsg = conv.messages[conv.messages.length - 1];
-                try {
-                  handler(Object.freeze({
-                    conversationId: conv.id,
-                    messageId: newMsg.id,
-                    role: newMsg.role,
-                  }));
-                } catch { /* swallow */ }
-              }
+        prevMessageCounts = new Map(store.getState().conversations.map((c: { id: string; messages: unknown[] }) => [c.id, c.messages.length]));
+        unsub = store.subscribe((state) => {
+          const conversations = state.conversations as Array<{ id: string; messages: Array<{ id: string; role: string }> }>;
+          for (const conv of conversations) {
+            const prevCount = prevMessageCounts.get(conv.id) ?? 0;
+            if (conv.messages.length > prevCount) {
+              const newMsg = conv.messages[conv.messages.length - 1];
+              try {
+                handler(Object.freeze({
+                  conversationId: conv.id,
+                  messageId: newMsg.id,
+                  role: newMsg.role,
+                }));
+              } catch { /* swallow */ }
             }
-            prevMessageCounts = new Map(conversations.map((c) => [c.id, c.messages.length]));
-          },
-        );
+          }
+          prevMessageCounts = new Map(conversations.map((c) => [c.id, c.messages.length]));
+        });
       });
       return createDisposable(pluginId, () => { unsub?.(); });
     },
@@ -1194,16 +1188,16 @@ export function buildPluginContext(manifest: PluginManifest): PluginContext {
   const app: PluginAppAPI = Object.freeze({
     getTheme(): ThemeSnapshot {
       if (!_useSettingsStore) return Object.freeze({ name: 'default', isDark: true });
-      const terminal = _useSettingsStore.getState().terminal;
+      const terminal = _useSettingsStore.getState().settings.terminal;
       const theme = terminal?.theme ?? 'default';
       // Dark detection: themes without "light" in name are assumed dark
       return Object.freeze({ name: theme, isDark: !theme.toLowerCase().includes('light') });
     },
     getSettings(category: 'terminal' | 'appearance' | 'general' | 'buffer' | 'sftp' | 'reconnect'): Readonly<Record<string, unknown>> {
       if (!_useSettingsStore) return Object.freeze({});
-      const state = _useSettingsStore.getState();
-      const section = state[category];
-      return section ? freezeSnapshot({ ...section } as Record<string, unknown>) : Object.freeze({});
+      const s = _useSettingsStore.getState().settings;
+      const section = s[category as keyof typeof s];
+      return section && typeof section === 'object' ? freezeSnapshot({ ...(section as unknown as Record<string, unknown>) }) : Object.freeze({});
     },
     getVersion(): string {
       return window.__OXIDE__?.version ?? '0.0.0';
@@ -1216,13 +1210,13 @@ export function buildPluginContext(manifest: PluginManifest): PluginContext {
     },
     getLocale(): string {
       if (!_useSettingsStore) return 'en';
-      return _useSettingsStore.getState().general?.language ?? 'en';
+      return _useSettingsStore.getState().settings.general?.language ?? 'en';
     },
     onThemeChange(handler) {
       let unsub: (() => void) | null = null;
       void getSettingsStore().then((store) => {
         unsub = store.subscribe(
-          (state) => state.terminal?.theme,
+          (state) => state.settings.terminal?.theme,
           (theme) => {
             if (theme) {
               try { handler(Object.freeze({ name: theme, isDark: !theme.toLowerCase().includes('light') })); } catch { /* swallow */ }
@@ -1237,7 +1231,7 @@ export function buildPluginContext(manifest: PluginManifest): PluginContext {
       void getSettingsStore().then((store) => {
         unsub = store.subscribe(
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (state) => (state as any)[category],
+          (state) => (state.settings as any)[category],
           (section) => {
             if (section) {
               try { handler(freezeSnapshot({ ...section } as Record<string, unknown>)); } catch { /* swallow */ }
