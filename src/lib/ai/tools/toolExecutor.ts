@@ -21,7 +21,7 @@ import {
 } from '../../api';
 import { nodeSftpListDir, nodeSftpPreview, nodeSftpStat } from '../../api';
 import { api } from '../../api';
-import type { AiToolResult, AgentFileEntry } from '../../../types';
+import type { AiToolResult, AgentFileEntry, TabType } from '../../../types';
 import { CONTEXT_FREE_TOOLS, SESSION_ID_TOOLS, isCommandDenied } from './toolDefinitions';
 import { useSessionTreeStore } from '../../../store/sessionTreeStore';
 import { useAppStore } from '../../../store/appStore';
@@ -129,6 +129,13 @@ export async function executeTool(
           return await execLocalExec(args, startTime, toolCallId);
         case 'local_get_drives':
           return await execLocalGetDrives(startTime, toolCallId);
+        case 'open_local_terminal':
+          return await execOpenLocalTerminal(args, startTime, toolCallId);
+        // Navigation tools
+        case 'open_tab':
+          return execOpenTab(args, startTime, toolCallId);
+        case 'open_session_tab':
+          return execOpenSessionTab(args, startTime, toolCallId);
         // Settings tools
         case 'get_settings':
           return execGetSettings(args, startTime, toolCallId);
@@ -1847,6 +1854,78 @@ async function execLocalGetDrives(startTime: number, toolCallId: string): Promis
   } catch (e) {
     return { toolCallId, toolName: 'local_get_drives', success: false, output: '', error: e instanceof Error ? e.message : String(e), durationMs: Date.now() - startTime };
   }
+}
+
+async function execOpenLocalTerminal(args: Record<string, unknown>, startTime: number, toolCallId: string): Promise<AiToolResult> {
+  try {
+    const terminals = useLocalTerminalStore.getState().terminals;
+    if (terminals.size >= 10) {
+      return { toolCallId, toolName: 'open_local_terminal', success: false, output: '', error: 'Too many local terminals open (max 10). Close some before opening new ones.', durationMs: Date.now() - startTime };
+    }
+    const cwd = typeof args.cwd === 'string' ? args.cwd : undefined;
+    const info = await useLocalTerminalStore.getState().createTerminal(
+      cwd ? { cwd } : undefined,
+    );
+    useAppStore.getState().createTab('local_terminal', info.id);
+    return {
+      toolCallId,
+      toolName: 'open_local_terminal',
+      success: true,
+      output: `Local terminal opened. Session ID: ${info.id}, Shell: ${info.shell?.label ?? 'unknown'}`,
+      durationMs: Date.now() - startTime,
+    };
+  } catch (e) {
+    return {
+      toolCallId,
+      toolName: 'open_local_terminal',
+      success: false,
+      output: '',
+      error: e instanceof Error ? e.message : String(e),
+      durationMs: Date.now() - startTime,
+    };
+  }
+}
+
+const ALLOWED_SINGLETON_TABS = new Set([
+  'settings', 'connection_monitor', 'connection_pool', 'topology',
+  'file_manager', 'session_manager', 'plugin_manager', 'launcher',
+]);
+
+function execOpenTab(args: Record<string, unknown>, startTime: number, toolCallId: string): AiToolResult {
+  const tabType = typeof args.tab_type === 'string' ? args.tab_type.trim() : '';
+  if (!tabType || !ALLOWED_SINGLETON_TABS.has(tabType)) {
+    return { toolCallId, toolName: 'open_tab', success: false, output: '', error: `Invalid tab_type. Allowed: ${[...ALLOWED_SINGLETON_TABS].join(', ')}`, durationMs: Date.now() - startTime };
+  }
+  useAppStore.getState().createTab(tabType as TabType);
+  return { toolCallId, toolName: 'open_tab', success: true, output: `Opened ${tabType} tab.`, durationMs: Date.now() - startTime };
+}
+
+const ALLOWED_SESSION_TABS = new Set(['sftp', 'ide', 'forwards']);
+
+function execOpenSessionTab(args: Record<string, unknown>, startTime: number, toolCallId: string): AiToolResult {
+  const tabType = typeof args.tab_type === 'string' ? args.tab_type.trim() : '';
+  const nodeId = typeof args.node_id === 'string' ? args.node_id.trim() : '';
+  if (!tabType || !ALLOWED_SESSION_TABS.has(tabType)) {
+    return { toolCallId, toolName: 'open_session_tab', success: false, output: '', error: `Invalid tab_type. Allowed: ${[...ALLOWED_SESSION_TABS].join(', ')}`, durationMs: Date.now() - startTime };
+  }
+  if (!nodeId) {
+    return { toolCallId, toolName: 'open_session_tab', success: false, output: '', error: 'Missing required argument: node_id. Use list_sessions to discover available nodes.', durationMs: Date.now() - startTime };
+  }
+  // Resolve the node to get its terminal session ID
+  const node = useSessionTreeStore.getState().nodes.find(n => n.id === nodeId);
+  if (!node) {
+    return { toolCallId, toolName: 'open_session_tab', success: false, output: '', error: `Node not found: ${nodeId}`, durationMs: Date.now() - startTime };
+  }
+  const status = node.runtime?.status;
+  if (status !== 'connected' && status !== 'active') {
+    return { toolCallId, toolName: 'open_session_tab', success: false, output: '', error: `Node ${nodeId} is not connected (status: ${status ?? 'unknown'}). Wait for it to connect first.`, durationMs: Date.now() - startTime };
+  }
+  const terminalId = node.runtime?.terminalIds?.[0];
+  if (!terminalId) {
+    return { toolCallId, toolName: 'open_session_tab', success: false, output: '', error: `Node ${nodeId} has no active terminal session. Is it connected?`, durationMs: Date.now() - startTime };
+  }
+  useAppStore.getState().createTab(tabType as TabType, terminalId, { nodeId });
+  return { toolCallId, toolName: 'open_session_tab', success: true, output: `Opened ${tabType} tab for node ${nodeId}.`, durationMs: Date.now() - startTime };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

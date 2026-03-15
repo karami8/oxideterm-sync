@@ -150,6 +150,7 @@
         "local_get_terminal_info": "ターミナル情報",
         "local_exec": "ローカル実行",
         "local_get_drives": "ドライブ一覧",
+        "open_local_terminal": "端末を開く",
         "get_settings": "設定取得",
         "update_setting": "設定変更",
         "get_pool_stats": "プール統計",
@@ -166,7 +167,9 @@
         "send_keys": "キー送信",
         "send_mouse": "マウス操作",
         "list_mcp_resources": "MCPリソース",
-        "read_mcp_resource": "MCPリソース読取"
+        "read_mcp_resource": "MCPリソース読取",
+        "open_tab": "タブを開く",
+        "open_session_tab": "セッションタブを開く"
       }
     },
     "tool_selector": {

@@ -150,6 +150,7 @@
         "local_get_terminal_info": "終端機資訊",
         "local_exec": "本機執行",
         "local_get_drives": "列出磁碟",
+        "open_local_terminal": "開啟終端",
         "get_settings": "取得設定",
         "update_setting": "修改設定",
         "get_pool_stats": "連線池統計",
@@ -166,7 +167,9 @@
         "send_keys": "傳送按鍵",
         "send_mouse": "傳送滑鼠",
         "list_mcp_resources": "MCP 資源",
-        "read_mcp_resource": "讀取 MCP 資源"
+        "read_mcp_resource": "讀取 MCP 資源",
+        "open_tab": "開啟分頁",
+        "open_session_tab": "開啟工作階段分頁"
       }
     },
     "tool_selector": {

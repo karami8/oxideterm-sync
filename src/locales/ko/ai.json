@@ -150,6 +150,7 @@
         "local_get_terminal_info": "터미널 정보",
         "local_exec": "로컬 실행",
         "local_get_drives": "드라이브 목록",
+        "open_local_terminal": "터미널 열기",
         "get_settings": "설정 조회",
         "update_setting": "설정 변경",
         "get_pool_stats": "풀 통계",
@@ -166,7 +167,9 @@
         "send_keys": "키 전송",
         "send_mouse": "마우스 전송",
         "list_mcp_resources": "MCP 리소스",
-        "read_mcp_resource": "MCP 리소스 읽기"
+        "read_mcp_resource": "MCP 리소스 읽기",
+        "open_tab": "탭 열기",
+        "open_session_tab": "세션 탭 열기"
       }
     },
     "tool_selector": {

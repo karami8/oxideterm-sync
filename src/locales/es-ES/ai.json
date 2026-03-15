@@ -150,6 +150,7 @@
         "local_get_terminal_info": "Info terminal",
         "local_exec": "Ejecutar local",
         "local_get_drives": "Listar unidades",
+        "open_local_terminal": "Abrir Terminal",
         "get_settings": "Ajustes",
         "update_setting": "Cambiar ajuste",
         "get_pool_stats": "Estadísticas pool",
@@ -166,7 +167,9 @@
         "send_keys": "Enviar teclas",
         "send_mouse": "Enviar ratón",
         "list_mcp_resources": "Recursos MCP",
-        "read_mcp_resource": "Leer recurso MCP"
+        "read_mcp_resource": "Leer recurso MCP",
+        "open_tab": "Abrir Pestaña",
+        "open_session_tab": "Abrir Pestaña de Sesión"
       }
     },
     "tool_selector": {

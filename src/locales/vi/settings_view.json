@@ -334,6 +334,7 @@
       "tool_use_group_plugin_manager": "Quản lý plugin",
       "tool_use_group_tui_interaction": "Tương tác TUI",
       "tool_use_group_mcp": "Máy chủ MCP",
+      "tool_use_group_navigation": "Điều hướng",
       "experimental": "Thử nghiệm",
       "tool_use_subgroup_read_only": "Chỉ đọc",
       "tool_use_subgroup_write": "Ghi / Thực thi",

@@ -334,6 +334,7 @@
       "tool_use_group_plugin_manager": "外掛管理",
       "tool_use_group_tui_interaction": "TUI 互動",
       "tool_use_group_mcp": "MCP 伺服器",
+      "tool_use_group_navigation": "導航",
       "experimental": "實驗性",
       "tool_use_subgroup_read_only": "唯讀",
       "tool_use_subgroup_write": "寫入 / 執行",

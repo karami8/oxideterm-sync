@@ -150,6 +150,7 @@
         "local_get_terminal_info": "Thông tin terminal",
         "local_exec": "Thực thi cục bộ",
         "local_get_drives": "Danh sách ổ đĩa",
+        "open_local_terminal": "Mở Terminal",
         "get_settings": "Cài đặt",
         "update_setting": "Sửa cài đặt",
         "get_pool_stats": "Thống kê pool",
@@ -166,7 +167,9 @@
         "send_keys": "Gửi phím",
         "send_mouse": "Gửi chuột",
         "list_mcp_resources": "Tài nguyên MCP",
-        "read_mcp_resource": "Đọc tài nguyên MCP"
+        "read_mcp_resource": "Đọc tài nguyên MCP",
+        "open_tab": "Mở Tab",
+        "open_session_tab": "Mở Tab Phiên"
       }
     },
     "tool_selector": {

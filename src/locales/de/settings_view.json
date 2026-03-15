@@ -334,6 +334,7 @@
       "tool_use_group_plugin_manager": "Plugin-Verwaltung",
       "tool_use_group_tui_interaction": "TUI-Interaktion",
       "tool_use_group_mcp": "MCP-Server",
+      "tool_use_group_navigation": "Navigation",
       "experimental": "Experimentell",
       "tool_use_subgroup_read_only": "Nur Lesen",
       "tool_use_subgroup_write": "Schreiben / Ausführen",

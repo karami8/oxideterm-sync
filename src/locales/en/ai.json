@@ -150,6 +150,7 @@
         "local_get_terminal_info": "Terminal Info",
         "local_exec": "Local Exec",
         "local_get_drives": "List Drives",
+        "open_local_terminal": "Open Terminal",
         "get_settings": "Get Settings",
         "update_setting": "Update Setting",
         "get_pool_stats": "Pool Stats",
@@ -166,7 +167,9 @@
         "send_keys": "Send Keys",
         "send_mouse": "Send Mouse",
         "list_mcp_resources": "MCP Resources",
-        "read_mcp_resource": "Read MCP Resource"
+        "read_mcp_resource": "Read MCP Resource",
+        "open_tab": "Open Tab",
+        "open_session_tab": "Open Session Tab"
       }
     },
     "tool_selector": {

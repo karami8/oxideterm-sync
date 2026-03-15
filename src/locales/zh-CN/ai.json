@@ -150,6 +150,7 @@
         "local_get_terminal_info": "终端信息",
         "local_exec": "本地执行",
         "local_get_drives": "列出驱动器",
+        "open_local_terminal": "打开终端",
         "get_settings": "获取设置",
         "update_setting": "修改设置",
         "get_pool_stats": "连接池统计",
@@ -166,7 +167,9 @@
         "send_keys": "发送按键",
         "send_mouse": "发送鼠标",
         "list_mcp_resources": "MCP 资源",
-        "read_mcp_resource": "读取 MCP 资源"
+        "read_mcp_resource": "读取 MCP 资源",
+        "open_tab": "打开标签页",
+        "open_session_tab": "打开会话标签页"
       }
     },
     "tool_selector": {

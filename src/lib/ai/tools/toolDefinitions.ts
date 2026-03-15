@@ -699,6 +699,57 @@ export const LOCAL_TOOL_DEFS: AiToolDefinition[] = [
     description: 'List local drives/volumes with path, name, type, total/available space, and read-only status.',
     parameters: { type: 'object', properties: {} },
   },
+  {
+    name: 'open_local_terminal',
+    description: 'Open a new local terminal tab in the UI and return its session ID. Use this when the user asks to open/create a local terminal.',
+    parameters: {
+      type: 'object',
+      properties: {
+        cwd: { type: 'string', description: 'Initial working directory. Optional.' },
+      },
+    },
+  },
+];
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Navigation Tools — Open / switch to tabs (always available)
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const NAVIGATION_TOOL_DEFS: AiToolDefinition[] = [
+  {
+    name: 'open_tab',
+    description: 'Open or switch to a singleton tab in the UI. Supported tab types: settings, connection_monitor, connection_pool, topology, file_manager, session_manager, plugin_manager, launcher.',
+    parameters: {
+      type: 'object',
+      properties: {
+        tab_type: {
+          type: 'string',
+          enum: ['settings', 'connection_monitor', 'connection_pool', 'topology', 'file_manager', 'session_manager', 'plugin_manager', 'launcher'],
+          description: 'The type of tab to open.',
+        },
+      },
+      required: ['tab_type'],
+    },
+  },
+  {
+    name: 'open_session_tab',
+    description: 'Open an SFTP, IDE, or port-forwarding tab for a specific SSH session. Requires a connected SSH session. Use list_sessions to discover available node_id values.',
+    parameters: {
+      type: 'object',
+      properties: {
+        tab_type: {
+          type: 'string',
+          enum: ['sftp', 'ide', 'forwards'],
+          description: 'The type of session tab to open.',
+        },
+        node_id: {
+          type: 'string',
+          description: 'The node ID of the SSH session. Use list_sessions to discover available nodes.',
+        },
+      },
+      required: ['tab_type', 'node_id'],
+    },
+  },
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -923,6 +974,8 @@ export const WRITE_TOOLS = new Set([
   // Meta tools (write)
   'send_control_sequence',
   'batch_exec',
+  // Navigation tools (write — open session-dependent tabs)
+  'open_session_tab',
   // TUI interaction (experimental, write)
   'send_keys',
   'send_mouse',
@@ -944,6 +997,10 @@ export const CONTEXT_FREE_TOOLS = new Set([
   'local_get_terminal_info',
   'local_exec',
   'local_get_drives',
+  'open_local_terminal',
+  // Navigation tools
+  'open_tab',
+  'open_session_tab',
   // Settings tools
   'get_settings',
   'update_setting',
@@ -1009,6 +1066,8 @@ export const LOCAL_ONLY_TOOLS = new Set([
   'local_get_terminal_info',
   'local_exec',
   'local_get_drives',
+  // Note: open_local_terminal is intentionally NOT in this set — it must be
+  // available from any context so the agent can create a terminal tab.
 ]);
 
 /** Tools only shown when settings tab is active */
@@ -1080,7 +1139,7 @@ export const TOOL_GROUPS: { groupKey: string; readOnly: string[]; write: string[
   {
     groupKey: 'local_terminal',
     readOnly: ['local_list_shells', 'local_get_terminal_info', 'local_get_drives'],
-    write: ['local_exec'],
+    write: ['local_exec', 'open_local_terminal'],
   },
   {
     groupKey: 'settings',
@@ -1112,6 +1171,11 @@ export const TOOL_GROUPS: { groupKey: string; readOnly: string[]; write: string[
     readOnly: ['list_mcp_resources', 'read_mcp_resource'],
     write: [],
   },
+  {
+    groupKey: 'navigation',
+    readOnly: ['open_tab'],
+    write: ['open_session_tab'],
+  },
 ];
 
 /**
@@ -1135,6 +1199,7 @@ export function getToolsForContext(
     ...SESSION_MGR_TOOL_DEFS,
     ...PLUGIN_TOOL_DEFS,
     ...MCP_RESOURCE_TOOL_DEFS,
+    ...NAVIGATION_TOOL_DEFS,
   ];
   
   return allTools.filter(t => {
