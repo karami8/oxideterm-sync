@@ -24,6 +24,10 @@
 
 ---
 
+<p align="center">
+  <img src="../screenshots/overview.png" alt="OxideTerm 概覽" width="800">
+</p>
+
 ## OxideTerm 是什麼？
 
 OxideTerm 是一款**跨平台終端應用**，將本地 Shell、遠端 SSH 工作階段、檔案管理、程式碼編輯和 AI 助手整合進一個 Rust 原生二進位檔案中。它**不是** Electron 套殼——後端完全由 Rust 撰寫，透過 Tauri 2.0 封裝為約 20-35 MB 的原生可執行檔。

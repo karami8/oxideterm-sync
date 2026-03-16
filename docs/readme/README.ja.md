@@ -24,6 +24,10 @@
 
 ---
 
+<p align="center">
+  <img src="../screenshots/overview.png" alt="OxideTerm 概要" width="800">
+</p>
+
 ## OxideTermとは？
 
 OxideTermは、ローカルシェル、リモートSSHセッション、ファイル管理、コード編集、AI支援を単一のRustネイティブバイナリに統合した**クロスプラットフォームターミナルアプリケーション**です。Electronラッパー**ではありません** — バックエンド全体がRustで書かれており、Tauri 2.0経由で20〜35 MBのネイティブ実行ファイルとして提供されます。

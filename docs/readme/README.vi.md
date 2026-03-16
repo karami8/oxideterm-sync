@@ -24,6 +24,10 @@
 
 ---
 
+<p align="center">
+  <img src="../screenshots/overview.png" alt="Tổng quan OxideTerm" width="800">
+</p>
+
 ## OxideTerm là gì?
 
 OxideTerm là một **ứng dụng terminal đa nền tảng** kết hợp shell cục bộ, phiên SSH từ xa, quản lý tệp, chỉnh sửa mã nguồn và hỗ trợ AI vào một tệp nhị phân gốc duy nhất được viết bằng Rust. Đây **không** phải là một wrapper Electron — toàn bộ backend được viết bằng Rust, đóng gói thành tệp thực thi gốc chỉ 20-35 MB thông qua Tauri 2.0.

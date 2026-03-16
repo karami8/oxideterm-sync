@@ -24,6 +24,10 @@
 
 ---
 
+<p align="center">
+  <img src="docs/screenshots/overview.png" alt="OxideTerm Overview" width="800">
+</p>
+
 ## What Is OxideTerm?
 
 OxideTerm is a **cross-platform terminal application** that unifies local shells, remote SSH sessions, file management, code editing, and AI assistance into a single Rust-native binary. It is **not** an Electron wrapper — the entire backend is written in Rust, shipping as a 20-35 MB native executable via Tauri 2.0.
