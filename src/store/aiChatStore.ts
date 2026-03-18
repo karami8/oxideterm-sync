@@ -923,7 +923,7 @@ You have tools to interact with the user's terminal sessions and workspace. **Us
               ...c,
               messages: c.messages.map((m) =>
                 m.id === assistantMessage.id 
-                  ? { ...m, content, isThinkingStreaming, ...(toolCalls !== undefined ? { toolCalls } : {}) } 
+                  ? { ...m, content, isThinkingStreaming, ...(toolCalls !== undefined ? { toolCalls: toolCalls.map(tc => ({ ...tc })) } : {}) } 
                   : m
               ),
               updatedAt: now,
@@ -1819,20 +1819,35 @@ You have tools to interact with the user's terminal sessions and workspace. **Us
       resolver(approved);
       pendingApprovalResolvers.delete(toolCallId);
 
-      // Immediately update tool call status in the UI
-      const { activeConversationId, conversations } = get();
+      // Immediately update tool call status in the UI with immutable update
+      // (must create new message/toolCalls references so React memo detects the change)
+      const { activeConversationId } = get();
       if (activeConversationId) {
-        const conv = conversations.find(c => c.id === activeConversationId);
-        if (conv) {
-          const lastAssistantMsg = [...conv.messages].reverse().find(m => m.role === 'assistant');
-          if (lastAssistantMsg?.toolCalls) {
-            const tc = lastAssistantMsg.toolCalls.find(t => t.id === toolCallId);
-            if (tc) {
-              tc.status = approved ? 'approved' : 'rejected';
-              set({ conversations: [...conversations] });
-            }
-          }
-        }
+        set((state) => ({
+          conversations: state.conversations.map((c) => {
+            if (c.id !== activeConversationId) return c;
+            const lastAssistantIdx = [...c.messages].reverse().findIndex(m => m.role === 'assistant');
+            if (lastAssistantIdx < 0) return c;
+            const msgIdx = c.messages.length - 1 - lastAssistantIdx;
+            const msg = c.messages[msgIdx];
+            if (!msg.toolCalls?.some(t => t.id === toolCallId)) return c;
+            return {
+              ...c,
+              messages: c.messages.map((m, i) =>
+                i === msgIdx
+                  ? {
+                      ...m,
+                      toolCalls: m.toolCalls!.map((t) =>
+                        t.id === toolCallId
+                          ? { ...t, status: approved ? 'approved' as const : 'rejected' as const }
+                          : t
+                      ),
+                    }
+                  : m
+              ),
+            };
+          }),
+        }));
       }
     }
   },

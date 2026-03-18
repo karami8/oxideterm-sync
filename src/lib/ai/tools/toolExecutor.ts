@@ -210,6 +210,8 @@ export async function executeTool(
       }
     }
 
+    // terminal_exec with session_id: route to interactive terminal path.
+    // Priority: node_id (direct exec) > session_id (terminal send) > active terminal fallback.
     if (toolName === 'terminal_exec' && explicitNodeId.length === 0) {
       const sessionId = typeof args.session_id === 'string' ? args.session_id.trim() : '';
       if (sessionId) {
@@ -860,7 +862,15 @@ type WaitResult = {
 
 /**
  * Core logic: wait for new terminal output after a command is sent.
- * Subscribes to terminal output notifications and waits for stability, pattern match, or timeout.
+ * Uses a synchronous notification counter combined with periodic polling
+ * to avoid async-in-callback race conditions with the microtask-coalesced
+ * notification system in terminalRegistry.
+ *
+ * Design: The `onOutput` listener is kept purely synchronous (increments a
+ * counter) so that `notifyTerminalOutput()` fire-and-forget + microtask
+ * coalescing can never swallow it. A `setInterval` poller checks the
+ * counter and performs the actual IPC buffer read in a safe async context.
+ *
  * Shared by `terminal_exec` (auto-await) and `await_terminal_output`.
  */
 async function waitForTerminalOutput(
@@ -879,17 +889,21 @@ async function waitForTerminalOutput(
 
   const timeoutMs = timeoutSecs * 1000;
   const stableMs = stableSecs * 1000;
+  const POLL_INTERVAL_MS = 200;
 
-  // Event-driven wait: subscribe to terminal output notifications
   const result = await new Promise<'pattern' | 'stable' | 'timeout' | 'lost'>((resolve) => {
     let stableTimer: ReturnType<typeof setTimeout> | null = null;
     let settled = false;
+    let outputCounter = 0;       // Bumped synchronously by notification listener
+    let lastCheckedCounter = 0;  // Tracks which notifications have been processed
+    let checking = false;        // Prevents overlapping async checks
 
     const done = (reason: 'pattern' | 'stable' | 'timeout' | 'lost') => {
       if (settled) return;
       settled = true;
       clearTimeout(timeoutTimer);
       if (stableTimer) clearTimeout(stableTimer);
+      clearInterval(pollTimer);
       unsubscribe();
       resolve(reason);
     };
@@ -897,22 +911,35 @@ async function waitForTerminalOutput(
     // Timeout guard
     const timeoutTimer = setTimeout(() => done('timeout'), Math.max(0, timeoutMs - (Date.now() - startTime)));
 
-    // On each terminal output event, check conditions
-    const onOutput = async () => {
-      if (settled) return;
+    // Synchronous listener — just bump counter, no async work
+    const onOutput = () => {
+      outputCounter++;
+    };
+
+    const unsubscribe = subscribeTerminalOutput(sessionId, onOutput);
+
+    // Periodic poller — checks counter and performs async buffer reads safely
+    const pollTimer = setInterval(async () => {
+      if (settled || checking) return;
+      if (outputCounter === lastCheckedCounter) return; // No new notifications
+
+      checking = true;
+      lastCheckedCounter = outputCounter;
 
       let currentLines: string[] | null;
       try {
         currentLines = await readBufferLines(sessionId);
       } catch {
         if (!settled) done('lost');
+        checking = false;
         return;
       }
-      // Re-check after async gap — timeout or another callback may have settled
-      if (settled) return;
+
+      if (settled) { checking = false; return; }
 
       if (currentLines === null) {
         done('lost');
+        checking = false;
         return;
       }
 
@@ -921,6 +948,7 @@ async function waitForTerminalOutput(
         const newLines = currentLines.slice(initialLineCount);
         if (newLines.some(line => patternRe!.test(line))) {
           done('pattern');
+          checking = false;
           return;
         }
       }
@@ -930,9 +958,9 @@ async function waitForTerminalOutput(
         if (stableTimer) clearTimeout(stableTimer);
         stableTimer = setTimeout(() => done('stable'), stableMs);
       }
-    };
 
-    const unsubscribe = subscribeTerminalOutput(sessionId, onOutput);
+      checking = false;
+    }, POLL_INTERVAL_MS);
   });
 
   // Read final buffer and extract delta
@@ -944,7 +972,7 @@ async function waitForTerminalOutput(
   // Handle buffer shrink (e.g. terminal clear/reset)
   if (finalLines.length < initialLineCount) {
     const { text, truncated } = truncateOutput(finalLines.join('\n'));
-    return { success: true, output: `[Buffer was cleared during wait]\n${text}`, truncated };
+    return { success: true, output: `⚠ Buffer was cleared or reset during command execution. Showing current buffer content:\n${text}`, truncated };
   }
 
   const newLines = finalLines.slice(initialLineCount);
@@ -2242,14 +2270,15 @@ async function executeMcpTool(
     .map(c => c.text!);
   const output = textParts.join('\n').slice(0, MAX_OUTPUT_BYTES);
 
+  const rawText = textParts.join('\n');
   return {
     toolCallId,
     toolName,
     success: !result.isError,
-    output,
-    error: result.isError ? output : undefined,
+    output: result.isError ? '' : output,
+    error: result.isError ? (output || 'MCP tool returned an error with no message.') : undefined,
     durationMs: Date.now() - startTime,
-    truncated: textParts.join('\n').length > MAX_OUTPUT_BYTES,
+    truncated: !result.isError && rawText.length > MAX_OUTPUT_BYTES,
   };
 }
 

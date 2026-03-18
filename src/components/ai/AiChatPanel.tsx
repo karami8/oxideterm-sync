@@ -177,14 +177,18 @@ export function AiChatPanel() {
 
   // Handle regenerate last response
   const handleRegenerate = useCallback(async () => {
-    if (isRegenerating || isLoading) return;
+    // Read isLoading directly from store to avoid stale closure
+    // (ChatMessage memo doesn't compare onRegenerate, so the closure
+    //  captured at isStreaming=false time may still have isLoading=true)
+    const currentLoading = useAiChatStore.getState().isLoading;
+    if (isRegenerating || currentLoading) return;
     setIsRegenerating(true);
     try {
       await regenerateLastResponse();
     } finally {
       setIsRegenerating(false);
     }
-  }, [regenerateLastResponse, isRegenerating, isLoading]);
+  }, [regenerateLastResponse, isRegenerating]);
 
   // Handle edit and resend
   const handleEdit = useCallback(async (messageId: string, newContent: string) => {
