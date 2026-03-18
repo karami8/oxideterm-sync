@@ -76,9 +76,9 @@ keychain.json
 AGENTS.md
 CLAUDE.md
 /debugdocs
-docs/I18N_MIGRATION_PLAN.md
-docs/SESSION_HANDOFF.md
-docs/IDE_PERFORMANCE_OPTIMIZATION.md
-docs/KEY_DRIVEN_RESET.md
+docs/reference/I18N_MIGRATION_PLAN.md
+docs/reference/SESSION_HANDOFF.md
+docs/reference/IDE_PERFORMANCE_OPTIMIZATION.md
+docs/reference/KEY_DRIVEN_RESET.md
 .github/copilot-instructions.md
 /plugins

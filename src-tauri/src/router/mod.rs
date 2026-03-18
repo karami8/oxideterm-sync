@@ -8,7 +8,7 @@
 //! 而非直接持有 NodeEventSequencer。Emitter 同时注入到
 //! SshConnectionRegistry 和 set_tree_node_connection 命令。
 //!
-//! 参考: docs/OXIDE_NEXT_ARCHITECTURE.md §3.1, §3.4
+//! 参考: docs/reference/OXIDE_NEXT_ARCHITECTURE.md §3.1, §3.4
 
 mod emitter;
 mod sequencer;

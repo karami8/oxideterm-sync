@@ -1,6 +1,6 @@
 //! Oxide-Next 路由层类型定义
 //!
-//! 参考: docs/OXIDE_NEXT_ARCHITECTURE.md §3.1, §3.4
+//! 参考: docs/reference/OXIDE_NEXT_ARCHITECTURE.md §3.1, §3.4
 
 use serde::Serialize;
 

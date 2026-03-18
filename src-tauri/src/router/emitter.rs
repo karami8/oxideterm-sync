@@ -9,7 +9,7 @@
 //! - AppHandle 延迟设置（Tauri setup 阶段），未就绪时事件丢弃（不缓存，
 //!   因为前端初始化时会通过 `node_get_state` 获取快照）
 //!
-//! 参考: docs/OXIDE_NEXT_ARCHITECTURE.md §3.4
+//! 参考: docs/reference/OXIDE_NEXT_ARCHITECTURE.md §3.4
 
 use dashmap::DashMap;
 use tauri::AppHandle;

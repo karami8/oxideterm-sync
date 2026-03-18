@@ -1121,7 +1121,7 @@ Phase 8 — 远程安装系统 ✅
 
 ## 14. SYSTEM_INVARIANTS 兼容性声明
 
-本插件系统设计**完全兼容** `docs/SYSTEM_INVARIANTS.md` 中定义的所有不变量：
+本插件系统设计**完全兼容** `docs/reference/SYSTEM_INVARIANTS.md` 中定义的所有不变量：
 
 | 不变量 | 兼容方式 |
 |--------|----------|

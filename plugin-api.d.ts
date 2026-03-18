@@ -14,7 +14,7 @@
  *      { "include": ["plugin-api.d.ts", "src/**\/*.ts"] }
  *   3. Import types: import type { PluginContext } from './plugin-api';
  *
- * @see https://github.com/nicepkg/oxideterm/blob/main/docs/PLUGIN_DEVELOPMENT.md
+ * @see https://github.com/AnalyseDeCircuit/oxideterm/blob/main/docs/reference/PLUGIN_DEVELOPMENT.md
  */
 
 // ═══════════════════════════════════════════════════════════════════════════

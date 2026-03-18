@@ -11,7 +11,7 @@
  * Or use triple-slash directive: /// <reference path="./plugin-api.d.ts" />
  *
  * @version 2.1.0
- * @see https://github.com/AnalyseDeCircuit/oxideterm/blob/main/PLUGIN_DEVELOPMENT.md
+ * @see https://github.com/AnalyseDeCircuit/oxideterm/blob/main/docs/reference/PLUGIN_DEVELOPMENT.md
  */
 
 // ═══════════════════════════════════════════════════════════════════════════

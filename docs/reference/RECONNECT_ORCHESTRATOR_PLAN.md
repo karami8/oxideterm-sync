@@ -269,8 +269,8 @@ Add keys to `connections.json` in all 11 locales. Do NOT create a new locale nam
 | `src/store/ideStore.ts` | **Minor** | Add cached fields to `partialize` |
 | `src/components/layout/TabBar.tsx` | **Minor** | Read job state from orchestrator |
 | `src/locales/*/connections.json` | **Minor** | Add 5 reconnect toast keys × 11 locales |
-| `docs/ARCHITECTURE.md` | **Update** | Remove stale backend auto-reconnect docs |
-| `docs/SYSTEM_INVARIANTS.md` | **Update** | Add orchestrator invariants |
+| `docs/reference/ARCHITECTURE.md` | **Update** | Remove stale backend auto-reconnect docs |
+| `docs/reference/SYSTEM_INVARIANTS.md` | **Update** | Add orchestrator invariants |
 
 ## Verification Checklist
 - [x] Link down → job enqueued with snapshot → SSH reconnect → services restored → toast

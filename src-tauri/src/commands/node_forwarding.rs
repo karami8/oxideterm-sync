@@ -4,7 +4,7 @@
 //! 内部通过 NodeRouter 解析 nodeId → terminal_session_id，
 //! 然后委托给 ForwardingRegistry。
 //!
-//! 参考: docs/OXIDE_NEXT_ARCHITECTURE.md §3.2
+//! 参考: docs/reference/OXIDE_NEXT_ARCHITECTURE.md §3.2
 
 use std::sync::Arc;
 

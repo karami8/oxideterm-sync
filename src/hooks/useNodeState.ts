@@ -7,7 +7,7 @@
  *   - generation 单调递增保证: 丢弃 generation <= 已见最大值的事件（乱序保护）
  *   - 组件卸载时自动清理事件监听
  *
- * 参考: docs/OXIDE_NEXT_ARCHITECTURE.md §4.2
+ * 参考: docs/reference/OXIDE_NEXT_ARCHITECTURE.md §4.2
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';

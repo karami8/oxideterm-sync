@@ -3,7 +3,7 @@
 //! 所有命令接受 nodeId 而非 sessionId。
 //! 内部通过 NodeRouter 解析到具体资源。
 //!
-//! 参考: docs/OXIDE_NEXT_ARCHITECTURE.md §3.2
+//! 参考: docs/reference/OXIDE_NEXT_ARCHITECTURE.md §3.2
 
 use std::sync::Arc;
 

@@ -1,7 +1,7 @@
 //! NodeEventSequencer — generation 管理
 //!
 //! 每个节点维护一个独立的单调递增计数器，用于事件有序性保证。
-//! 参考: docs/OXIDE_NEXT_ARCHITECTURE.md §3.4
+//! 参考: docs/reference/OXIDE_NEXT_ARCHITECTURE.md §3.4
 
 use std::sync::atomic::{AtomicU64, Ordering};
 

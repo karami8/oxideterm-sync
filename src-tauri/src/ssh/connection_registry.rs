@@ -413,7 +413,7 @@ impl ConnectionEntry {
     /// - `NodeRouter.acquire_sftp(nodeId)` → `conn.acquire_sftp()`
     /// 所有 SFTP 操作通过 NodeRouter 路由到此方法。
     ///
-    /// 参考: docs/OXIDE_NEXT_ARCHITECTURE.md §3.3
+    /// 参考: docs/reference/OXIDE_NEXT_ARCHITECTURE.md §3.3
     pub async fn acquire_sftp(&self) -> Result<Arc<tokio::sync::Mutex<SftpSession>>, SftpError> {
         // 持有外层锁贯穿整个创建过程，防止并发创建多个 SSH channel。
         // tokio::sync::Mutex 允许跨 await 点持有。
