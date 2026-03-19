@@ -782,41 +782,28 @@ export const useAiChatStore = create<AiChatStore>()((set, get) => ({
       aiSettings.modelContextWindows,
       providerId,
     );
+    const toolUseEnabled = aiSettings.toolUse?.enabled === true;
+
     if (contextWindow >= 8192) {
       systemPrompt += SUGGESTIONS_INSTRUCTION;
     }
 
-    // Tool use guidance — instruct AI to actively use available tools
-    if (aiSettings.toolUse?.enabled === true) {
+    // Tool use guidance — slim version focusing on routing & key principles.
+    // Tool categories are already described in each tool's definition.
+    if (toolUseEnabled) {
       systemPrompt += `\n\n## Tool Use Guidelines
 
-You have tools to interact with the user's terminal sessions and workspace. **Use them proactively** — if a question can be answered by running a command or reading data, use the appropriate tool rather than guessing.
+You have tools to interact with the user's terminal sessions and workspace. **Use them proactively** — act on real data, don't guess.
 
 ### Key Principles
-- **Act, don't guess**: When the user asks about system state, running processes, file contents, or connection status — use tools to get real data.
-- **One-shot execution**: \`terminal_exec\` with session_id automatically captures output — no need to chain \`await_terminal_output\` separately. Just run the command and read the result.
-- **Chain only when needed**: Use \`await_terminal_output\` only for long-running commands where you passed \`await_output: false\`, or when you need advanced features like pattern matching or custom timeouts.
-- **Discover first**: Use \`list_tabs\` to see the workspace layout, \`list_sessions\` to find sessions, before operating on them.
-
-### Tool Categories
-- **Discovery**: \`list_tabs\`, \`list_sessions\`, \`list_connections\`
-- **Terminal I/O**: \`terminal_exec\` (run commands + get output), \`get_terminal_buffer\` (read output), \`search_terminal\` (search output), \`await_terminal_output\` (for long-running commands)
-- **Batch & Recovery**: \`batch_exec\` (run multiple commands in one call), \`send_control_sequence\` (send Ctrl+C/D/Z to cancel or recover)
-- **TUI Interaction** (Experimental): \`read_screen\` (capture current terminal viewport), \`send_keys\` (send keystrokes including arrows/F-keys/Escape), \`send_mouse\` (click/scroll in mouse-aware TUI apps)
-- **Files**: \`read_file\`, \`write_file\`, \`list_directory\`, \`grep_search\`
-- **Infrastructure**: \`get_connection_health\`, \`list_port_forwards\`, \`get_detected_ports\`, \`create_port_forward\`, \`stop_port_forward\`
+- **Act, don't guess**: Use tools to get real data about system state, files, or connections.
+- **One-shot execution**: \`terminal_exec\` with session_id auto-captures output. No need to chain \`await_terminal_output\` unless you passed \`await_output: false\`.
+- **Discover first**: Use \`list_sessions\` / \`list_tabs\` to find targets before operating.
 
 ### Routing
-- Use \`node_id\` for direct remote execution on any SSH node (captured stdout/stderr).
-- Use \`session_id\` to send commands into an open terminal session (visible to user, output auto-captured).
-- Context-free tools (\`list_sessions\`, \`list_tabs\`, etc.) work without any node or session.
-
-### TUI Interaction (Experimental)
-- Always call \`read_screen\` first to understand the current terminal state before sending keys or mouse events.
-- After \`send_keys\`, call \`read_screen\` again to verify the result.
-- Only use \`send_mouse\` on TUI apps known to support mouse tracking (htop, mc, tmux, midnight commander). Check that \`isAlternateBuffer\` is true.
-- For vim/nano: use \`send_keys\` with sequences like \`["i", "text", "Escape", ":wq", "Enter"]\`.
-- For pagers (less/more): use \`send_keys\` with \`["PageDown"]\` or \`["q"]\` to navigate/exit.`;
+- \`node_id\`: direct remote execution (captured stdout/stderr).
+- \`session_id\`: send into an open terminal (visible to user, output auto-captured).
+- Context-free tools (\`list_sessions\`, \`list_tabs\`, etc.) need no node or session.`;
     }
 
     apiMessages.push({
@@ -836,7 +823,6 @@ You have tools to interact with the user's terminal sessions and workspace. **Us
     // ════════════════════════════════════════════════════════════════════
 
     // Resolve tool definitions early so their token cost is included in the budget
-    const toolUseEnabled = aiSettings.toolUse?.enabled === true;
     let toolDefs: ReturnType<typeof getToolsForContext> | undefined;
     if (toolUseEnabled) {
       const activeTabType = sidebarContext?.env.activeTabType ?? null;
@@ -856,9 +842,20 @@ You have tools to interact with the user's terminal sessions and workspace. **Us
           toolDefs = [...toolDefs, ...filteredMcpTools];
         }
       }
+
+      // Lazy TUI interaction guidance — only when experimental tools are in the active set
+      if (toolDefs?.some(t => t.name === 'read_screen' || t.name === 'send_keys' || t.name === 'send_mouse')) {
+        const tuiGuide = `\n\n### TUI Interaction (Experimental)
+- Call \`read_screen\` first to see the current viewport before sending keys/mouse.
+- After \`send_keys\`, call \`read_screen\` to verify.
+- \`send_mouse\` only for mouse-aware TUIs (htop, mc, tmux). Check \`isAlternateBuffer\` first.`;
+        apiMessages[0].content += tuiGuide;
+      }
     }
 
-    const systemTokens = estimateTokens(systemPrompt) + estimateTokens(effectiveContext) + estimateToolDefinitionsTokens(toolDefs);
+    // Sum all system-role messages to capture wrapper tokens accurately
+    const systemTokens = apiMessages.reduce((sum, m) => m.role === 'system' ? sum + estimateTokens(m.content) : sum, 0)
+      + estimateToolDefinitionsTokens(toolDefs);
 
     const historyMessages = get().conversations.find((c) => c.id === convId)?.messages || [];
 
@@ -891,9 +888,11 @@ You have tools to interact with the user's terminal sessions and workspace. **Us
     // Inject a compact context reminder after all history messages.
     // This prevents stale context from confusing the LLM about which
     // tab/terminal is active when the user switches mid-conversation.
-    // Token cost is ~30-50 tokens — negligible vs typical 100k+ context windows.
+    // Only needed when there's enough history that the original system prompt
+    // environment info may be stale or far away in the context window.
     const contextReminder = buildContextReminder(sidebarContext);
-    if (contextReminder) {
+    const hasSubstantialHistory = trimResult.messages.length > 2;
+    if (contextReminder && hasSubstantialHistory) {
       apiMessages.push({ role: 'system', content: contextReminder });
     }
 
@@ -1260,11 +1259,11 @@ You have tools to interact with the user's terminal sessions and workspace. **Us
         }
 
         // ── Conversation Condensation ──
-        // After 5+ tool rounds, compress the earliest tool result messages into
+        // After 2+ tool rounds, compress the earliest tool result messages into
         // one-line summaries to prevent context bloat. This preserves the
         // assistant→tool_calls structure (required by APIs) but replaces verbose
         // tool output with compact digests.
-        if (round >= 5) {
+        if (round >= 2) {
           condenseToolMessages(apiMessages);
         }
 

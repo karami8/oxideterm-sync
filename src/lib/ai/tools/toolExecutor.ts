@@ -34,6 +34,7 @@ import { useTransferStore } from '../../../store/transferStore';
 import { useRecordingStore } from '../../../store/recordingStore';
 import { useBroadcastStore } from '../../../store/broadcastStore';
 import { findPaneBySessionId, getTerminalBuffer, writeToTerminal, subscribeTerminalOutput, readScreen } from '../../terminalRegistry';
+import { compressOutput } from './outputCompressor';
 
 /** Max output size returned from a tool execution (bytes) */
 const MAX_OUTPUT_BYTES = 8192;
@@ -287,8 +288,9 @@ export async function executeTool(
 }
 
 function truncateOutput(output: string): { text: string; truncated: boolean } {
-  if (output.length <= MAX_OUTPUT_BYTES) return { text: output, truncated: false };
-  return { text: output.slice(0, MAX_OUTPUT_BYTES) + '\n... (output truncated)', truncated: true };
+  const compressed = compressOutput(output);
+  if (compressed.length <= MAX_OUTPUT_BYTES) return { text: compressed, truncated: false };
+  return { text: compressed.slice(0, MAX_OUTPUT_BYTES) + '\n... (output truncated)', truncated: true };
 }
 
 function clamp(value: number, minimum: number, maximum: number): number {
@@ -322,7 +324,11 @@ async function execTerminalCommand(
     ? `${result.stdout}\n--- stderr ---\n${result.stderr}`
     : result.stdout;
 
-  const { text, truncated } = truncateOutput(combined);
+  // Apply semantic sampling on verbose output to focus on errors/commands
+  const lines = combined.split('\n');
+  const processed = lines.length > 100 ? semanticSample(lines, 200).join('\n') : combined;
+
+  const { text, truncated } = truncateOutput(processed);
 
   return {
     toolCallId,
@@ -497,6 +503,25 @@ async function execListDirectory(
   };
 }
 
+/** Group grep matches by file path to reduce path repetition in output */
+function formatGrepResults(matches: Array<{ path: string; line: number; text: string }>): string {
+  if (matches.length === 0) return 'No matches found.';
+  const grouped = new Map<string, Array<{ line: number; text: string }>>();
+  for (const m of matches) {
+    let arr = grouped.get(m.path);
+    if (!arr) { arr = []; grouped.set(m.path, arr); }
+    arr.push({ line: m.line, text: m.text });
+  }
+  const parts: string[] = [];
+  for (const [path, items] of grouped) {
+    parts.push(`${path}:`);
+    for (const item of items) {
+      parts.push(`  L${item.line}: ${item.text}`);
+    }
+  }
+  return parts.join('\n');
+}
+
 async function execGrepSearch(
   args: Record<string, unknown>,
   resolved: ResolvedNode,
@@ -522,8 +547,8 @@ async function execGrepSearch(
 
   if (resolved.agentAvailable) {
     const matches = await nodeAgentGrep(resolved.nodeId, pattern, path, caseSensitive, maxResults);
-    const output = matches.map((m) => `${m.path}:${m.line}: ${m.text}`).join('\n');
-    const { text, truncated } = truncateOutput(output || 'No matches found.');
+    const output = formatGrepResults(matches);
+    const { text, truncated } = truncateOutput(output);
     return { toolCallId, toolName: 'grep_search', success: true, output: text, truncated, durationMs: Date.now() - startTime };
   }
 

@@ -37,7 +37,7 @@ import type { ToolExecutionContext } from './tools';
 const MAX_TOOL_CALLS_PER_ROUND = 8;
 const MAX_OUTPUT_BYTES = 8192;
 const MAX_EMPTY_ROUNDS = 3;
-const CONDENSE_AFTER_ROUND = 5;
+const CONDENSE_AFTER_ROUND = 2;
 const CONDENSE_KEEP_RECENT = 3;
 const CONTEXT_OVERFLOW_RATIO = 0.9;
 /** Cache for resolveActiveToolContext — skip IPC if focused node hasn't changed */

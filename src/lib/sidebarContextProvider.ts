@@ -219,10 +219,12 @@ export const DEFAULT_CONTEXT_CONFIG = {
 
 /**
  * Build a compact summary of available sessions for the system prompt.
- * This gives AI immediate awareness of targets without needing list_sessions.
+ * Only shows the active session in detail; other sessions are counted
+ * to save tokens (use `list_sessions` tool for full details).
  */
 function gatherSessionsSummary(activeSessionId: string | null): string | null {
   const lines: string[] = [];
+  let activeFound = false;
 
   // SSH sessions
   const nodes = useSessionTreeStore.getState().nodes;
@@ -230,25 +232,37 @@ function gatherSessionsSummary(activeSessionId: string | null): string | null {
   const sshNodes = nodes.filter(n =>
     n.runtime?.connectionId || n.runtime?.status === 'connected' || n.runtime?.status === 'active'
   );
+
+  let sshSessionCount = 0;
   for (const node of sshNodes) {
     const conn = node.runtime.connectionId ? connections.get(node.runtime.connectionId) : undefined;
     const host = conn ? `${conn.username}@${conn.host}` : `${node.username ?? '?'}@${node.host ?? '?'}`;
     const terminalIds = node.runtime.terminalIds ?? [];
     for (const tid of terminalIds) {
-      const active = tid === activeSessionId ? ' ★' : '';
-      lines.push(`- SSH session_id=${tid} → ${host} (node_id=${node.id})${active}`);
-    }
-    if (terminalIds.length === 0) {
-      lines.push(`- SSH node_id=${node.id} → ${host} (no open terminal)`);
+      sshSessionCount++;
+      if (tid === activeSessionId) {
+        lines.push(`- ★ Active: SSH session_id=${tid} → ${host} (node_id=${node.id})`);
+        activeFound = true;
+      }
     }
   }
 
   // Local terminals
   const localTerminals = useLocalTerminalStore.getState().terminals;
+  let localCount = 0;
   for (const [sessionId, info] of localTerminals) {
-    const shellName = info.shell?.label || info.shell?.path || 'shell';
-    const active = sessionId === activeSessionId ? ' ★' : '';
-    lines.push(`- Local session_id=${sessionId} → ${shellName}${active}`);
+    localCount++;
+    if (sessionId === activeSessionId) {
+      const shellName = info.shell?.label || info.shell?.path || 'shell';
+      lines.push(`- ★ Active: Local session_id=${sessionId} → ${shellName}`);
+      activeFound = true;
+    }
+  }
+
+  // Show count for non-active sessions
+  const otherCount = sshSessionCount + localCount - (activeFound ? 1 : 0);
+  if (otherCount > 0) {
+    lines.push(`- ${otherCount} other session(s) available (use \`list_sessions\` for details)`);
   }
 
   if (lines.length === 0) return null;
