@@ -721,6 +721,7 @@ impl RagStore {
 
     /// Update a document's content: replace raw content, re-chunk, and update metadata.
     /// Returns the updated metadata. Caller is responsible for BM25 re-indexing.
+    /// If `expected_version` is Some, performs optimistic locking check.
     pub fn update_document(
         &self,
         doc_id: &str,
@@ -728,9 +729,21 @@ impl RagStore {
         new_chunks: &[DocChunk],
         content_hash: &str,
         now: i64,
+        expected_version: Option<u64>,
     ) -> Result<DocMetadata, RagError> {
         let meta = self.get_doc_metadata(doc_id)?
             .ok_or_else(|| RagError::DocumentNotFound(doc_id.to_string()))?;
+
+        // Optimistic locking check
+        if let Some(expected) = expected_version {
+            if meta.version != expected {
+                return Err(RagError::VersionConflict {
+                    expected,
+                    actual: meta.version,
+                });
+            }
+        }
+
         let old_chunk_ids = self.get_chunk_ids_for_doc(doc_id)?;
         let new_chunk_ids: Vec<String> = new_chunks.iter().map(|c| c.id.clone()).collect();
 
@@ -738,6 +751,7 @@ impl RagStore {
             content_hash: content_hash.to_string(),
             indexed_at: now,
             chunk_count: new_chunks.len(),
+            version: meta.version + 1,
             ..meta
         };
         let meta_bytes = rmp_serde::to_vec(&updated_meta)?;

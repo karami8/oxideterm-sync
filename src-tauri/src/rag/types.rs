@@ -34,6 +34,9 @@ pub struct DocMetadata {
     pub content_hash: String,
     pub indexed_at: i64,
     pub chunk_count: usize,
+    /// Monotonically increasing version for optimistic locking.
+    #[serde(default)]
+    pub version: u64,
 }
 
 /// Supported document formats.

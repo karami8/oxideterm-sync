@@ -34,6 +34,12 @@ pub enum RagError {
 
     #[error("Chunk not found: {0}")]
     ChunkNotFound(String),
+
+    #[error("Operation cancelled")]
+    Cancelled,
+
+    #[error("Version conflict: expected {expected}, found {actual}")]
+    VersionConflict { expected: u64, actual: u64 },
 }
 
 impl From<rmp_serde::encode::Error> for RagError {

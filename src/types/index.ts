@@ -1648,6 +1648,7 @@ export type RagDocument = {
   format: string;
   chunkCount: number;
   indexedAt: number;
+  version: number;
 };
 
 export type RagCollectionStats = {

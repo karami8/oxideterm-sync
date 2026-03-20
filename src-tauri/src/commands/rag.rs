@@ -12,9 +12,25 @@ use crate::rag::store::RagStore;
 use crate::rag::types::*;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use tauri::State;
+use tauri::{AppHandle, Emitter, State};
 use tracing::info;
+
+/// Global cancellation flag for reindex operations.
+static REINDEX_CANCEL: std::sync::LazyLock<AtomicBool> =
+    std::sync::LazyLock::new(|| AtomicBool::new(false));
+
+/// Guard to prevent concurrent reindex operations.
+static REINDEX_RUNNING: std::sync::LazyLock<AtomicBool> =
+    std::sync::LazyLock::new(|| AtomicBool::new(false));
+
+/// Event payload emitted during BM25 reindex progress.
+#[derive(Clone, Serialize)]
+struct RagReindexProgress {
+    current: usize,
+    total: usize,
+}
 
 /// Compute a stable, deterministic content hash using SHA-256 (128-bit / 32 hex chars).
 fn content_hash(text: &str) -> String {
@@ -102,6 +118,7 @@ pub struct DocumentResponse {
     pub format: String,
     pub chunk_count: usize,
     pub indexed_at: i64,
+    pub version: u64,
 }
 
 #[derive(Debug, Serialize)]
@@ -199,7 +216,7 @@ pub async fn rag_delete_collection(
 ) -> Result<(), String> {
     store.delete_collection(&collection_id).map_err(|e| e.to_string())?;
     // Rebuild global BM25 index to remove stale postings
-    bm25::reindex_all(&store).map_err(|e| e.to_string())?;
+    bm25::reindex_all(&store, None, None).map_err(|e| e.to_string())?;
     info!("Deleted RAG collection: {}", collection_id);
     Ok(())
 }
@@ -254,6 +271,7 @@ pub async fn rag_add_document(
         content_hash: hash,
         indexed_at: now,
         chunk_count: chunks.len(),
+        version: 0,
     };
 
     // Store document + chunks + raw content
@@ -285,6 +303,7 @@ pub async fn rag_add_document(
         format: format_str.to_string(),
         chunk_count: chunks.len(),
         indexed_at: now,
+        version: 0,
     })
 }
 
@@ -295,23 +314,36 @@ pub async fn rag_remove_document(
 ) -> Result<(), String> {
     store.remove_document(&doc_id).map_err(|e| e.to_string())?;
     // Rebuild global BM25 index to remove stale postings
-    bm25::reindex_all(&store).map_err(|e| e.to_string())?;
+    bm25::reindex_all(&store, None, None).map_err(|e| e.to_string())?;
     info!("Removed RAG document: {}", doc_id);
     Ok(())
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PaginatedDocuments {
+    pub documents: Vec<DocumentResponse>,
+    pub total: usize,
 }
 
 #[tauri::command]
 pub async fn rag_list_documents(
     store: State<'_, Arc<RagStore>>,
     collection_id: String,
-) -> Result<Vec<DocumentResponse>, String> {
+    offset: Option<usize>,
+    limit: Option<usize>,
+) -> Result<PaginatedDocuments, String> {
     let doc_ids = store
         .get_collection_doc_ids(&collection_id)
         .map_err(|e| e.to_string())?;
+    let total = doc_ids.len();
+
+    let start = offset.unwrap_or(0).min(total);
+    let end = limit.map_or(total, |l| (start + l).min(total));
 
     let mut docs = Vec::new();
-    for doc_id in doc_ids {
-        if let Some(meta) = store.get_doc_metadata(&doc_id).map_err(|e| e.to_string())? {
+    for doc_id in &doc_ids[start..end] {
+        if let Some(meta) = store.get_doc_metadata(doc_id).map_err(|e| e.to_string())? {
             let format_str = match meta.format {
                 DocFormat::Markdown => "markdown",
                 DocFormat::PlainText => "plaintext",
@@ -324,10 +356,11 @@ pub async fn rag_list_documents(
                 format: format_str.to_string(),
                 chunk_count: meta.chunk_count,
                 indexed_at: meta.indexed_at,
+                version: meta.version,
             });
         }
     }
-    Ok(docs)
+    Ok(PaginatedDocuments { documents: docs, total })
 }
 
 #[tauri::command]
@@ -428,14 +461,40 @@ pub async fn rag_search(
 
 #[tauri::command]
 pub async fn rag_reindex_collection(
+    app: AppHandle,
     store: State<'_, Arc<RagStore>>,
     collection_id: String,
 ) -> Result<usize, String> {
-    // Rebuild the global BM25 index (all collections) to ensure consistency
-    let count = bm25::reindex_all(&store)
-        .map_err(|e| e.to_string())?;
+    // Prevent concurrent reindex
+    if REINDEX_RUNNING.swap(true, Ordering::SeqCst) {
+        return Err("Reindex already in progress".to_string());
+    }
+
+    // Reset cancel flag
+    REINDEX_CANCEL.store(false, Ordering::Relaxed);
+
+    let app_clone = app.clone();
+    let mut last_emitted: usize = 0;
+    let mut on_progress = |current: usize, total: usize| {
+        // Emit at most every 10 chunks to avoid flooding
+        if current == total || current - last_emitted >= 10 {
+            let _ = app_clone.emit("rag_reindex_progress", RagReindexProgress { current, total });
+            last_emitted = current;
+        }
+    };
+
+    let result = bm25::reindex_all(&store, Some(&REINDEX_CANCEL), Some(&mut on_progress));
+    REINDEX_RUNNING.store(false, Ordering::SeqCst);
+
+    let count = result.map_err(|e| e.to_string())?;
     info!("Re-indexed BM25 (triggered by collection {}): {} chunks", collection_id, count);
     Ok(count)
+}
+
+#[tauri::command]
+pub async fn rag_cancel_reindex() -> Result<(), String> {
+    REINDEX_CANCEL.store(true, Ordering::Relaxed);
+    Ok(())
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -458,6 +517,7 @@ pub async fn rag_update_document(
     store: State<'_, Arc<RagStore>>,
     doc_id: String,
     content: String,
+    expected_version: Option<u64>,
 ) -> Result<DocumentResponse, String> {
     if content.len() > MAX_CONTENT_SIZE {
         return Err("Document content too large".to_string());
@@ -472,11 +532,11 @@ pub async fn rag_update_document(
     let hash = content_hash(&content);
 
     let updated = store
-        .update_document(&doc_id, &content, &chunks, &hash, now)
+        .update_document(&doc_id, &content, &chunks, &hash, now, expected_version)
         .map_err(|e| e.to_string())?;
 
     // Rebuild global BM25 index to purge stale postings from old chunks
-    bm25::reindex_all(&store)
+    bm25::reindex_all(&store, None, None)
         .map_err(|e| e.to_string())?;
 
     let format_str = match updated.format {
@@ -498,6 +558,7 @@ pub async fn rag_update_document(
         format: format_str.to_string(),
         chunk_count: chunks.len(),
         indexed_at: now,
+        version: updated.version,
     })
 }
 
@@ -535,6 +596,7 @@ pub async fn rag_create_blank_document(
         content_hash: String::new(),
         indexed_at: now,
         chunk_count: 0,
+        version: 0,
     };
 
     // Store with empty content — no chunks needed
@@ -557,6 +619,7 @@ pub async fn rag_create_blank_document(
         format: format_str.to_string(),
         chunk_count: 0,
         indexed_at: now,
+        version: 0,
     })
 }
 

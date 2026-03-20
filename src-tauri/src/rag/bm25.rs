@@ -3,6 +3,7 @@ use crate::rag::error::RagError;
 use crate::rag::store::RagStore;
 use crate::rag::types::{is_cjk, Bm25Stats, PostingEntry};
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 // ═══════════════════════════════════════════════════════════════════════════
 // BM25 Parameters
@@ -100,21 +101,35 @@ pub fn reindex_collection(
     store: &RagStore,
     _collection_id: &str,
 ) -> Result<usize, RagError> {
-    reindex_all(store)
+    reindex_all(store, None, None)
 }
 
 /// Rebuild the global BM25 index from all collections.
+///
+/// `cancel` — if provided, checked periodically; if set to `true`, the
+///   rebuild aborts early and returns `RagError::Cancelled`.
+/// `on_progress` — called with (current, total) after each chunk is processed.
 pub fn reindex_all(
     store: &RagStore,
+    cancel: Option<&AtomicBool>,
+    mut on_progress: Option<&mut dyn FnMut(usize, usize)>,
 ) -> Result<usize, RagError> {
     let all_col_ids = store.get_all_collection_ids()?;
     let chunk_ids = store.get_chunk_ids_in_collections(&all_col_ids)?;
+    let total = chunk_ids.len();
 
     let mut postings: HashMap<String, Vec<PostingEntry>> = HashMap::new();
     let mut total_dl: f64 = 0.0;
     let mut count: usize = 0;
 
-    for cid in &chunk_ids {
+    for (idx, cid) in chunk_ids.iter().enumerate() {
+        // Check cancellation
+        if let Some(flag) = cancel {
+            if flag.load(Ordering::Relaxed) {
+                return Err(RagError::Cancelled);
+            }
+        }
+
         if let Some(chunk) = store.get_chunk(cid)? {
             let tokens = tokenize(&chunk.content);
             let doc_length = estimate_tokens(&chunk.content);
@@ -133,6 +148,11 @@ pub fn reindex_all(
 
             total_dl += doc_length as f64;
             count += 1;
+        }
+
+        // Report progress
+        if let Some(ref mut cb) = on_progress {
+            cb(idx + 1, total);
         }
     }
 

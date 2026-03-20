@@ -10,6 +10,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { open } from '@tauri-apps/plugin-dialog';
 import { readTextFile, stat } from '@tauri-apps/plugin-fs';
+import { listen } from '@tauri-apps/api/event';
 import { useRagStore } from '../../store/ragStore';
 import { useSettingsStore } from '../../store/settingsStore';
 import { getProvider } from '../../lib/ai/providerRegistry';
@@ -45,6 +46,7 @@ import {
   Sparkles,
   Pencil,
   FilePlus,
+  X,
 } from 'lucide-react';
 import type { RagCollection, RagDocument, RagCollectionStats } from '../../types';
 
@@ -92,6 +94,7 @@ export function DocumentManager() {
     addDocument,
     removeDocument,
     reindexCollection,
+    cancelReindex,
     getPendingEmbeddings,
     storeEmbeddings,
     createBlankDocument,
@@ -105,7 +108,7 @@ export function DocumentManager() {
   const [newCollectionScope, setNewCollectionScope] = useState<'global'>('global');
   const [importProgress, setImportProgress] = useState<{ current: number; total: number } | null>(null);
   const [embeddingProgress, setEmbeddingProgress] = useState<{ current: number; total: number } | null>(null);
-  const [reindexing, setReindexing] = useState(false);
+  const [reindexProgress, setReindexProgress] = useState<{ current: number; total: number } | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'collection' | 'document'; id: string; name: string } | null>(null);
   const [newDocDialogOpen, setNewDocDialogOpen] = useState(false);
   const [newDocTitle, setNewDocTitle] = useState('');
@@ -115,6 +118,20 @@ export function DocumentManager() {
   useEffect(() => {
     loadCollections();
   }, [loadCollections]);
+
+  // Listen for reindex progress events from backend
+  useEffect(() => {
+    let mounted = true;
+    const unlisten = listen<{ current: number; total: number }>('rag_reindex_progress', (e) => {
+      if (mounted) {
+        setReindexProgress(e.payload);
+      }
+    });
+    return () => {
+      mounted = false;
+      unlisten.then((fn) => fn());
+    };
+  }, []);
 
   // Auto-dismiss error
   useEffect(() => {
@@ -278,16 +295,22 @@ export function DocumentManager() {
   // ─── Reindex ─────────────────────────────────────────────────────────
   const handleReindex = useCallback(async () => {
     if (!selectedCollectionId) return;
-    setReindexing(true);
+    setReindexProgress({ current: 0, total: 0 });
     try {
       await reindexCollection(selectedCollectionId);
       await selectCollection(selectedCollectionId);
     } catch (e) {
       toastError(t('settings_view.knowledge.error_reindex'), e instanceof Error ? e.message : String(e));
     } finally {
-      setReindexing(false);
+      setReindexProgress(null);
     }
   }, [selectedCollectionId, reindexCollection, selectCollection, toastError, t]);
+
+  const handleCancelReindex = useCallback(async () => {
+    try {
+      await cancelReindex();
+    } catch { /* best-effort */ }
+  }, [cancelReindex]);
 
   // ─── Delete Collection ───────────────────────────────────────────────
   const handleDeleteCollection = useCallback((id: string, name: string) => {
@@ -464,15 +487,25 @@ export function DocumentManager() {
               <Button
                 size="sm"
                 variant="outline"
-                onClick={handleReindex}
-                disabled={reindexing}
+                onClick={reindexProgress ? handleCancelReindex : handleReindex}
+                disabled={reindexProgress !== null && reindexProgress.total === 0}
               >
-                {reindexing ? (
-                  <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                {reindexProgress ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                    {reindexProgress.total > 0
+                      ? `${reindexProgress.current}/${reindexProgress.total}`
+                      : t('settings_view.knowledge.reindex')}
+                    {reindexProgress.total > 0 && (
+                      <X className="h-3 w-3 ml-1.5" />
+                    )}
+                  </>
                 ) : (
-                  <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+                  <>
+                    <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+                    {t('settings_view.knowledge.reindex')}
+                  </>
                 )}
-                {t('settings_view.knowledge.reindex')}
               </Button>
             </div>
           </div>

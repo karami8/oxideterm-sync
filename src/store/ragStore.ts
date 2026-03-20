@@ -11,6 +11,7 @@ import {
   ragStoreEmbeddings,
   ragSearch,
   ragReindexCollection,
+  ragCancelReindex,
   ragGetDocumentContent,
   ragUpdateDocument,
   ragCreateBlankDocument,
@@ -32,6 +33,7 @@ type RagStoreState = {
   collections: RagCollection[];
   selectedCollectionId: string | null;
   documents: RagDocument[];
+  documentTotal: number;
   stats: RagCollectionStats | null;
   statsStale: boolean;
   searchResults: RagSearchResult[];
@@ -45,12 +47,14 @@ type RagStoreState = {
   createCollection: (name: string, scope: 'global' | { connectionId: string }) => Promise<RagCollection>;
   deleteCollection: (collectionId: string) => Promise<void>;
   selectCollection: (collectionId: string | null) => Promise<void>;
+  loadMoreDocuments: (offset: number, limit: number) => Promise<void>;
   addDocument: (collectionId: string, title: string, content: string, format: string, sourcePath?: string) => Promise<RagDocument>;
   removeDocument: (docId: string) => Promise<void>;
   search: (query: string, collectionIds: string[], queryVector?: number[], topK?: number) => Promise<RagSearchResult[]>;
   getPendingEmbeddings: (collectionId: string, limit?: number) => Promise<RagPendingEmbedding[]>;
   storeEmbeddings: (embeddings: Array<{ chunkId: string; vector: number[] }>, modelName: string) => Promise<number>;
   reindexCollection: (collectionId: string) => Promise<number>;
+  cancelReindex: () => Promise<void>;
   createBlankDocument: (collectionId: string, title: string, format: string) => Promise<RagDocument>;
   openDocumentExternal: (docId: string) => Promise<string>;
   syncExternalEdits: () => Promise<{ updated: boolean; docId: string } | null>;
@@ -66,6 +70,7 @@ export const useRagStore = create<RagStoreState>()((set, get) => ({
   collections: [],
   selectedCollectionId: null,
   documents: [],
+  documentTotal: 0,
   stats: null,
   statsStale: false,
   searchResults: [],
@@ -104,18 +109,28 @@ export const useRagStore = create<RagStoreState>()((set, get) => ({
   },
 
   selectCollection: async (collectionId) => {
-    set({ selectedCollectionId: collectionId, documents: [], stats: null });
+    set({ selectedCollectionId: collectionId, documents: [], documentTotal: 0, stats: null });
     if (!collectionId) return;
     try {
       set({ isLoading: true });
-      const [documents, stats] = await Promise.all([
+      const [result, stats] = await Promise.all([
         ragListDocuments(collectionId),
         ragGetCollectionStats(collectionId),
       ]);
-      set({ documents, stats, isLoading: false, statsStale: false });
+      set({ documents: result.documents, documentTotal: result.total, stats, isLoading: false, statsStale: false });
     } catch (e) {
       set({ error: String(e), isLoading: false, statsStale: true });
     }
+  },
+
+  loadMoreDocuments: async (offset, limit) => {
+    const { selectedCollectionId, documentTotal } = get();
+    if (!selectedCollectionId || offset >= documentTotal) return;
+    const result = await ragListDocuments(selectedCollectionId, offset, limit);
+    set((s) => ({
+      documents: [...s.documents, ...result.documents],
+      documentTotal: result.total,
+    }));
   },
 
   addDocument: async (collectionId, title, content, format, sourcePath) => {
@@ -172,6 +187,8 @@ export const useRagStore = create<RagStoreState>()((set, get) => ({
   reindexCollection: (collectionId) =>
     ragReindexCollection(collectionId),
 
+  cancelReindex: () => ragCancelReindex(),
+
   createBlankDocument: async (collectionId, title, format) => {
     const doc = await ragCreateBlankDocument({ collectionId, title, format });
     set((s) => ({ documents: [...s.documents, doc] }));
@@ -205,7 +222,9 @@ export const useRagStore = create<RagStoreState>()((set, get) => ({
       return { updated: false, docId: editingDocId };
     }
 
-    const updatedDoc = await ragUpdateDocument(editingDocId, fileContent);
+    // Look up current version for optimistic locking
+    const currentDoc = get().documents.find((d) => d.id === editingDocId);
+    const updatedDoc = await ragUpdateDocument(editingDocId, fileContent, currentDoc?.version);
     // Clean up temp file after successful sync
     try { await remove(editFilePath); } catch { /* best-effort */ }
     set((s) => ({

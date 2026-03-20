@@ -1655,8 +1655,10 @@ export const ragAddDocument = (request: {
 export const ragRemoveDocument = (docId: string): Promise<void> =>
   invoke('rag_remove_document', { docId });
 
-export const ragListDocuments = (collectionId: string): Promise<RagDocument[]> =>
-  invoke('rag_list_documents', { collectionId });
+export const ragListDocuments = async (
+  collectionId: string, offset?: number, limit?: number
+): Promise<{ documents: RagDocument[]; total: number }> =>
+  invoke('rag_list_documents', { collectionId, offset, limit });
 
 export const ragGetPendingEmbeddings = (
   collectionId: string, limit?: number
@@ -1680,11 +1682,16 @@ export const ragSearch = (request: {
 export const ragReindexCollection = (collectionId: string): Promise<number> =>
   invoke('rag_reindex_collection', { collectionId });
 
+export const ragCancelReindex = (): Promise<void> =>
+  invoke('rag_cancel_reindex');
+
 export const ragGetDocumentContent = (docId: string): Promise<string> =>
   invoke('rag_get_document_content', { docId });
 
-export const ragUpdateDocument = (docId: string, content: string): Promise<RagDocument> =>
-  invoke('rag_update_document', { docId, content });
+export const ragUpdateDocument = (
+  docId: string, content: string, expectedVersion?: number
+): Promise<RagDocument> =>
+  invoke('rag_update_document', { docId, content, expectedVersion });
 
 export const ragCreateBlankDocument = (
   request: { collectionId: string; title: string; format: string }
