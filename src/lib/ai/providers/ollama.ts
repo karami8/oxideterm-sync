@@ -292,4 +292,21 @@ export const ollamaProvider: AiStreamProvider = {
 
     return result;
   },
+
+  async embedTexts(config: { baseUrl: string; apiKey: string; model: string }, texts: string[]): Promise<number[][]> {
+    const cleanBaseUrl = config.baseUrl.replace(/\/+$/, '');
+    // Use OpenAI-compatible endpoint if available, fall back to native Ollama
+    const resp = await aiFetch(`${cleanBaseUrl}/api/embed`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(config.apiKey ? { 'Authorization': `Bearer ${config.apiKey}` } : {}),
+      },
+      body: JSON.stringify({ model: config.model, input: texts }),
+    });
+    if (!resp.ok) throw new Error(`Ollama embedding request failed: ${resp.status}`);
+    const data = JSON.parse(resp.body);
+    if (Array.isArray(data.embeddings)) return data.embeddings;
+    throw new Error('Invalid Ollama embedding response');
+  },
 };

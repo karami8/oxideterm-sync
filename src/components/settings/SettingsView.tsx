@@ -31,10 +31,11 @@ import {
     SelectLabel,
     SelectSeparator
 } from '../ui/select';
-import { Monitor, Key, Terminal as TerminalIcon, Shield, Plus, Trash2, FolderInput, Sparkles, Square, HardDrive, HelpCircle, Github, ExternalLink, Keyboard, RefreshCw, ImageIcon, X, Code2, WifiOff, Download, Upload, Network, ArrowLeftRight, Settings, Folder, ListTree, Rocket, Puzzle, Activity, Loader2, CheckCircle2, ArrowDownToLine, RotateCw, Wrench, FileText, Pen, FolderOpen, Search, GitBranch, Radio, CirclePlus, CircleStop, FolderSearch, FileCode, Info, MousePointer2, FlaskConical } from 'lucide-react';
+import { Monitor, Key, Terminal as TerminalIcon, Shield, Plus, Trash2, FolderInput, Sparkles, Square, HardDrive, HelpCircle, Github, ExternalLink, Keyboard, RefreshCw, ImageIcon, X, Code2, WifiOff, Download, Upload, Network, ArrowLeftRight, Settings, Folder, ListTree, Rocket, Puzzle, Activity, Loader2, CheckCircle2, ArrowDownToLine, RotateCw, Wrench, FileText, Pen, FolderOpen, Search, GitBranch, Radio, CirclePlus, CircleStop, FolderSearch, FileCode, Info, MousePointer2, FlaskConical, BookOpen } from 'lucide-react';
 import { api } from '../../lib/api';
 import { TOOL_GROUPS, WRITE_TOOLS, EXPERIMENTAL_TOOLS } from '../../lib/ai/tools';
 import { McpServersPanel } from './McpServersPanel';
+import { DocumentManager } from './DocumentManager';
 import { useLocalTerminalStore } from '../../store/localTerminalStore';
 import { SshKeyInfo, SshHostInfo } from '../../types';
 import { themes, getTerminalTheme, getCustomThemes, isCustomTheme, exportTheme, importTheme } from '../../lib/themes';
@@ -1145,6 +1146,13 @@ export const SettingsView = () => {
                     >
                         <Sparkles className="h-4 w-4" /> {t('settings_view.tabs.ai')}
                     </Button>
+                    <Button
+                        variant={activeTab === 'knowledge' ? 'secondary' : 'ghost'}
+                        className="w-full justify-start gap-3 h-10 font-normal"
+                        onClick={() => setActiveTab('knowledge')}
+                    >
+                        <BookOpen className="h-4 w-4" /> {t('settings_view.tabs.knowledge')}
+                    </Button>
 
                     <Separator className="!my-2" />
 
@@ -2103,6 +2111,47 @@ export const SettingsView = () => {
                                         + {t('settings_view.ai.add_provider')}
                                     </Button>
 
+                                    {/* Embedding Configuration */}
+                                    <Separator className="my-6 opacity-50" />
+                                    <h4 className="text-sm font-medium text-theme-text mb-4 uppercase tracking-wider">{t('settings_view.ai.embedding_title')}</h4>
+                                    <p className="text-xs text-theme-text-muted mb-4">{t('settings_view.ai.embedding_description')}</p>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-3xl mb-6">
+                                        <div className="grid gap-1">
+                                            <Label className="text-xs text-theme-text-muted">{t('settings_view.ai.embedding_provider')}</Label>
+                                            <Select
+                                                value={ai.embeddingConfig?.providerId ?? '__default__'}
+                                                onValueChange={(v) => updateAi('embeddingConfig', { ...ai.embeddingConfig, providerId: v === '__default__' ? null : v, model: ai.embeddingConfig?.model ?? '' })}
+                                            >
+                                                <SelectTrigger className="bg-theme-bg h-8 text-xs">
+                                                    <SelectValue placeholder={t('settings_view.ai.embedding_provider_placeholder')} />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="__default__">{t('settings_view.ai.embedding_provider_default')}</SelectItem>
+                                                    {ai.providers
+                                                        .filter((p) => p.enabled && p.type !== 'anthropic')
+                                                        .map((p) => (
+                                                            <SelectItem key={p.id} value={p.id}>
+                                                                {p.name}
+                                                            </SelectItem>
+                                                        ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div className="grid gap-1">
+                                            <Label className="text-xs text-theme-text-muted">{t('settings_view.ai.embedding_model')}</Label>
+                                            <Input
+                                                value={ai.embeddingConfig?.model ?? ''}
+                                                onChange={(e) => updateAi('embeddingConfig', { ...ai.embeddingConfig, providerId: ai.embeddingConfig?.providerId ?? null, model: e.target.value })}
+                                                className="bg-theme-bg h-8 text-xs"
+                                                placeholder={(() => {
+                                                    const ep = ai.providers.find(p => p.id === ai.embeddingConfig?.providerId);
+                                                    if (ep?.type === 'ollama') return 'nomic-embed-text';
+                                                    return 'text-embedding-3-small';
+                                                })()}
+                                            />
+                                        </div>
+                                    </div>
+
                                     <Separator className="my-6 opacity-50" />
 
                                     <h4 className="text-sm font-medium text-theme-text mb-4 uppercase tracking-wider">{t('settings_view.ai.context_controls')}</h4>
@@ -2399,6 +2448,10 @@ export const SettingsView = () => {
                         {/* MCP Servers Section */}
                         <McpServersPanel />
                     </>)}
+
+                    {activeTab === 'knowledge' && (
+                        <DocumentManager />
+                    )}
 
                     {activeTab === 'local' && (
                         <LocalTerminalSettings />

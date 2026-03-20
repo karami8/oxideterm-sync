@@ -245,6 +245,24 @@ export const openaiProvider: AiStreamProvider = {
     }
     return result;
   },
+
+  async embedTexts(config: { baseUrl: string; apiKey: string; model: string }, texts: string[]): Promise<number[][]> {
+    const cleanBaseUrl = config.baseUrl.replace(/\/+$/, '');
+    const resp = await aiFetch(`${cleanBaseUrl}/embeddings`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(config.apiKey ? { 'Authorization': `Bearer ${config.apiKey}` } : {}),
+      },
+      body: JSON.stringify({ model: config.model, input: texts }),
+    });
+    if (!resp.ok) throw new Error(`Embedding request failed: ${resp.status}`);
+    const data = JSON.parse(resp.body);
+    if (!Array.isArray(data.data)) throw new Error('Invalid embedding response');
+    return data.data
+      .sort((a: { index: number }, b: { index: number }) => a.index - b.index)
+      .map((d: { embedding: number[] }) => d.embedding);
+  },
 };
 
 /**

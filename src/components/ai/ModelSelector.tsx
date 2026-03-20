@@ -34,11 +34,28 @@ export const ModelSelector = ({ onOpenSettings }: ModelSelectorProps) => {
   const activeProvider = aiSettings.providers.find((p) => p.id === aiSettings.activeProviderId);
   const activeModel = aiSettings.activeModel || activeProvider?.defaultModel || '';
 
-  const checkLocalProviderOnline = useCallback(async (baseUrl: string, endpoint: string) => {
+  const checkLocalProviderOnline = useCallback(async (baseUrl: string, endpoint: string, headers?: Record<string, string>) => {
     const cleanBaseUrl = baseUrl.replace(/\/+$/, '');
     try {
-      const resp = await aiFetch(`${cleanBaseUrl}${endpoint}`, { timeoutMs: 3000 });
+      const resp = await aiFetch(`${cleanBaseUrl}${endpoint}`, { timeoutMs: 3000, headers });
       return resp.ok;
+    } catch {
+      return false;
+    }
+  }, []);
+
+  /** Heuristic: is this a local (LAN) base URL? */
+  const isLocalUrl = useCallback((baseUrl: string) => {
+    try {
+      const url = new URL(baseUrl);
+      const host = url.hostname.toLowerCase();
+      if (host === 'localhost' || host === '127.0.0.1' || host === '[::1]' || host === '::1' || host.endsWith('.local')) return true;
+      // RFC 1918 private ranges
+      if (host.startsWith('192.168.') || host.startsWith('10.')) return true;
+      // 172.16.0.0/12
+      const m = host.match(/^172\.(\d+)\./);
+      if (m) { const oct = parseInt(m[1], 10); if (oct >= 16 && oct <= 31) return true; }
+      return false;
     } catch {
       return false;
     }
@@ -63,12 +80,33 @@ export const ModelSelector = ({ onOpenSettings }: ModelSelectorProps) => {
           online[provider.id] = false;
         }
       } else if (provider.type === 'openai_compatible') {
-        status[provider.id] = true;
-        try {
-          online[provider.id] = await checkLocalProviderOnline(provider.baseUrl, '/models');
-        } catch (err) {
-          console.warn(`[ModelSelector] Failed to check compatible provider (${provider.id}):`, err);
-          online[provider.id] = false;
+        const isLocal = isLocalUrl(provider.baseUrl);
+        if (isLocal) {
+          // Local servers (LM Studio etc.) — no auth needed
+          status[provider.id] = true;
+          try {
+            online[provider.id] = await checkLocalProviderOnline(provider.baseUrl, '/models');
+          } catch (err) {
+            console.warn(`[ModelSelector] Failed to check compatible provider (${provider.id}):`, err);
+            online[provider.id] = false;
+          }
+        } else {
+          // Cloud-hosted openai_compatible (Moonshot, DeepSeek, etc.) — needs API key
+          try {
+            const hasKey = await api.hasAiProviderApiKey(provider.id);
+            status[provider.id] = hasKey;
+            if (hasKey) {
+              const apiKey = await api.getAiProviderApiKey(provider.id);
+              const headers = apiKey ? { 'Authorization': `Bearer ${apiKey}` } : undefined;
+              online[provider.id] = await checkLocalProviderOnline(provider.baseUrl, '/models', headers);
+            } else {
+              online[provider.id] = false;
+            }
+          } catch (err) {
+            console.warn(`[ModelSelector] Failed to check compatible provider (${provider.id}):`, err);
+            status[provider.id] = false;
+            online[provider.id] = false;
+          }
         }
       } else {
         try {
@@ -125,7 +163,9 @@ export const ModelSelector = ({ onOpenSettings }: ModelSelectorProps) => {
 
     // Guard: check if provider needs a key and doesn't have one
     const provider = aiSettings.providers.find(p => p.id === providerId);
-    if (provider && provider.type !== 'ollama' && provider.type !== 'openai_compatible' && !keyStatus[providerId]) {
+    if (provider && provider.type !== 'ollama'
+        && !(provider.type === 'openai_compatible' && isLocalUrl(provider.baseUrl))
+        && !keyStatus[providerId]) {
       useToastStore.getState().addToast({
         title: t('ai.model_selector.no_key_warning'),
         variant: 'warning',
@@ -189,9 +229,9 @@ export const ModelSelector = ({ onOpenSettings }: ModelSelectorProps) => {
             {aiSettings.providers
               .filter((p) => p.enabled)
               .map((provider) => {
-                const hasKey = provider.type === 'ollama' || provider.type === 'openai_compatible' || !!keyStatus[provider.id];
-                const isLocalProvider = provider.type === 'ollama' || provider.type === 'openai_compatible';
-                const isOnline = !isLocalProvider || providerOnline[provider.id] !== false;
+                const isLocal = provider.type === 'ollama' || (provider.type === 'openai_compatible' && isLocalUrl(provider.baseUrl));
+                const hasKey = isLocal || !!keyStatus[provider.id];
+                const isOnline = !isLocal || providerOnline[provider.id] !== false;
                 return (
                   <div key={provider.id}>
                     {/* Provider header */}
@@ -213,7 +253,7 @@ export const ModelSelector = ({ onOpenSettings }: ModelSelectorProps) => {
                             <RefreshCw className={cn("w-2.5 h-2.5", refreshing === provider.id && "animate-spin")} />
                           </button>
                         )}
-                        {isLocalProvider && (
+                        {isLocal && (
                           <span className={cn(
                             "text-[9px] flex items-center gap-0.5",
                             isOnline ? "text-emerald-400" : "text-theme-text-muted"
@@ -222,7 +262,7 @@ export const ModelSelector = ({ onOpenSettings }: ModelSelectorProps) => {
                             {isOnline ? 'OK' : t('ai.model_selector.offline')}
                           </span>
                         )}
-                        {!isLocalProvider && (
+                        {!isLocal && (
                           <span className={cn(
                             "text-[9px] flex items-center gap-0.5",
                             hasKey ? "text-emerald-400" : "text-amber-400"
@@ -235,7 +275,7 @@ export const ModelSelector = ({ onOpenSettings }: ModelSelectorProps) => {
                     </div>
 
                     {/* No API key: show configure hint instead of models */}
-                    {isLocalProvider && !isOnline ? (
+                    {isLocal && !isOnline ? (
                       <div className="px-3 py-2 text-[10px] text-theme-text-muted italic">
                         {t('ai.model_selector.offline')}
                       </div>

@@ -990,6 +990,31 @@ export const INFRA_EXTRA_TOOL_DEFS: AiToolDefinition[] = [
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════
+// RAG Document Search Tools — Always available (CONTEXT_FREE)
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const RAG_TOOL_DEFS: AiToolDefinition[] = [
+  {
+    name: 'search_docs',
+    description: 'Search user-imported operations documentation (runbooks, guides, SOPs) using keyword matching. Returns the most relevant document chunks with section paths and sources. Use this when the user asks about deployment, configuration, troubleshooting, or any domain-specific operations knowledge.',
+    parameters: {
+      type: 'object',
+      properties: {
+        query: {
+          type: 'string',
+          description: 'Search query — natural language question or keywords',
+        },
+        top_k: {
+          type: 'number',
+          description: 'Number of results to return (default: 5, max: 10)',
+        },
+      },
+      required: ['query'],
+    },
+  },
+];
+
+// ═══════════════════════════════════════════════════════════════════════════
 // Safety Classification
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -1045,6 +1070,8 @@ export const READ_ONLY_TOOLS = new Set([
   // SSH environment & topology (read-only)
   'get_ssh_environment',
   'get_topology',
+  // RAG document search (read-only)
+  'search_docs',
 ]);
 
 /**
@@ -1127,6 +1154,8 @@ export const CONTEXT_FREE_TOOLS = new Set([
   // SSH environment & topology tools
   'get_ssh_environment',
   'get_topology',
+  // RAG document search
+  'search_docs',
 ]);
 
 /** Tools that use session_id parameter instead of node_id */
@@ -1289,6 +1318,11 @@ export const TOOL_GROUPS: { groupKey: string; readOnly: string[]; write: string[
     readOnly: ['get_event_log', 'get_transfer_status', 'get_recording_status', 'get_broadcast_status', 'get_plugin_details', 'get_ssh_environment', 'get_topology'],
     write: [],
   },
+  {
+    groupKey: 'rag',
+    readOnly: ['search_docs'],
+    write: [],
+  },
 ];
 
 /**
@@ -1319,6 +1353,7 @@ export function getToolsForContext(
     ...NAVIGATION_TOOL_DEFS,
     ...STATUS_TOOL_DEFS,
     ...INFRA_EXTRA_TOOL_DEFS,
+    ...RAG_TOOL_DEFS,
   ];
   
   return allTools.filter(t => {

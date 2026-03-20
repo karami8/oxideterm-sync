@@ -1,0 +1,129 @@
+use serde::{Deserialize, Serialize};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Core Types
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// A collection of documents with a defined scope.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DocCollection {
+    pub id: String,
+    pub name: String,
+    pub scope: DocScope,
+    pub created_at: i64,
+    pub updated_at: i64,
+}
+
+/// Scope determines which sessions can see a collection.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum DocScope {
+    /// Visible to all sessions.
+    Global,
+    /// Visible only when connected to the given connection_id.
+    Connection(String),
+}
+
+/// Metadata for an imported document.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DocMetadata {
+    pub id: String,
+    pub collection_id: String,
+    pub title: String,
+    pub source_path: Option<String>,
+    pub format: DocFormat,
+    pub content_hash: String,
+    pub indexed_at: i64,
+    pub chunk_count: usize,
+}
+
+/// Supported document formats.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum DocFormat {
+    Markdown,
+    PlainText,
+}
+
+/// A chunk of text split from a document.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DocChunk {
+    pub id: String,
+    pub doc_id: String,
+    /// Heading path for Markdown, e.g. "Deployment > Docker > Troubleshooting"
+    pub section_path: Option<String>,
+    pub content: String,
+    pub tokens_estimate: usize,
+    /// Character offset in the original document.
+    pub offset: usize,
+    /// Content length in characters.
+    pub length: usize,
+}
+
+/// Stored vector embedding for a chunk.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EmbeddingRecord {
+    pub chunk_id: String,
+    pub vector: Vec<f32>,
+    pub model_name: String,
+    pub dimensions: usize,
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Search Types
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// A single search result with provenance.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SearchResult {
+    pub chunk_id: String,
+    pub doc_id: String,
+    pub doc_title: String,
+    pub section_path: Option<String>,
+    pub content: String,
+    pub score: f64,
+    pub source: SearchSource,
+}
+
+/// Indicates which retrieval path produced the result.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum SearchSource {
+    Bm25Only,
+    VectorOnly,
+    Both,
+}
+
+/// Statistics for a collection.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CollectionStats {
+    pub doc_count: usize,
+    pub chunk_count: usize,
+    pub embedded_chunk_count: usize,
+    pub last_updated: i64,
+}
+
+/// Input struct for storing embeddings from the frontend.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EmbeddingInput {
+    pub chunk_id: String,
+    pub vector: Vec<f32>,
+    pub model_name: String,
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// BM25 Internal Types
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// A posting list entry: chunk_id + term frequency.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PostingEntry {
+    pub chunk_id: String,
+    pub tf: f32,
+}
+
+/// Global BM25 statistics.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Bm25Stats {
+    /// Total number of indexed chunks.
+    pub doc_count: usize,
+    /// Average document length in tokens.
+    pub avg_dl: f64,
+}

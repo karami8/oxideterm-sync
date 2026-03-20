@@ -17,6 +17,7 @@ pub mod graphics;
 pub mod local;
 pub mod launcher;
 pub mod oxide_file;
+pub mod rag;
 pub mod terminal_bg;
 pub mod router;
 pub mod session;
@@ -251,6 +252,23 @@ pub fn run() {
         None
     };
 
+    // Initialize RAG document store
+    let rag_store = match config::storage::config_dir() {
+        Ok(dir) => match rag::store::RagStore::new(&dir) {
+            Ok(store) => {
+                tracing::info!("RAG store initialized");
+                write_startup_log("RAG store initialized");
+                Some(Arc::new(store))
+            }
+            Err(e) => {
+                tracing::warn!("Failed to initialize RAG store: {}. RAG features disabled.", e);
+                write_startup_log(&format!("WARNING: RAG store init failed: {}", e));
+                None
+            }
+        },
+        Err(_) => None,
+    };
+
     // Create shared session registry with state store
     let registry = Arc::new(SessionRegistry::new(state_store.clone()));
 
@@ -383,6 +401,13 @@ pub fn run() {
     // Conditionally add agent history store
     let builder = if let Some(agent_store) = agent_history_store {
         builder.manage(agent_store)
+    } else {
+        builder
+    };
+
+    // Conditionally add RAG store
+    let builder = if let Some(rag) = rag_store {
+        builder.manage(rag)
     } else {
         builder
     };
@@ -649,6 +674,18 @@ pub fn run() {
         commands::agent_history_list,
         commands::agent_history_delete,
         commands::agent_history_clear,
+        // RAG document retrieval commands
+        commands::rag_create_collection,
+        commands::rag_list_collections,
+        commands::rag_delete_collection,
+        commands::rag_get_collection_stats,
+        commands::rag_add_document,
+        commands::rag_remove_document,
+        commands::rag_list_documents,
+        commands::rag_get_pending_embeddings,
+        commands::rag_store_embeddings,
+        commands::rag_search,
+        commands::rag_reindex_collection,
         // AI HTTP proxy commands (CORS bypass)
         commands::ai_fetch,
         commands::ai_fetch_stream,
@@ -929,6 +966,18 @@ pub fn run() {
         commands::agent_history_list,
         commands::agent_history_delete,
         commands::agent_history_clear,
+        // RAG document retrieval commands
+        commands::rag_create_collection,
+        commands::rag_list_collections,
+        commands::rag_delete_collection,
+        commands::rag_get_collection_stats,
+        commands::rag_add_document,
+        commands::rag_remove_document,
+        commands::rag_list_documents,
+        commands::rag_get_pending_embeddings,
+        commands::rag_store_embeddings,
+        commands::rag_search,
+        commands::rag_reindex_collection,
         // AI HTTP proxy commands (CORS bypass)
         commands::ai_fetch,
         commands::ai_fetch_stream,

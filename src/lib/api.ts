@@ -39,6 +39,12 @@ import {
   RemoteEnvInfo,
   // Oxide-Next Node State types
   NodeStateSnapshot,
+  // RAG types
+  RagCollection,
+  RagDocument,
+  RagCollectionStats,
+  RagPendingEmbedding,
+  RagSearchResult,
 } from '../types';
 import type { PluginManifest } from '../types/plugin';
 
@@ -1614,6 +1620,65 @@ export const nodeAgentSymbolDefinitions = (
   nodeId: string, path: string, name: string
 ): Promise<AgentSymbolInfo[]> =>
   invoke('node_agent_symbol_definitions', { nodeId, path, name });
+
+// ═══════════════════════════════════════════════════════════════════════════
+// RAG (Retrieval-Augmented Generation) APIs
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const ragCreateCollection = (
+  name: string, scope: 'Global' | { Connection: { connection_id: string } }
+): Promise<RagCollection> =>
+  invoke('rag_create_collection', { request: { name, scope } });
+
+export const ragListCollections = (
+  scopeFilter?: string
+): Promise<RagCollection[]> =>
+  invoke('rag_list_collections', { scopeFilter });
+
+export const ragDeleteCollection = (collectionId: string): Promise<void> =>
+  invoke('rag_delete_collection', { collectionId });
+
+export const ragGetCollectionStats = (
+  collectionId: string
+): Promise<RagCollectionStats> =>
+  invoke('rag_get_collection_stats', { collectionId });
+
+export const ragAddDocument = (request: {
+  collectionId: string;
+  title: string;
+  content: string;
+  format: string;
+  sourcePath?: string;
+}): Promise<RagDocument> =>
+  invoke('rag_add_document', { request });
+
+export const ragRemoveDocument = (docId: string): Promise<void> =>
+  invoke('rag_remove_document', { docId });
+
+export const ragListDocuments = (collectionId: string): Promise<RagDocument[]> =>
+  invoke('rag_list_documents', { collectionId });
+
+export const ragGetPendingEmbeddings = (
+  collectionId: string, limit?: number
+): Promise<RagPendingEmbedding[]> =>
+  invoke('rag_get_pending_embeddings', { collectionId, limit });
+
+export const ragStoreEmbeddings = (
+  embeddings: Array<{ chunkId: string; vector: number[] }>,
+  modelName: string
+): Promise<number> =>
+  invoke('rag_store_embeddings', { request: { embeddings, modelName } });
+
+export const ragSearch = (request: {
+  query: string;
+  collectionIds: string[];
+  queryVector?: number[];
+  topK?: number;
+}): Promise<RagSearchResult[]> =>
+  invoke('rag_search', { request });
+
+export const ragReindexCollection = (collectionId: string): Promise<number> =>
+  invoke('rag_reindex_collection', { collectionId });
 
 
 // --- Mock Data Helpers ---

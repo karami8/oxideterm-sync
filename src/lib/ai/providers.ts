@@ -105,6 +105,16 @@ export type AiStreamProvider = {
    * @returns Record mapping model IDs to their context window sizes
    */
   fetchModelDetails?(config: { baseUrl: string; apiKey: string }): Promise<Record<string, number>>;
+
+  /**
+   * Generate vector embeddings for a batch of text strings.
+   * Optional — only providers with an embedding API should implement this.
+   *
+   * @param config - baseUrl, apiKey, and model for the embedding request
+   * @param texts - Array of text strings to embed
+   * @returns Array of embedding vectors (one per input text)
+   */
+  embedTexts?(config: { baseUrl: string; apiKey: string; model: string }, texts: string[]): Promise<number[][]>;
 };
 
 // ═══════════════════════════════════════════════════════════════════════════

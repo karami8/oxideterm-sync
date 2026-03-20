@@ -1315,6 +1315,17 @@ export interface AiProvider {
   createdAt: number;
 }
 
+/**
+ * Global embedding provider/model configuration.
+ * Separate from chat provider so users can pick a dedicated embedding model.
+ */
+export type EmbeddingConfig = {
+  /** Provider ID to use for embeddings (null = use active chat provider) */
+  providerId: string | null;
+  /** Embedding model name (e.g. "text-embedding-3-small") */
+  model: string;
+};
+
 // ═══════════════════════════════════════════════════════════════════════════
 // AI Tool Use Types
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1611,4 +1622,52 @@ export type AgentApproval = {
   status: 'pending' | 'approved' | 'rejected' | 'skipped';
   /** LLM reasoning text explaining why this tool call is needed */
   reasoning?: string;
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// RAG (Retrieval-Augmented Generation) Types
+// ═══════════════════════════════════════════════════════════════════════════
+
+export type DocScope =
+  | 'Global'
+  | { Connection: string };
+
+export type RagCollection = {
+  id: string;
+  name: string;
+  scope: DocScope;
+  createdAt: number;
+  updatedAt: number;
+};
+
+export type RagDocument = {
+  id: string;
+  collectionId: string;
+  title: string;
+  sourcePath: string | null;
+  format: string;
+  chunkCount: number;
+  indexedAt: number;
+};
+
+export type RagCollectionStats = {
+  docCount: number;
+  chunkCount: number;
+  embeddedChunkCount: number;
+  lastUpdated: number;
+};
+
+export type RagPendingEmbedding = {
+  chunkId: string;
+  content: string;
+};
+
+export type RagSearchResult = {
+  chunkId: string;
+  docId: string;
+  docTitle: string;
+  sectionPath: string | null;
+  content: string;
+  score: number;
+  source: 'bm25' | 'vector' | 'both';
 };

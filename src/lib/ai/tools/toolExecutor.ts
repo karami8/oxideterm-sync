@@ -21,6 +21,7 @@ import {
 } from '../../api';
 import { nodeSftpListDir, nodeSftpPreview, nodeSftpStat } from '../../api';
 import { api } from '../../api';
+import { ragSearch } from '../../api';
 import type { AiToolResult, AgentFileEntry, TabType } from '../../../types';
 import { CONTEXT_FREE_TOOLS, SESSION_ID_TOOLS, isCommandDenied } from './toolDefinitions';
 import { useSessionTreeStore } from '../../../store/sessionTreeStore';
@@ -182,6 +183,9 @@ export async function executeTool(
           return await execGetSshEnvironment(startTime, toolCallId);
         case 'get_topology':
           return await execGetTopology(startTime, toolCallId);
+        // RAG document search
+        case 'search_docs':
+          return await execSearchDocs(args, startTime, toolCallId);
         default:
           return { toolCallId, toolName, success: false, output: '', error: `Unknown context-free tool: ${toolName}`, durationMs: Date.now() - startTime };
       }
@@ -2572,4 +2576,30 @@ async function execGetTopology(startTime: number, toolCallId: string): Promise<A
   const raw = JSON.stringify(result, null, 2);
   const { text: output, truncated } = truncateOutput(raw);
   return { toolCallId, toolName: 'get_topology', success: true, output, durationMs: Date.now() - startTime, truncated };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// RAG Document Search
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function execSearchDocs(args: Record<string, unknown>, startTime: number, toolCallId: string): Promise<AiToolResult> {
+  const query = typeof args.query === 'string' ? args.query.trim().slice(0, 500) : '';
+  if (!query) {
+    return { toolCallId, toolName: 'search_docs', success: false, output: '', error: 'Missing required parameter: query', durationMs: Date.now() - startTime };
+  }
+
+  const topK = typeof args.top_k === 'number' ? Math.min(Math.max(1, Math.round(args.top_k)), 10) : 5;
+
+  const results = await ragSearch({ query, collectionIds: [], topK });
+  if (results.length === 0) {
+    return { toolCallId, toolName: 'search_docs', success: true, output: 'No matching documents found. The user may not have imported any operations documentation yet.', durationMs: Date.now() - startTime };
+  }
+
+  const formatted = results.map((r: typeof results[number], i: number) => {
+    const header = `[${i + 1}] ${r.docTitle}${r.sectionPath ? ` > ${r.sectionPath}` : ''} (score: ${r.score.toFixed(3)})`;
+    return `${header}\n${r.content}`;
+  }).join('\n\n---\n\n');
+
+  const { text: output, truncated } = truncateOutput(formatted);
+  return { toolCallId, toolName: 'search_docs', success: true, output, durationMs: Date.now() - startTime, truncated };
 }
