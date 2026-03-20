@@ -55,7 +55,7 @@ const MAX_IMPORT_FILE_SIZE = 5 * 1024 * 1024;
 
 function formatDate(ts: number): string {
   if (!ts) return '—';
-  return new Date(ts * 1000).toLocaleDateString(undefined, {
+  return new Date(ts).toLocaleDateString(undefined, {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
