@@ -1,7 +1,7 @@
 use crate::rag::chunker::estimate_tokens;
 use crate::rag::error::RagError;
 use crate::rag::store::RagStore;
-use crate::rag::types::{Bm25Stats, PostingEntry};
+use crate::rag::types::{is_cjk, Bm25Stats, PostingEntry};
 use std::collections::HashMap;
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -75,18 +75,6 @@ fn flush_ascii(buf: &mut String, tokens: &mut Vec<String>) {
     }
 }
 
-fn is_cjk(c: char) -> bool {
-    matches!(c,
-        '\u{4E00}'..='\u{9FFF}'
-        | '\u{3400}'..='\u{4DBF}'
-        | '\u{F900}'..='\u{FAFF}'
-        | '\u{3000}'..='\u{303F}'
-        | '\u{3040}'..='\u{309F}'
-        | '\u{30A0}'..='\u{30FF}'
-        | '\u{AC00}'..='\u{D7AF}'
-    )
-}
-
 // ═══════════════════════════════════════════════════════════════════════════
 // BM25 Index Building
 // ═══════════════════════════════════════════════════════════════════════════
@@ -109,9 +97,18 @@ pub fn index_chunk(
 /// Re-index an entire collection from scratch.
 pub fn reindex_collection(
     store: &RagStore,
-    collection_id: &str,
+    _collection_id: &str,
 ) -> Result<usize, RagError> {
-    let chunk_ids = store.get_chunk_ids_in_collections(&[collection_id.to_string()])?;
+    // Rebuild BM25 index across ALL collections to maintain global consistency.
+    reindex_all(store)
+}
+
+/// Rebuild the global BM25 index from all collections.
+pub fn reindex_all(
+    store: &RagStore,
+) -> Result<usize, RagError> {
+    let all_col_ids = store.get_all_collection_ids()?;
+    let chunk_ids = store.get_chunk_ids_in_collections(&all_col_ids)?;
 
     let mut postings: HashMap<String, Vec<PostingEntry>> = HashMap::new();
     let mut total_dl: f64 = 0.0;
@@ -130,6 +127,7 @@ pub fn reindex_collection(
                     .push(PostingEntry {
                         chunk_id: cid.clone(),
                         tf: *tf,
+                        doc_length,
                     });
             }
 
@@ -218,11 +216,13 @@ pub fn search_bm25(
             }
 
             // BM25 TF component: (tf * (k1 + 1)) / (tf + k1 * (1 - b + b * dl/avgdl))
-            // We approximate dl with tf sum — for exactness, store it separately.
-            // For now, use tf as a reasonable proxy.
             let tf = entry.tf as f64;
-            // Use a rough estimate: doc_length ~ tf * 3 (heuristic)
-            let dl = tf * 3.0;
+            let dl = if entry.doc_length > 0 {
+                entry.doc_length as f64
+            } else {
+                // Fallback for legacy postings without stored doc_length
+                avg_dl
+            };
             let tf_norm = (tf * (K1 + 1.0)) / (tf + K1 * (1.0 - B + B * dl / avg_dl));
 
             *scores.entry(entry.chunk_id.clone()).or_insert(0.0) += idf * tf_norm;

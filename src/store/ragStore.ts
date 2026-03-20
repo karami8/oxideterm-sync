@@ -128,6 +128,15 @@ export const useRagStore = create<RagStoreState>()((set, get) => ({
   },
 
   removeDocument: async (docId) => {
+    // Clean up temp file if this doc is currently being edited
+    const { editingDocId, editFilePath } = get();
+    if (editingDocId === docId && editFilePath) {
+      try {
+        const { remove } = await import('@tauri-apps/plugin-fs');
+        await remove(editFilePath);
+      } catch { /* best-effort */ }
+      set({ editingDocId: null, editFilePath: null });
+    }
     await ragRemoveDocument(docId);
     set((s) => ({
       documents: s.documents.filter((d) => d.id !== docId),
@@ -177,16 +186,20 @@ export const useRagStore = create<RagStoreState>()((set, get) => ({
     const { editingDocId, editFilePath, selectedCollectionId } = get();
     if (!editingDocId || !editFilePath) return null;
 
-    const { readTextFile } = await import('@tauri-apps/plugin-fs');
+    const { readTextFile, remove } = await import('@tauri-apps/plugin-fs');
     const fileContent = await readTextFile(editFilePath);
     const storedContent = await ragGetDocumentContent(editingDocId);
 
     if (fileContent === storedContent) {
+      // Clean up temp file
+      try { await remove(editFilePath); } catch { /* best-effort */ }
       set({ editingDocId: null, editFilePath: null });
       return { updated: false, docId: editingDocId };
     }
 
     const updatedDoc = await ragUpdateDocument(editingDocId, fileContent);
+    // Clean up temp file after successful sync
+    try { await remove(editFilePath); } catch { /* best-effort */ }
     set((s) => ({
       documents: s.documents.map((d) => d.id === updatedDoc.id ? updatedDoc : d),
       editingDocId: null,

@@ -11,9 +11,21 @@ use crate::rag::search::{self, SearchMode};
 use crate::rag::store::RagStore;
 use crate::rag::types::*;
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use std::sync::Arc;
 use tauri::State;
 use tracing::info;
+
+/// Compute a stable, deterministic content hash using SHA-256 (truncated to 16 hex chars).
+fn content_hash(text: &str) -> String {
+    let hash = Sha256::digest(text.as_bytes());
+    format!("{:016x}", u64::from_be_bytes(hash[..8].try_into().unwrap()))
+}
+
+/// Max allowed length for titles, names, and similar short text fields.
+const MAX_NAME_LENGTH: usize = 1000;
+/// Max allowed document content size (10 MB).
+const MAX_CONTENT_SIZE: usize = 10 * 1024 * 1024;
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Request / Response Types
@@ -124,6 +136,9 @@ pub async fn rag_create_collection(
     store: State<'_, Arc<RagStore>>,
     request: CreateCollectionRequest,
 ) -> Result<CollectionResponse, String> {
+    if request.name.len() > MAX_NAME_LENGTH {
+        return Err("Collection name too long".to_string());
+    }
     let id = uuid::Uuid::new_v4().to_string();
     let now = chrono::Utc::now().timestamp_millis();
     let scope = match request.scope {
@@ -178,6 +193,8 @@ pub async fn rag_delete_collection(
     collection_id: String,
 ) -> Result<(), String> {
     store.delete_collection(&collection_id).map_err(|e| e.to_string())?;
+    // Rebuild global BM25 index to remove stale postings
+    bm25::reindex_all(&store).map_err(|e| e.to_string())?;
     info!("Deleted RAG collection: {}", collection_id);
     Ok(())
 }
@@ -204,6 +221,12 @@ pub async fn rag_add_document(
     store: State<'_, Arc<RagStore>>,
     request: AddDocumentRequest,
 ) -> Result<DocumentResponse, String> {
+    if request.title.len() > MAX_NAME_LENGTH {
+        return Err("Document title too long".to_string());
+    }
+    if request.content.len() > MAX_CONTENT_SIZE {
+        return Err("Document content too large".to_string());
+    }
     let doc_id = uuid::Uuid::new_v4().to_string();
     let now = chrono::Utc::now().timestamp_millis();
 
@@ -215,13 +238,7 @@ pub async fn rag_add_document(
 
     // Chunk the document
     let chunks = chunker::chunk_document(&doc_id, &request.content, &format);
-    let content_hash = {
-        use std::collections::hash_map::DefaultHasher;
-        use std::hash::{Hash, Hasher};
-        let mut hasher = DefaultHasher::new();
-        request.content.hash(&mut hasher);
-        format!("{:016x}", hasher.finish())
-    };
+    let hash = content_hash(&request.content);
 
     let metadata = DocMetadata {
         id: doc_id.clone(),
@@ -229,7 +246,7 @@ pub async fn rag_add_document(
         title: request.title.clone(),
         source_path: request.source_path,
         format: format.clone(),
-        content_hash,
+        content_hash: hash,
         indexed_at: now,
         chunk_count: chunks.len(),
     };
@@ -272,6 +289,8 @@ pub async fn rag_remove_document(
     doc_id: String,
 ) -> Result<(), String> {
     store.remove_document(&doc_id).map_err(|e| e.to_string())?;
+    // Rebuild global BM25 index to remove stale postings
+    bm25::reindex_all(&store).map_err(|e| e.to_string())?;
     info!("Removed RAG document: {}", doc_id);
     Ok(())
 }
@@ -385,9 +404,10 @@ pub async fn rag_reindex_collection(
     store: State<'_, Arc<RagStore>>,
     collection_id: String,
 ) -> Result<usize, String> {
-    let count = bm25::reindex_collection(&store, &collection_id)
+    // Rebuild the global BM25 index (all collections) to ensure consistency
+    let count = bm25::reindex_all(&store)
         .map_err(|e| e.to_string())?;
-    info!("Re-indexed collection {}: {} chunks", collection_id, count);
+    info!("Re-indexed BM25 (triggered by collection {}): {} chunks", collection_id, count);
     Ok(count)
 }
 
@@ -412,6 +432,9 @@ pub async fn rag_update_document(
     doc_id: String,
     content: String,
 ) -> Result<DocumentResponse, String> {
+    if content.len() > MAX_CONTENT_SIZE {
+        return Err("Document content too large".to_string());
+    }
     let meta = store
         .get_doc_metadata(&doc_id)
         .map_err(|e| e.to_string())?
@@ -419,20 +442,14 @@ pub async fn rag_update_document(
 
     let now = chrono::Utc::now().timestamp_millis();
     let chunks = chunker::chunk_document(&doc_id, &content, &meta.format);
-    let content_hash = {
-        use std::collections::hash_map::DefaultHasher;
-        use std::hash::{Hash, Hasher};
-        let mut hasher = DefaultHasher::new();
-        content.hash(&mut hasher);
-        format!("{:016x}", hasher.finish())
-    };
+    let hash = content_hash(&content);
 
     let updated = store
-        .update_document(&doc_id, &content, &chunks, &content_hash, now)
+        .update_document(&doc_id, &content, &chunks, &hash, now)
         .map_err(|e| e.to_string())?;
 
-    // Rebuild BM25 index for the collection to purge stale postings from old chunks
-    bm25::reindex_collection(&store, &meta.collection_id)
+    // Rebuild global BM25 index to purge stale postings from old chunks
+    bm25::reindex_all(&store)
         .map_err(|e| e.to_string())?;
 
     let format_str = match updated.format {
@@ -470,6 +487,9 @@ pub async fn rag_create_blank_document(
     store: State<'_, Arc<RagStore>>,
     request: CreateBlankDocumentRequest,
 ) -> Result<DocumentResponse, String> {
+    if request.title.len() > MAX_NAME_LENGTH {
+        return Err("Document title too long".to_string());
+    }
     let doc_id = uuid::Uuid::new_v4().to_string();
     let now = chrono::Utc::now().timestamp_millis();
 

@@ -506,8 +506,8 @@ impl RagStore {
         }
     }
 
-    /// Rebuild BM25 index for a whole collection.
-    /// Called by `bm25::rebuild_index()`.
+    /// Rebuild BM25 index for all collections.
+    /// Called by `bm25::reindex_all()`.
     pub fn write_bm25_index(
         &self,
         postings: &std::collections::HashMap<String, Vec<PostingEntry>>,
@@ -515,10 +515,22 @@ impl RagStore {
     ) -> Result<(), RagError> {
         let txn = self.db.begin_write()?;
         {
-            // Clear old postings
             let mut t = txn.open_table(BM25_POSTINGS_TABLE)?;
-            // We can't efficiently clear a table in redb, so we write over
-            // For a full reindex this is fine since we write all terms
+
+            // Drain old postings to ensure stale terms are removed
+            let old_keys: Vec<String> = {
+                let mut keys = Vec::new();
+                for entry in t.iter()? {
+                    let (k, _) = entry?;
+                    keys.push(k.value().to_string());
+                }
+                keys
+            };
+            for key in &old_keys {
+                t.remove(key.as_str())?;
+            }
+
+            // Write new postings
             for (term, entries) in postings {
                 let data = rmp_serde::to_vec(entries)?;
                 t.insert(term.as_str(), data.as_slice())?;
@@ -555,6 +567,7 @@ impl RagStore {
                 entries.push(PostingEntry {
                     chunk_id: chunk_id.to_string(),
                     tf: *tf,
+                    doc_length,
                 });
                 t.insert(term.as_str(), rmp_serde::to_vec(&entries)?.as_slice())?;
             }
@@ -589,6 +602,18 @@ impl RagStore {
             Some(guard) => Ok(rmp_serde::from_slice(guard.value())?),
             None => Ok(Vec::new()),
         }
+    }
+
+    /// Return IDs of all existing collections.
+    pub fn get_all_collection_ids(&self) -> Result<Vec<String>, RagError> {
+        let txn = self.db.begin_read()?;
+        let t = txn.open_table(COLLECTIONS_TABLE)?;
+        let mut ids = Vec::new();
+        for entry in t.iter()? {
+            let (k, _) = entry?;
+            ids.push(k.value().to_string());
+        }
+        Ok(ids)
     }
 
     fn get_chunk_ids_for_doc(&self, doc_id: &str) -> Result<Vec<String>, RagError> {

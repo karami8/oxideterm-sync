@@ -1,4 +1,4 @@
-use crate::rag::types::{DocChunk, DocFormat};
+use crate::rag::types::{is_cjk, DocChunk, DocFormat};
 use uuid::Uuid;
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -224,18 +224,6 @@ pub fn estimate_tokens(text: &str) -> usize {
     }
     let raw = (cjk as f64 * 1.5 + other as f64 * 0.25) * 1.15;
     raw.ceil() as usize
-}
-
-fn is_cjk(c: char) -> bool {
-    matches!(c,
-        '\u{4E00}'..='\u{9FFF}'   // CJK Unified
-        | '\u{3400}'..='\u{4DBF}' // CJK Extension A
-        | '\u{F900}'..='\u{FAFF}' // CJK Compat
-        | '\u{3000}'..='\u{303F}' // CJK Symbols
-        | '\u{3040}'..='\u{309F}' // Hiragana
-        | '\u{30A0}'..='\u{30FF}' // Katakana
-        | '\u{AC00}'..='\u{D7AF}' // Hangul
-    )
 }
 
 /// Parse a line as a Markdown heading, returning (level, title).
