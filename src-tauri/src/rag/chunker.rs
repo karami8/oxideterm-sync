@@ -6,7 +6,6 @@ use uuid::Uuid;
 // ═══════════════════════════════════════════════════════════════════════════
 
 /// Target chunk size range in estimated tokens.
-const MIN_CHUNK_TOKENS: usize = 200;
 const MAX_CHUNK_TOKENS: usize = 1500;
 /// Overlap window in characters to avoid semantic breaks.
 const OVERLAP_CHARS: usize = 200;

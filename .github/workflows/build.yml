@@ -84,7 +84,8 @@ jobs:
             build-essential \
             curl \
             wget \
-            file
+            file \
+            xdg-utils
 
       - name: Cleanup Old Caches
         uses: actions/github-script@v6
