@@ -90,7 +90,20 @@ jobs:
         if: matrix.target == 'aarch64-unknown-linux-gnu'
         run: |
           sudo dpkg --add-architecture arm64
-          sudo sed -i 's/^deb /deb [arch=amd64] /' /etc/apt/sources.list.d/*.list || true
+
+          # Ubuntu 24.04 uses DEB822 .sources format — pin existing repos to amd64 only
+          for f in /etc/apt/sources.list.d/ubuntu*.sources; do
+            if [ -f "$f" ] && ! grep -q "^Architectures:" "$f"; then
+              sudo sed -i '/^Types:/a Architectures: amd64' "$f"
+            fi
+          done
+
+          # Pin any legacy .list files to amd64 (skip if already arch-qualified)
+          for f in /etc/apt/sources.list.d/*.list; do
+            [ -f "$f" ] && sudo sed -i 's/^deb http/deb [arch=amd64] http/' "$f" || true
+          done
+
+          # Add arm64 ports
           echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports noble main restricted universe multiverse" | sudo tee /etc/apt/sources.list.d/arm64.list
           echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports noble-updates main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list.d/arm64.list
           sudo apt-get update
