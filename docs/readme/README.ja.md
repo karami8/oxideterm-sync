@@ -25,7 +25,7 @@
 ---
 
 <p align="center">
-  <img src="../media/ai-terminal-demo.gif" alt="OxideTerm AI デモ">
+  <video src="https://github.com/user-attachments/assets/4ba033aa-94b5-4ed4-980c-5c3f9f21db7e" controls width="100%"></video>
 </p>
 <p align="center"><em>🤖 OxideSens —「ローカルターミナルを開いて echo hello, world! を実行」</em></p>
 
