@@ -172,7 +172,7 @@ Dual-Mode-KI mit datenschutzorientiertem Design:
 - **Kompatibel**: OpenAI, Ollama, DeepSeek, OneAPI, jeder `/v1/chat/completions`-Endpunkt
 - **Sicher**: API-Schlüssel im Betriebssystem-Schlüsselbund (macOS Keychain / Windows Credential Manager); unter macOS wird der Lesezugriff durch **Touch ID** über `LAContext` geschützt — keine Entitlements oder Code-Signierung erforderlich
 
-### � RAG-Betriebswissensdatenbank (v0.20)
+### 📚 RAG-Betriebswissensdatenbank (v0.20)
 
 Local-first Retrieval-Augmented Generation für Betriebsdokumentation:
 
@@ -186,7 +186,7 @@ Local-first Retrieval-Augmented Generation für Betriebsdokumentation:
 - **Embedding-Pipeline**: Frontend generiert Vektoren über KI-Anbieter, im Backend gespeichert für hybride Suche
 - **Speicher**: redb eingebettete Datenbank, 9 Tabellen, MessagePack-Serialisierung mit automatischer Komprimierung für große Chunks
 
-### �💻 IDE-Modus — Remote-Bearbeitung
+### 💻 IDE-Modus — Remote-Bearbeitung
 
 CodeMirror 6 Editor über SFTP — standardmäßig keine serverseitige Installation erforderlich; Linux unterstützt einen optionalen leichtgewichtigen Remote-Agent für erweiterte Funktionen:
 
@@ -234,7 +234,7 @@ Multi-Bild-Hintergrundsystem mit Tab-spezifischer Transparenzsteuerung:
 - **Plattformbewusst**: macOS-Transparenzunterstützung; Windows-WSLg-Pfad ausgeschlossen (opaker VNC-Canvas)
 - **Sicherheit**: pfadkanonisiertes Löschen verhindert Verzeichnistraversierung; vollständige Fehlerpropagation aus dem Rust-Backend
 
-### 🖥️ Adaptives Rendering — Dynamische Bildwiederholrate
+### ⚡ Adaptives Rendering — Dynamische Bildwiederholrate
 
 Ein dreistufiger Render-Scheduler ersetzt festes RAF-Batching, verbessert die Reaktionsfähigkeit bei intensiver Ausgabe und reduziert GPU-/Batterielast im Leerlauf:
 

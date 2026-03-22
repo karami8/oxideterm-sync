@@ -172,7 +172,7 @@ AI chế độ kép với thiết kế ưu tiên quyền riêng tư:
 - **Tương thích**: OpenAI, Ollama, DeepSeek, OneAPI, mọi endpoint `/v1/chat/completions`
 - **Bảo mật**: API keys trong OS keychain (macOS Keychain / Windows Credential Manager); trên macOS, thao tác đọc được bảo vệ bằng **Touch ID** qua `LAContext` — không cần entitlements hay code-signing
 
-### � Cơ sở Kiến thức RAG cho Vận hành (v0.20)
+### 📚 Cơ sở Kiến thức RAG cho Vận hành (v0.20)
 
 Hệ thống tạo sinh tăng cường bằng truy xuất, ưu tiên cục bộ, dành cho tài liệu vận hành:
 
@@ -186,7 +186,7 @@ Hệ thống tạo sinh tăng cường bằng truy xuất, ưu tiên cục bộ,
 - **Pipeline nhúng**: frontend tạo vector qua nhà cung cấp AI, lưu trữ trong backend cho truy xuất lai
 - **Lưu trữ**: cơ sở dữ liệu nhúng redb, 9 bảng, tuần tự hóa MessagePack với nén tự động cho các đoạn lớn
 
-### �💻 Chế độ IDE — Chỉnh sửa từ xa
+### 💻 Chế độ IDE — Chỉnh sửa từ xa
 
 Trình soạn thảo CodeMirror 6 qua SFTP — mặc định không cần cài đặt phía server; Linux hỗ trợ tùy chọn agent từ xa nhẹ để nâng cao khả năng:
 
@@ -234,7 +234,7 @@ Hệ thống nền đa ảnh với điều khiển độ trong suốt theo từn
 - **Nhận biết nền tảng**: hỗ trợ trong suốt macOS; loại trừ đường dẫn WSLg trên Windows (canvas VNC không trong suốt)
 - **Bảo mật**: xóa đã chuẩn hóa đường dẫn để ngăn directory traversal; truyền lỗi đầy đủ từ backend Rust
 
-### 🏎️ Kết xuất thích ứng — Tốc độ làm mới động
+### ⚡ Kết xuất thích ứng — Tốc độ làm mới động
 
 Bộ lập lịch kết xuất ba tầng thay thế batching RAF cố định, cải thiện khả năng phản hồi khi xuất dữ liệu nặng và giảm tải GPU/pin khi nhàn rỗi:
 

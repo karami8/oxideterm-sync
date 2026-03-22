@@ -172,7 +172,7 @@ IA em modo duplo com design focado em privacidade:
 - **Compatível**: OpenAI, Ollama, DeepSeek, OneAPI, qualquer endpoint `/v1/chat/completions`
 - **Seguro**: chaves de API no chaveiro do sistema operacional (macOS Keychain / Windows Credential Manager); no macOS, leituras são protegidas pelo **Touch ID** via `LAContext` — sem necessidade de entitlements ou assinatura de código
 
-### � Base de Conhecimento RAG para Operações (v0.20)
+### 📚 Base de Conhecimento RAG para Operações (v0.20)
 
 Geração aumentada por recuperação, local primeiro, para documentação operacional:
 
@@ -186,7 +186,7 @@ Geração aumentada por recuperação, local primeiro, para documentação opera
 - **Pipeline de embeddings**: o frontend gera vetores via provedor de IA, armazenados no backend para recuperação híbrida
 - **Armazenamento**: banco de dados embutido redb, 9 tabelas, serialização MessagePack com compressão automática para chunks grandes
 
-### �💻 Modo IDE — Edição Remota
+### 💻 Modo IDE — Edição Remota
 
 Editor CodeMirror 6 via SFTP — sem necessidade de instalação no servidor por padrão; Linux suporta um agente remoto leve opcional para funcionalidades avançadas:
 
@@ -234,7 +234,7 @@ Sistema multi-imagem de fundo com controle de transparência por aba:
 - **Adaptado à plataforma**: suporte a transparência no macOS; caminho WSLg excluído no Windows (canvas VNC opaco)
 - **Segurança**: exclusão com caminhos canonicalizados para prevenir travessia de diretório; propagação completa de erros do backend Rust
 
-### 🏎️ Renderização Adaptativa — Taxa de Atualização Dinâmica
+### ⚡ Renderização Adaptativa — Taxa de Atualização Dinâmica
 
 Um agendador de renderização em três camadas substitui o batching RAF fixo, melhorando a responsividade durante saída intensa e reduzindo a carga GPU/bateria durante a inatividade:
 

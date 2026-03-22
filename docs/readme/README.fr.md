@@ -168,7 +168,7 @@ IA dual-mode, priorité à la vie privée :
 - **Compatible** : OpenAI, Ollama, DeepSeek, OneAPI, tout endpoint `/v1/chat/completions`
 - **Sécurisé** : clés API dans le trousseau système ; sous macOS, la lecture des clés est protégée par **Touch ID** via `LAContext` (`LocalAuthentication.framework`), sans entitlement ni signature de code requis
 
-### � Base de connaissances RAG pour les opérations (v0.20)
+### 📚 Base de connaissances RAG pour les opérations (v0.20)
 
 Génération augmentée par récupération, locale en priorité, pour la documentation opérationnelle :
 
@@ -182,7 +182,7 @@ Génération augmentée par récupération, locale en priorité, pour la documen
 - **Pipeline d'embeddings** : le frontend génère les vecteurs via le fournisseur IA, stockés dans le backend pour la récupération hybride
 - **Stockage** : base de données embarquée redb, 9 tables, sérialisation MessagePack avec compression automatique pour les gros fragments
 
-### �💻 Mode IDE — Édition distante
+### 💻 Mode IDE — Édition distante
 
 Éditeur CodeMirror 6 via SFTP — aucune installation côté serveur requise par défaut ; Linux prend en charge un agent distant optionnel pour des capacités étendues :
 
@@ -229,7 +229,7 @@ Système multi-images avec contrôle de transparence par onglet :
 - **Adapté aux plateformes** : transparence macOS ; chemin WSLg Windows exclu (canvas VNC opaque)
 - **Sécurité** : suppression canonicalisée empêchant la traversée de répertoire ; propagation complète des erreurs depuis le backend Rust
 
-### �️ Rendu adaptatif — Taux de rafraîchissement dynamique
+### ⚡ Rendu adaptatif — Taux de rafraîchissement dynamique
 
 Un planificateur de rendu à trois niveaux remplace le batching RAF fixe, améliorant la réactivité lors de sorties intensives et réduisant la charge GPU/batterie au ralenti :
 
@@ -244,7 +244,7 @@ Un planificateur de rendu à trois niveaux remplace le batching RAF fixe, améli
 - **Paramètres** : trois modes (Auto / Toujours 60 Hz / Désactivé) dans Paramètres → Terminal → Rendu
 - **Diagnostic en direct** : activer **Afficher la superposition FPS** pour voir un badge de niveau en temps réel (`B`=boost · `N`=normal · `I`=idle), la cadence de rendu et le compteur d'écritures par seconde dans le coin du terminal
 
-### �🎨 Moteur de thèmes personnalisés
+### 🎨 Moteur de thèmes personnalisés
 
 Personnalisation thématique en profondeur au-delà des palettes prédéfinies :
 
