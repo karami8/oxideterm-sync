@@ -1,0 +1,77 @@
+name: Bug Report
+description: Something is broken or behaves incorrectly / 功能异常或行为不符合预期
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Not for security issues** — use [Report a vulnerability](https://github.com/AnalyseDeCircuit/OxideTerm/security/advisories/new) instead.
+        **非安全漏洞** — 请用 GitHub 私密漏洞报告，勿用本模板。
+
+  - type: input
+    id: version
+    attributes:
+      label: OxideTerm version / 版本
+      description: e.g. `0.20.1` (from About or title bar)
+      placeholder: "0.20.1"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform / 平台
+      options:
+        - macOS
+        - Windows
+        - Linux
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary / 简述
+      description: What went wrong in one or two sentences?
+      placeholder: When I …, I expected … but …
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce / 复现步骤
+      description: Numbered steps so someone else can follow them.
+      placeholder: |
+        1. Open …
+        2. Connect to …
+        3. Click …
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected vs actual / 预期与实际
+      placeholder: |
+        - Expected: …
+        - Actual: …
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or screenshots (optional) / 日志或截图（可选）
+      description: Redact hostnames, IPs, and secrets. 请隐去主机名、IP、密钥。
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: search
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues for duplicates / 我已搜索过是否已有相同 Issue
+          required: true

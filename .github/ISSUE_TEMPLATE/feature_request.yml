@@ -1,0 +1,60 @@
+name: Feature Request
+description: Suggest an improvement or new capability / 功能建议或改进
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Pull requests:** We are [not accepting PRs](https://github.com/AnalyseDeCircuit/OxideTerm/blob/main/CONTRIBUTING.md) at this time (long-term maintenance cost). Ideas are still welcome here; for extensions, consider a [plugin](https://github.com/AnalyseDeCircuit/OxideTerm/blob/main/docs/reference/PLUGIN_DEVELOPMENT.md).
+
+        **PR：** 目前[不接 PR](https://github.com/AnalyseDeCircuit/OxideTerm/blob/main/CONTRIBUTING.md)。欢迎在此讨论想法；扩展能力可优先考虑[插件](https://github.com/AnalyseDeCircuit/OxideTerm/blob/main/docs/reference/PLUGIN_DEVELOPMENT.md)。
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or use case / 问题或使用场景
+      description: What are you trying to do? What is painful today?
+      placeholder: When managing many jump hosts, I wish …
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution / 期望方案
+      description: How would you like it to work? Mockups or examples welcome.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered / 已考虑的替代方案
+      description: Other tools, workflows, or workarounds you already use.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area (best guess) / 大致领域
+      options:
+        - Terminal (local / SSH)
+        - SFTP / file manager
+        - IDE mode
+        - Port forwarding / topology
+        - AI / OxideSens / MCP / RAG
+        - Plugins
+        - Settings / themes / i18n
+        - Windows / WSL / graphics
+        - Other
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: search
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues for duplicates / 我已搜索过是否已有相同 Issue
+          required: true
