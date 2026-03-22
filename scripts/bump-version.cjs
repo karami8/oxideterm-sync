@@ -11,6 +11,7 @@
  *   - src-tauri/Cargo.toml
  *   - src-tauri/tauri.conf.json
  *   - README.md and docs/readme/README.*.md (optional badges)
+ *   - website/index.html (hero badge, figcaption, footer)
  */
 
 const fs = require('fs');
@@ -34,6 +35,7 @@ const FILES = {
   readmeIt: path.join(ROOT_DIR, 'docs', 'readme', 'README.it.md'),
   readmePtBr: path.join(ROOT_DIR, 'docs', 'readme', 'README.pt-BR.md'),
   readmeVi: path.join(ROOT_DIR, 'docs', 'readme', 'README.vi.md'),
+  websiteIndex: path.join(ROOT_DIR, 'website', 'index.html'),
 };
 
 function validateVersion(version) {
@@ -99,6 +101,21 @@ function updateReadmeBadges(version, filePath) {
   return false;
 }
 
+function updateWebsiteVersion(version, currentVersion) {
+  if (!fs.existsSync(FILES.websiteIndex)) {
+    return false;
+  }
+  let content = fs.readFileSync(FILES.websiteIndex, 'utf8');
+  // Replace version strings like "v0.20.1" with the new version
+  const versionRegex = new RegExp(`v${currentVersion.replace(/\./g, '\\.')}`, 'g');
+  const newContent = content.replace(versionRegex, `v${version}`);
+  if (newContent !== content) {
+    fs.writeFileSync(FILES.websiteIndex, newContent);
+    return true;
+  }
+  return false;
+}
+
 function main() {
   const args = process.argv.slice(2);
   
@@ -153,6 +170,14 @@ Options:
     updateTauriConf(version);
   }
   updates.push({ file: 'src-tauri/tauri.conf.json', status: '✅' });
+
+  // Update website/index.html
+  if (!dryRun) {
+    const updated = updateWebsiteVersion(version, currentVersion);
+    updates.push({ file: 'website/index.html', status: updated ? '✅' : '⏭️ (not found)' });
+  } else {
+    updates.push({ file: 'website/index.html', status: '🔍' });
+  }
 
   // Update README badges
   const readmeFiles = [

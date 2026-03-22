@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://analysedecircuit.github.io/oxideterm/sitemap.xml

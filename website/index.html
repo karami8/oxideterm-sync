@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="OxideTerm — all-in-one terminal workspace: local shells, SSH, SFTP, remote IDE, AI agent with MCP & RAG, file manager, port forwarding, topology graph, and 30+ themes. Built with Tauri 2 and pure Rust SSH (russh). No Electron."
+    />
+    <title>OxideTerm — Rust-powered terminal workspace beyond SSH</title>
+    <link rel="canonical" href="https://analysedecircuit.github.io/oxideterm/" />
+    <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/AnalyseDeCircuit/OxideTerm/main/src-tauri/icons/32x32.png" />
+    <meta property="og:title" content="OxideTerm — Rust-powered terminal workspace beyond SSH" />
+    <meta property="og:description" content="All-in-one terminal workspace: local shells, SSH, SFTP, remote IDE, AI agent with MCP & RAG, port forwarding, and 30+ themes. Built with Tauri 2 and pure Rust SSH. No Electron." />
+    <meta property="og:image" content="https://raw.githubusercontent.com/AnalyseDeCircuit/OxideTerm/main/docs/screenshots/overview/en.png" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://analysedecircuit.github.io/oxideterm/" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="OxideTerm — Rust-powered terminal workspace beyond SSH" />
+    <meta name="twitter:description" content="All-in-one terminal workspace: local shells, SSH, SFTP, remote IDE, AI agent with MCP & RAG, port forwarding, and 30+ themes. Built with Tauri 2 and pure Rust SSH." />
+    <meta name="twitter:image" content="https://raw.githubusercontent.com/AnalyseDeCircuit/OxideTerm/main/docs/screenshots/overview/en.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+
+    <header class="site-header">
+      <div class="header-inner">
+        <a class="brand" href="#">
+          <img
+            src="https://raw.githubusercontent.com/AnalyseDeCircuit/OxideTerm/main/src-tauri/icons/32x32.png"
+            width="36"
+            height="36"
+            alt=""
+          />
+          OxideTerm
+        </a>
+        <nav class="nav-links" aria-label="Primary">
+          <a href="#features">Features</a>
+          <a href="#deep-dives">Deep dives</a>
+          <a href="#ai">AI</a>
+          <a href="#security">Security</a>
+          <a href="#stack">Stack</a>
+          <a href="https://github.com/AnalyseDeCircuit/OxideTerm/tree/main/docs" rel="noopener">Docs</a>
+          <a class="btn-github" href="https://github.com/AnalyseDeCircuit/OxideTerm" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main id="main">
+
+      <!-- ── HERO ────────────────────────────────────────────── -->
+      <section class="hero" aria-labelledby="hero-title">
+        <p class="hero-badge">TAURI 2 · RUST · NO ELECTRON · v0.20.1</p>
+        <h1 id="hero-title">One workspace for every<br>local &amp; remote task</h1>
+        <p class="hero-lead">
+          OxideTerm unifies <strong>local PTY shells</strong>, <strong>SSH sessions</strong>, <strong>SFTP file
+          management</strong>, a built-in <strong>remote IDE</strong>, <strong>port forwarding</strong>, an
+          <strong>AI agent with MCP &amp; RAG</strong>, and a <strong>local file manager</strong> — shipped as a
+          single, ~25 MB native binary. Not an Electron wrapper.
+        </p>
+        <div class="hero-stats" role="list">
+          <span role="listitem">Code: <span>130 000+ lines (Rust + TS)</span></span>
+          <span role="listitem">SSH: <span>russh 0.54 · ring crypto</span></span>
+          <span role="listitem">Stores: <span>16 Zustand stores</span></span>
+          <span role="listitem">Languages: <span>11 i18n locales</span></span>
+          <span role="listitem">Themes: <span>30+ built-in + visual editor</span></span>
+        </div>
+        <div class="hero-cta">
+          <a class="btn-primary" href="https://github.com/AnalyseDeCircuit/OxideTerm/releases" rel="noopener">Download</a>
+          <a class="btn-secondary" href="https://github.com/AnalyseDeCircuit/OxideTerm" rel="noopener">View source</a>
+        </div>
+
+        <figure class="media-block">
+          <img
+            src="https://raw.githubusercontent.com/AnalyseDeCircuit/OxideTerm/main/docs/screenshots/overview/en.png"
+            width="1920"
+            height="1080"
+            alt="OxideTerm main interface — session tree on the left, split terminal panes, and tab bar at the top"
+            loading="lazy"
+          />
+          <figcaption>v0.20.1 — session tree, split terminal panes, and tab bar. Dark theme (Oxide Dark).</figcaption>
+        </figure>
+      </section>
+
+      <!-- ── FEATURE GRID ───────────────────────────────────── -->
+      <section id="features" aria-labelledby="features-title">
+        <h2 id="features-title">Everything included</h2>
+        <p class="section-intro">
+          Stop wiring together an SSH client, a file manager, a remote editor, and an AI helper. OxideTerm covers
+          all of them — and they share state so you never copy-paste a path between windows.
+        </p>
+        <div class="grid">
+          <article class="card">
+            <h3><span class="card-icon" aria-hidden="true">🖥️</span> Local &amp; remote terminal</h3>
+            <p>
+              Local PTY (zsh, bash, fish, pwsh, Git Bash, WSL2) and SSH in the same window. Split panes
+              horizontally or vertically. Broadcast keystrokes to multiple panes. Adaptive 3-tier WebGL renderer
+              (Boost 120 Hz / Normal 60 Hz / Idle &lt;15 Hz). 100 000-line scroll buffer.
+            </p>
+          </article>
+          <article class="card">
+            <h3><span class="card-icon" aria-hidden="true">🔁</span> Smart reconnect</h3>
+            <p>
+              When the SSH link drops, a <strong>30-second grace period</strong> probes the old connection before
+              doing anything destructive. If it recovers, TUI apps (vim, htop, yazi…) keep running. On full
+              reconnect, forwards, transfers, and IDE state are all restored automatically.
+            </p>
+          </article>
+          <article class="card">
+            <h3><span class="card-icon" aria-hidden="true">📁</span> SFTP file manager</h3>
+            <p>
+              Dual-pane browser: local on the left, remote on the right. Drag-and-drop, batch rename, real-time
+              transfer queue with speed and ETA. Rich previews: images, video, audio, PDF, hex, 30+ language code
+              highlighting.
+            </p>
+          </article>
+          <article class="card">
+            <h3><span class="card-icon" aria-hidden="true">📂</span> Local file manager</h3>
+            <p>
+              Standalone local pane with bookmarks and the same rich preview engine. Also integrates as the
+              left-side pane of SFTP. macOS-aware volume picker; no extra app needed for quick file ops.
+            </p>
+          </article>
+          <article class="card">
+            <h3><span class="card-icon" aria-hidden="true">📝</span> Remote IDE</h3>
+            <p>
+              CodeMirror 6 editor over SFTP — no server installation needed by default. Lazy-loaded file tree with
+              Git-status badges, project-wide full-text search, multi-tab with LRU eviction, pin tabs, and
+              optimistic-lock conflict resolution. An optional 1 MB Rust agent on Linux unlocks extra power.
+            </p>
+          </article>
+          <article class="card">
+            <h3><span class="card-icon" aria-hidden="true">🔀</span> Port forwarding</h3>
+            <p>
+              Local (-L), remote (-R), and dynamic SOCKS5 (-D) forwards — all managed through the UI, restored on
+              reconnect, and reported when they die unexpectedly. Lock-free I/O: channel owned by a single task, no
+              mutex on the hot path.
+            </p>
+          </article>
+          <article class="card">
+            <h3><span class="card-icon" aria-hidden="true">🗺️</span> Topology graph</h3>
+            <p>
+              D3-force visualisation auto-generated from saved connections and ProxyJump chains. Dijkstra path
+              calculation, status colour-coding, double-click context menu. Unlimited ProxyJump hops with cascading
+              failure propagation.
+            </p>
+          </article>
+          <article class="card">
+            <h3><span class="card-icon" aria-hidden="true">🤖</span> OxideSens AI</h3>
+            <p>
+              Inline quick panel (⌘I) and persistent sidebar chat. 40+ built-in tools, MCP server integration,
+              RAG knowledge base, and an <strong>autonomous agent</strong> (plan → execute → review) — compatible
+              with OpenAI, Ollama, DeepSeek, and any /v1/chat/completions endpoint.
+            </p>
+          </article>
+          <article class="card">
+            <h3><span class="card-icon" aria-hidden="true">🧩</span> Plugin system</h3>
+            <p>
+              Runtime ESM bundles loaded from <code>~/.oxideterm/plugins/</code>. 8 API namespaces, 24 UI Kit
+              components, frozen context objects, error boundaries, auto-disable after repeated failures. Shared
+              React/Zustand/lucide via <code>window.__OXIDE__</code>.
+            </p>
+          </article>
+          <article class="card">
+            <h3><span class="card-icon" aria-hidden="true">🎨</span> Themes &amp; appearance</h3>
+            <p>
+              30+ built-in themes (Dracula, Nord, Catppuccin, Tokyo Night…). Visual editor covering all 22 xterm.js
+              colour fields <em>and</em> 19 app-chrome CSS variables. Auto-derive UI colours from the terminal
+              palette. Live preview. Background image gallery with per-tab opacity/blur.
+            </p>
+          </article>
+          <article class="card">
+            <h3><span class="card-icon" aria-hidden="true">📊</span> Resource profiler</h3>
+            <p>
+              Reads <code>/proc/stat</code>, <code>meminfo</code>, <code>loadavg</code>, <code>net/dev</code> over
+              a persistent SSH shell channel — single channel, avoids MaxSessions exhaustion. Degrades gracefully
+              to RTT-only on non-Linux or failures.
+            </p>
+          </article>
+          <article class="card">
+            <h3><span class="card-icon" aria-hidden="true">🎬</span> Session recording</h3>
+            <p>
+              Records to asciicast v2 NDJSON. Pause/resume, idle-gap limiting, optional input capture. Built-in
+              CastPlayer modal for playback — no external tools needed.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <!-- ── DEMO VIDEO ─────────────────────────────────────── -->
+      <section id="demo" aria-labelledby="demo-title">
+        <h2 id="demo-title">See OxideSens in action</h2>
+        <p class="section-intro">
+          The AI agent opens a local shell and runs a command autonomously — tool approval set to
+          <em>autonomous</em> mode.
+        </p>
+        <figure class="media-block">
+          <video
+            controls
+            playsinline
+            muted
+            preload="metadata"
+          >
+            <source src="https://github.com/user-attachments/assets/4ba033aa-94b5-4ed4-980c-5c3f9f21db7e" type="video/mp4" />
+            Your browser does not support embedded video.
+            <a href="https://github.com/AnalyseDeCircuit/OxideTerm" rel="noopener">Open on GitHub</a>.
+          </video>
+          <figcaption>OxideSens — "Open a local terminal and run <code>echo hello, world!</code>"</figcaption>
+        </figure>
+      </section>
+
+      <!-- ── DEEP DIVES ─────────────────────────────────────── -->
+      <section id="deep-dives" aria-labelledby="deep-title">
+        <h2 id="deep-title">Under the hood</h2>
+        <p class="section-intro">
+          A few architectural choices that make a real difference at runtime — not marketing copy, these are in the
+          source.
+        </p>
+
+        <div class="deep-grid">
+
+          <article class="deep-card">
+            <div class="deep-icon" aria-hidden="true">⚡</div>
+            <div class="deep-body">
+              <h3>Pure Rust SSH — no OpenSSL</h3>
+              <p>
+                The entire SSH stack uses <strong>russh 0.54</strong> compiled against the <code>ring</code> crypto
+                backend. No C dependencies in the SSH path: smaller attack surface, easier cross-compilation,
+                no OpenSSL version drift. Supports ChaCha20-Poly1305, AES-GCM, Ed25519, RSA, ECDSA, OpenSSH
+                certificates, keyboard-interactive 2FA, and a custom <code>AgentSigner</code> for system SSH
+                agents on macOS, Linux, and Windows.
+              </p>
+            </div>
+          </article>
+
+          <article class="deep-card">
+            <div class="deep-icon" aria-hidden="true">🔁</div>
+            <div class="deep-body">
+              <h3>Reconnect orchestrator with grace period</h3>
+              <p>
+                An 8-stage pipeline manages every reconnect:
+                <code>queued → snapshot → grace-period → ssh-connect → await-terminal → restore-forwards → resume-transfers → restore-ide → done</code>.
+                The grace period (30 s, probing every 3 s) detects whether the old SSH link is still alive. If it
+                recovers, destructive reconnect is skipped and TUI applications — vim, htop, yazi — are preserved.
+                All reconnect logic goes through the orchestrator; nothing reconnects directly from event handlers.
+              </p>
+            </div>
+          </article>
+
+          <article class="deep-card">
+            <div class="deep-icon" aria-hidden="true">🔗</div>
+            <div class="deep-body">
+              <h3>SSH connection pool &amp; multiplexing</h3>
+              <p>
+                A reference-counted <code>SshConnectionRegistry</code> shares one physical SSH connection across
+                every terminal pane, SFTP session, and port forward opened on the same host. Independent state
+                machines per connection (connecting → active → idle → link_down → reconnecting). Idle timeout
+                30 min, keep-alive 15 s, WsBridge heartbeat 5 min (tolerates macOS App Nap).
+              </p>
+            </div>
+          </article>
+
+          <article class="deep-card">
+            <div class="deep-icon" aria-hidden="true">🧭</div>
+            <div class="deep-body">
+              <h3>Node-first architecture (NodeRouter)</h3>
+              <p>
+                The frontend never passes a <code>sessionId</code> or <code>connectionId</code> to the backend.
+                Everything is addressed by a stable <code>nodeId</code>; the <code>NodeRouter</code> resolves it
+                to the right <code>ConnectionEntry</code> atomically. When SSH reconnects and a new
+                <code>connectionId</code> is issued, SFTP and IDE operations are unaffected — the
+                <code>nodeId</code> stays constant.
+              </p>
+            </div>
+          </article>
+
+          <article class="deep-card">
+            <div class="deep-icon" aria-hidden="true">📡</div>
+            <div class="deep-body">
+              <h3>Dual-plane binary protocol</h3>
+              <p>
+                Terminal I/O travels over a WebSocket using a custom binary wire protocol:
+                <code>[Type:1B][Length:4B BE][Payload:nB]</code>. Four frame types: Data, Resize, Heartbeat,
+                Error. Maximum payload 16 MB. Zero JSON serialisation overhead on the hot path. Control commands
+                (SFTP ops, connection management, settings) use Tauri IPC on a separate plane.
+              </p>
+            </div>
+          </article>
+
+          <article class="deep-card">
+            <div class="deep-icon" aria-hidden="true">🗂️</div>
+            <div class="deep-body">
+              <h3>16-store Zustand state architecture</h3>
+              <p>
+                State is split across 16 specialised stores — <code>sessionTreeStore</code> (user intent),
+                <code>appStore</code> (SSH fact layer), <code>ideStore</code>, <code>localTerminalStore</code>,
+                <code>reconnectOrchestratorStore</code>, <code>transferStore</code>, <code>pluginStore</code>,
+                <code>aiChatStore</code>, <code>agentStore</code>, and more. Strict dual-store sync invariants
+                prevent stale reads. Consumers always read from <code>appStore.connections</code>, never from
+                user-intent copies.
+              </p>
+            </div>
+          </article>
+
+        </div>
+      </section>
+
+      <!-- ── AI SECTION ─────────────────────────────────────── -->
+      <section id="ai" aria-labelledby="ai-title">
+        <h2 id="ai-title">OxideSens — AI that works in your terminal</h2>
+        <p class="section-intro">
+          Two modes, one goal: help you get things done in your existing SSH &amp; local environment without
+          switching apps.
+        </p>
+        <div class="grid">
+          <article class="card card-accent">
+            <h3><span class="card-icon" aria-hidden="true">💬</span> Sidebar &amp; inline chat</h3>
+            <p>
+              Persistent sidebar conversation with context from the terminal buffer, IDE files, SFTP paths, and Git
+              status. Quick inline panel (⌘I) injects responses via bracketed paste. Compatible with OpenAI,
+              Ollama, DeepSeek, OneAPI — bring your own endpoint.
+            </p>
+          </article>
+          <article class="card card-accent">
+            <h3><span class="card-icon" aria-hidden="true">🦾</span> Autonomous agent</h3>
+            <p>
+              Three-phase loop: <strong>Plan</strong> (LLM builds a step-by-step plan), <strong>Execute</strong>
+              (tool calls with per-tool approval gating), <strong>Review</strong> (optional reviewer model checks
+              progress). Autonomy levels: Supervised / Balanced / Autonomous. Dangerous commands always require
+              approval. Resume from any prior round.
+            </p>
+          </article>
+          <article class="card card-accent">
+            <h3><span class="card-icon" aria-hidden="true">🔧</span> 40+ built-in tools</h3>
+            <p>
+              <code>terminal_exec</code>, <code>local_exec</code>, <code>batch_exec</code>,
+              <code>read_file</code>, <code>write_file</code>, <code>sftp_ls/get/put</code>,
+              <code>open_tab</code>, <code>open_session_tab</code>, <code>search_docs</code>, and more. Tools are
+              gated to <code>connectionState === 'active'</code> — the backend enforces state gating as a second
+              layer.
+            </p>
+          </article>
+          <article class="card card-accent">
+            <h3><span class="card-icon" aria-hidden="true">🔌</span> MCP (Model Context Protocol)</h3>
+            <p>
+              Connect external MCP servers over stdio or SSE. Tools are auto-namespaced as
+              <code>mcp::server::tool</code> and merged into the agent's tool list. Auto-retry with exponential
+              backoff. Managed in Settings — no code changes needed.
+            </p>
+          </article>
+          <article class="card card-accent">
+            <h3><span class="card-icon" aria-hidden="true">📚</span> RAG knowledge base</h3>
+            <p>
+              Import Markdown/TXT runbooks and SOPs into scoped collections (global or per-connection). Hybrid
+              retrieval: BM25 keyword index + vector cosine similarity fused with RRF. Markdown-aware chunking by
+              heading hierarchy. CJK bigram tokeniser. AI calls <code>search_docs</code> automatically during
+              conversations — no manual paste.
+            </p>
+          </article>
+          <article class="card card-accent">
+            <h3><span class="card-icon" aria-hidden="true">🔑</span> Privacy-first key handling</h3>
+            <p>
+              API keys stored in the OS keychain (<code>com.oxideterm.ai</code> service). On macOS, reading a key
+              requires <strong>Touch ID</strong> (via <code>LAContext</code>) — no data-protection entitlements
+              needed. Keys are cached in memory after first auth; biometric is only prompted once per session.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <!-- ── WHY ────────────────────────────────────────────── -->
+      <section id="why" aria-labelledby="why-title">
+        <h2 id="why-title">Why OxideTerm?</h2>
+        <p class="section-intro">Common pain points with existing workflows — and how OxideTerm addresses them.</p>
+        <div class="pain-grid">
+          <div class="pain-row">
+            <div class="q">My SSH client can't open a local shell</div>
+            <div class="a"><strong>Hybrid engine</strong> — local PTY and SSH sessions coexist in one window, one session tree.</div>
+          </div>
+          <div class="pain-row">
+            <div class="q">Dropping connection means losing everything</div>
+            <div class="a"><strong>Grace-period reconnect</strong> — probes the old link for 30 s before doing anything destructive; restores forwards, transfers, and IDE state automatically.</div>
+          </div>
+          <div class="pain-row">
+            <div class="q">Remote editing requires installing a server binary</div>
+            <div class="a"><strong>IDE mode over SFTP</strong> — works on any SSH host by default. No server-side installation needed; optional lightweight agent for extra features on Linux.</div>
+          </div>
+          <div class="pain-row">
+            <div class="q">Every tool opens a separate connection</div>
+            <div class="a"><strong>SSH multiplexing</strong> — terminal, SFTP, port forwards, and the profiler all share one physical SSH connection via a reference-counted pool.</div>
+          </div>
+          <div class="pain-row">
+            <div class="q">Credentials end up in config files or a cloud account</div>
+            <div class="a"><strong>Local-first security</strong> — passwords and API keys stored in the OS keychain only; config files hold reference IDs, never secrets. No mandatory account or cloud sync.</div>
+          </div>
+          <div class="pain-row">
+            <div class="q">AI knows nothing about my servers</div>
+            <div class="a"><strong>Context-aware AI</strong> — OxideSens reads terminal buffer, open IDE files, SFTP paths, and Git status. RAG knowledge base lets you inject runbooks and SOPs. MCP extends it with any external tool server.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── RECONNECT DEEP DIVE ────────────────────────────── -->
+      <section id="reconnect" aria-labelledby="reconnect-title">
+        <h2 id="reconnect-title">Reconnect pipeline in detail</h2>
+        <p class="section-intro">
+          Most terminal clients reconnect bluntly — kill the old session, start a new one. OxideTerm runs a
+          structured 8-stage pipeline with a grace period designed specifically to preserve long-running TUI apps.
+        </p>
+        <div class="pipeline">
+          <div class="pipe-step"><span class="pipe-num">1</span><span class="pipe-label">queued</span></div>
+          <div class="pipe-arrow">→</div>
+          <div class="pipe-step"><span class="pipe-num">2</span><span class="pipe-label">snapshot</span></div>
+          <div class="pipe-arrow">→</div>
+          <div class="pipe-step pipe-highlight"><span class="pipe-num">3</span><span class="pipe-label">grace-period<br><small>30 s · probes every 3 s</small></span></div>
+          <div class="pipe-arrow">→</div>
+          <div class="pipe-step"><span class="pipe-num">4</span><span class="pipe-label">ssh-connect</span></div>
+          <div class="pipe-arrow">→</div>
+          <div class="pipe-step"><span class="pipe-num">5</span><span class="pipe-label">await-terminal</span></div>
+          <div class="pipe-arrow">→</div>
+          <div class="pipe-step"><span class="pipe-num">6</span><span class="pipe-label">restore-forwards</span></div>
+          <div class="pipe-arrow">→</div>
+          <div class="pipe-step"><span class="pipe-num">7</span><span class="pipe-label">resume-transfers</span></div>
+          <div class="pipe-arrow">→</div>
+          <div class="pipe-step"><span class="pipe-num">8</span><span class="pipe-label">restore-ide · done</span></div>
+        </div>
+        <p class="pipeline-note">
+          Snapshot captures: active port forwards, in-flight SFTP transfers, IDE project path, open tabs, and dirty
+          file contents. If grace period succeeds — SSH keepalive responds within the window — stages 4–8 are
+          skipped entirely and your TUI app never sees a SIGHUP.
+        </p>
+      </section>
+
+      <!-- ── SECURITY ───────────────────────────────────────── -->
+      <section id="security" aria-labelledby="security-title">
+        <h2 id="security-title">Security architecture</h2>
+        <p class="section-intro">
+          Credentials never touch config files. Everything sensitive goes through the OS keychain or is encrypted
+          before leaving memory.
+        </p>
+        <div class="grid">
+          <article class="card">
+            <h3><span class="card-icon" aria-hidden="true">🔐</span> OS keychain — always</h3>
+            <p>
+              SSH passwords stored under <code>com.oxideterm.ssh</code>; AI API keys under
+              <code>com.oxideterm.ai</code>. Config files contain only keychain reference IDs — never the raw
+              secrets. Uses the <code>keyring</code> crate (macOS Keychain, Windows Credential Manager, Linux
+              libsecret).
+            </p>
+          </article>
+          <article class="card">
+            <h3><span class="card-icon" aria-hidden="true">👆</span> Touch ID for AI keys (macOS)</h3>
+            <p>
+              Key reads are gated behind <code>LAContext</code> biometric authentication. No data-protection
+              entitlements required. Keys cached in memory after first auth — biometric is only prompted once per
+              session, not on every message.
+            </p>
+          </article>
+          <article class="card">
+            <h3><span class="card-icon" aria-hidden="true">🗝️</span> .oxide encrypted export</h3>
+            <p>
+              Portable backup format: <strong>ChaCha20-Poly1305</strong> AEAD + <strong>Argon2id</strong> KDF
+              (256 MB memory, 4 iterations). Optional private key embedding. SHA-256 integrity check. Pre-flight
+              analysis shows auth types and flags missing keys before export.
+            </p>
+          </article>
+          <article class="card">
+            <h3><span class="card-icon" aria-hidden="true">🧹</span> Memory hygiene</h3>
+            <p>
+              Sensitive buffers (passwords, key material) cleared via <code>zeroize</code> — Rust drops do not
+              guarantee zero-fill. Rust's ownership model prevents use-after-free and data races at the language
+              level.
+            </p>
+          </article>
+          <article class="card">
+            <h3><span class="card-icon" aria-hidden="true">🔏</span> Host key TOFU</h3>
+            <p>
+              First-connect fingerprint pinned in <code>~/.ssh/known_hosts</code>. Host key changes are rejected
+              with an explicit UI warning — no silent MITM acceptance.
+            </p>
+          </article>
+          <article class="card">
+            <h3><span class="card-icon" aria-hidden="true">🧱</span> Plugin sandbox</h3>
+            <p>
+              All plugin context objects are frozen with <code>Object.freeze()</code>. Proxy ACL blocks
+              un-permitted APIs. Circuit breaker auto-disables plugins after repeated errors. IPC whitelist
+              restricts which Tauri commands plugins can call.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <!-- ── AUTH METHODS ───────────────────────────────────── -->
+      <section id="auth" aria-labelledby="auth-title">
+        <h2 id="auth-title">Authentication methods</h2>
+        <p class="section-intro">Every standard SSH auth method, plus certificates and hardware agents.</p>
+        <div class="auth-grid">
+          <div class="auth-item">
+            <div class="auth-name">Password</div>
+            <div class="auth-desc">Stored in OS keychain; never written to disk in plaintext.</div>
+          </div>
+          <div class="auth-item">
+            <div class="auth-name">SSH Key</div>
+            <div class="auth-desc">RSA, Ed25519, ECDSA — auto-scans <code>~/.ssh/id_*</code>.</div>
+          </div>
+          <div class="auth-item">
+            <div class="auth-name">SSH Agent</div>
+            <div class="auth-desc">Custom <code>AgentSigner</code> via Unix socket or Windows named pipe. Replayed automatically on reconnect.</div>
+          </div>
+          <div class="auth-item">
+            <div class="auth-name">Certificate</div>
+            <div class="auth-desc">OpenSSH certificates with CA verification.</div>
+          </div>
+          <div class="auth-item">
+            <div class="auth-name">Keyboard-Interactive</div>
+            <div class="auth-desc">2FA / MFA challenge-response; handles multi-step prompts.</div>
+          </div>
+          <div class="auth-item">
+            <div class="auth-name">Known Hosts</div>
+            <div class="auth-desc">TOFU + <code>~/.ssh/known_hosts</code>; rejects changed fingerprints.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── TECH STACK ─────────────────────────────────────── -->
+      <section id="stack" aria-labelledby="stack-title">
+        <h2 id="stack-title">Tech stack</h2>
+        <p class="section-intro">Selected from the actual <code>Cargo.toml</code> and <code>package.json</code>.</p>
+        <div class="stack-table-wrap">
+          <table class="stack-table">
+            <thead>
+              <tr>
+                <th>Layer</th>
+                <th>Technology</th>
+                <th>Notes</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Native shell</td><td>Tauri 2.0</td><td>~15–35 MB binary, no Electron/Node runtime</td></tr>
+              <tr><td>Async runtime</td><td>Tokio 1.x + DashMap 6</td><td>Full async, lock-free concurrent maps</td></tr>
+              <tr><td>SSH protocol</td><td>russh 0.54 (ring)</td><td>Pure Rust, zero C deps in SSH path</td></tr>
+              <tr><td>Local PTY</td><td>portable-pty 0.8</td><td>Feature-gated; ConPTY on Windows</td></tr>
+              <tr><td>Encryption</td><td>ChaCha20-Poly1305 + Argon2id</td><td>AEAD + memory-hard KDF</td></tr>
+              <tr><td>Storage</td><td>redb 2.1</td><td>Embedded KV; sessions, forwards, transfers, RAG</td></tr>
+              <tr><td>Serialisation</td><td>MessagePack (rmp-serde)</td><td>Binary scroll buffer, state persistence</td></tr>
+              <tr><td>Frontend</td><td>React 19 + TypeScript 5.8</td><td>Vite 7, Tailwind CSS 4</td></tr>
+              <tr><td>State</td><td>Zustand 5</td><td>16 specialised stores</td></tr>
+              <tr><td>Terminal</td><td>xterm.js 6 + WebGL addon</td><td>GPU-accelerated, adaptive refresh</td></tr>
+              <tr><td>Editor</td><td>CodeMirror 6</td><td>16 language packs + legacy modes</td></tr>
+              <tr><td>WebSocket</td><td>tokio-tungstenite 0.24</td><td>Binary wire protocol v1</td></tr>
+              <tr><td>i18n</td><td>i18next 25</td><td>11 languages × 21 namespaces</td></tr>
+              <tr><td>SFTP</td><td>russh-sftp 2.0</td><td>SSH File Transfer Protocol v3</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ── SCREENSHOTS ────────────────────────────────────── -->
+      <section id="screenshots" aria-labelledby="screenshots-title">
+        <h2 id="screenshots-title">11 languages, one codebase</h2>
+        <p class="section-intro">The UI ships fully localised — every label, error message, and tooltip.</p>
+        <div class="screenshots-grid">
+          <figure class="ss-item">
+            <img src="https://raw.githubusercontent.com/AnalyseDeCircuit/OxideTerm/main/docs/screenshots/overview/en.png" alt="English" loading="lazy" />
+            <figcaption>English</figcaption>
+          </figure>
+          <figure class="ss-item">
+            <img src="https://raw.githubusercontent.com/AnalyseDeCircuit/OxideTerm/main/docs/screenshots/overview/zhHans.png" alt="简体中文" loading="lazy" />
+            <figcaption>简体中文</figcaption>
+          </figure>
+          <figure class="ss-item">
+            <img src="https://raw.githubusercontent.com/AnalyseDeCircuit/OxideTerm/main/docs/screenshots/overview/zhHant.png" alt="繁體中文" loading="lazy" />
+            <figcaption>繁體中文</figcaption>
+          </figure>
+          <figure class="ss-item">
+            <img src="https://raw.githubusercontent.com/AnalyseDeCircuit/OxideTerm/main/docs/screenshots/overview/ja.png" alt="日本語" loading="lazy" />
+            <figcaption>日本語</figcaption>
+          </figure>
+          <figure class="ss-item">
+            <img src="https://raw.githubusercontent.com/AnalyseDeCircuit/OxideTerm/main/docs/screenshots/overview/ko.png" alt="한국어" loading="lazy" />
+            <figcaption>한국어</figcaption>
+          </figure>
+          <figure class="ss-item">
+            <img src="https://raw.githubusercontent.com/AnalyseDeCircuit/OxideTerm/main/docs/screenshots/overview/fr.png" alt="Français" loading="lazy" />
+            <figcaption>Français</figcaption>
+          </figure>
+          <figure class="ss-item">
+            <img src="https://raw.githubusercontent.com/AnalyseDeCircuit/OxideTerm/main/docs/screenshots/overview/de.png" alt="Deutsch" loading="lazy" />
+            <figcaption>Deutsch</figcaption>
+          </figure>
+          <figure class="ss-item">
+            <img src="https://raw.githubusercontent.com/AnalyseDeCircuit/OxideTerm/main/docs/screenshots/overview/es.png" alt="Español" loading="lazy" />
+            <figcaption>Español</figcaption>
+          </figure>
+          <figure class="ss-item">
+            <img src="https://raw.githubusercontent.com/AnalyseDeCircuit/OxideTerm/main/docs/screenshots/overview/it.png" alt="Italiano" loading="lazy" />
+            <figcaption>Italiano</figcaption>
+          </figure>
+          <figure class="ss-item">
+            <img src="https://raw.githubusercontent.com/AnalyseDeCircuit/OxideTerm/main/docs/screenshots/overview/pt-BR.png" alt="Português" loading="lazy" />
+            <figcaption>Português</figcaption>
+          </figure>
+          <figure class="ss-item">
+            <img src="https://raw.githubusercontent.com/AnalyseDeCircuit/OxideTerm/main/docs/screenshots/overview/vi.png" alt="Tiếng Việt" loading="lazy" />
+            <figcaption>Tiếng Việt</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <!-- ── QUICK START ─────────────────────────────────────── -->
+      <section id="start" aria-labelledby="start-title">
+        <h2 id="start-title">Quick start (build from source)</h2>
+        <p class="section-intro">
+          Pre-built binaries are on the <a href="https://github.com/AnalyseDeCircuit/OxideTerm/releases" rel="noopener">Releases page</a>.
+          To build locally you need Rust 1.75+, Node 18+, and platform tooling.
+        </p>
+        <pre class="code-block"><code>git clone https://github.com/AnalyseDeCircuit/OxideTerm.git
+cd OxideTerm
+pnpm install
+
+# Full app (Rust backend + React frontend)
+pnpm tauri dev
+
+# Production bundle
+pnpm tauri build
+
+# Lightweight — strip local PTY (e.g. for CI / mobile)
+cd src-tauri && cargo build --no-default-features --release</code></pre>
+        <p class="section-intro" style="margin-top:1.25rem">
+          Platform prerequisites: macOS needs Xcode CLT; Windows needs VS C++ Build Tools; Linux needs
+          <code>build-essential libwebkit2gtk-4.1-dev libssl-dev</code>.
+        </p>
+      </section>
+
+      <!-- ── LICENSE ───────────────────────────────────────── -->
+      <section id="license" aria-labelledby="license-title">
+        <h2 id="license-title">License</h2>
+        <div class="license-box">
+          <p>
+            OxideTerm is released under the
+            <a href="https://polyformproject.org/licenses/noncommercial/1.0.0/" rel="noopener"><strong>PolyForm Noncommercial License 1.0.0</strong></a>.
+          </p>
+          <ul>
+            <li>✅ Personal use, research, hobby projects, education — <strong>free</strong></li>
+            <li>✅ Non-profit and government organisations — <strong>free</strong></li>
+            <li>🚫 Commercial use requires a separate licence — contact via GitHub</li>
+            <li>⚖️ Patent defence (Nuclear Clause) included</li>
+          </ul>
+        </div>
+      </section>
+
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-inner">
+        <div class="footer-brand">
+          <img
+            src="https://raw.githubusercontent.com/AnalyseDeCircuit/OxideTerm/main/src-tauri/icons/32x32.png"
+            width="28"
+            height="28"
+            alt=""
+          />
+          <strong>OxideTerm</strong> v0.20.1
+        </div>
+        <div class="footer-links">
+          <a href="https://github.com/AnalyseDeCircuit/OxideTerm" rel="noopener">GitHub</a>
+          <a href="https://github.com/AnalyseDeCircuit/OxideTerm/releases" rel="noopener">Releases</a>
+          <a href="https://github.com/AnalyseDeCircuit/OxideTerm/tree/main/docs" rel="noopener">Docs</a>
+          <a href="https://github.com/AnalyseDeCircuit/OxideTerm/issues" rel="noopener">Issues</a>
+          <a href="https://polyformproject.org/licenses/noncommercial/1.0.0/" rel="noopener">License</a>
+        </div>
+        <div class="footer-langs">
+          README:
+          <a href="https://github.com/AnalyseDeCircuit/OxideTerm" rel="noopener">English</a>
+          <a href="https://github.com/AnalyseDeCircuit/OxideTerm/blob/main/docs/readme/README.zh-Hans.md" rel="noopener">简体中文</a>
+          <a href="https://github.com/AnalyseDeCircuit/OxideTerm/blob/main/docs/readme/README.zh-Hant.md" rel="noopener">繁體中文</a>
+          <a href="https://github.com/AnalyseDeCircuit/OxideTerm/blob/main/docs/readme/README.ja.md" rel="noopener">日本語</a>
+          <a href="https://github.com/AnalyseDeCircuit/OxideTerm/blob/main/docs/readme/README.ko.md" rel="noopener">한국어</a>
+          <a href="https://github.com/AnalyseDeCircuit/OxideTerm/blob/main/docs/readme/README.fr.md" rel="noopener">Français</a>
+          <a href="https://github.com/AnalyseDeCircuit/OxideTerm/blob/main/docs/readme/README.de.md" rel="noopener">Deutsch</a>
+          <a href="https://github.com/AnalyseDeCircuit/OxideTerm/blob/main/docs/readme/README.es.md" rel="noopener">Español</a>
+          <a href="https://github.com/AnalyseDeCircuit/OxideTerm/blob/main/docs/readme/README.it.md" rel="noopener">Italiano</a>
+          <a href="https://github.com/AnalyseDeCircuit/OxideTerm/blob/main/docs/readme/README.pt-BR.md" rel="noopener">Português</a>
+          <a href="https://github.com/AnalyseDeCircuit/OxideTerm/blob/main/docs/readme/README.vi.md" rel="noopener">Tiếng Việt</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>
