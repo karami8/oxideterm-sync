@@ -18,6 +18,7 @@
     "version:bump": "node scripts/bump-version.cjs",
     "version:check": "node scripts/bump-version.cjs --dry-run",
     "release:notes": "node scripts/release-notes.cjs",
+    "verify:local": "node scripts/local-verify.cjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage"
