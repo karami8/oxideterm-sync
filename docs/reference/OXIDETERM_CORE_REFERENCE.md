@@ -1,7 +1,7 @@
 # OxideTerm 核心系统参考文档
 
 > **项目版本**: v0.20.1  
-> **文档状态**: 合并自 9 份独立参考文档  
+> **文档状态**: 合并自 10 份独立参考文档  
 > **最后更新**: 2026-03-24
 
 ---
@@ -17,6 +17,7 @@
 - [7. SSH Agent 认证](#7-ssh-agent-认证)
 - [8. 资源监控器（Resource Profiler）](#8-资源监控器resource-profiler)
 - [9. 远程环境探测器（Environment Detector）](#9-远程环境探测器environment-detector)
+- [10. IDE 模式（轻量级远程开发）](#10-ide-模式轻量级远程开发)
 - [附录](#附录)
 
 ---
@@ -3141,6 +3142,710 @@ if (remoteEnv === undefined) {
 
 ---
 
+## 10. IDE 模式（轻量级远程开发）
+
+> 合并来源: `IDE_MODE.md` (v0.13.2)  
+> 代码验证: 2026-03-24
+
+IDE 模式在 SSH 会话之上提供轻量级远程文件编辑能力——基于 CodeMirror 6 的编辑器、按需加载的文件树、Git 状态集成和搜索缓存，无需在远程主机安装任何 IDE 后端。核心策略为 **Agent-first with SFTP fallback**：当远程代理可用时优先使用 Agent 的原子读写和乐观锁机制，否则自动降级至 SFTP 操作。
+
+### 10.1 概述
+
+#### 核心优势
+
+| 特性 | 说明 |
+|------|------|
+| **双模后端（Agent / SFTP）** | Agent 可用时走 JSON-RPC 原子操作 + 乐观锁；不可用时自动降级到 SFTP，用户无感 |
+| **轻量级** | 无需远程安装 Language Server 或 IDE 后端，CodeMirror 6 前端渲染 |
+| **CodeMirror 6 编辑器** | 语法高亮（40+ 语言）、搜索替换、行号、缩进指南、括号匹配 |
+| **Git 集成** | Agent-first 策略获取 `git status`，文件树颜色标注修改状态 |
+| **重连韧性** | 断线重连后自动恢复项目、标签页、未保存内容（`dirtyContents`） |
+| **按需加载** | 文件树惰性展开，500 条大目录保护，搜索结果 LRU 缓存 |
+| **LRU 标签管理** | 最多 20 个标签，自动驱逐最久未访问的非固定非脏标签 |
+
+#### 快速开始
+
+1. 在已连接的会话节点上点击 **IDE** 图标进入 IDE 模式
+2. 选择远程目录作为项目根路径（或从缓存恢复上次路径）
+3. 文件树按需展开，单击文件即可打开编辑
+4. `Ctrl/Cmd+S` 保存，Agent 自动检测冲突
+
+### 10.2 界面布局与组件架构
+
+#### 布局结构
+
+```
+┌───────────────────────────────────────────────┐
+│  IdeWorkspace                                 │
+│ ┌──────────┬─────────────────────────────────┐│
+│ │          │ IdeEditorTabs                    ││
+│ │          ├─────────────────────────────────┤│
+│ │ IdeTree  │ IdeEditorArea                   ││
+│ │          │   └─ IdeEditor                  ││
+│ │          │       └─ CodeEditorSearchBar    ││
+│ │          │                                 ││
+│ │          ├─────────────────────────────────┤│
+│ │          │ IdeTerminal                     ││
+│ ├──────────┴─────────────────────────────────┤│
+│ │ IdeStatusBar                               ││
+│ └────────────────────────────────────────────┘│
+└───────────────────────────────────────────────┘
+```
+
+#### 组件清单
+
+**组件（11 个）**
+
+| 组件 | 文件 | 职责 |
+|------|------|------|
+| `IdeWorkspace` | `IdeWorkspace.tsx` | 顶层容器，布局编排，Agent opt-in 对话框触发 |
+| `IdeTree` | `IdeTree.tsx` | 文件树（按需加载 + Git 状态颜色 + 右键菜单） |
+| `IdeEditor` | `IdeEditor.tsx` | CodeMirror 6 编辑器容器 |
+| `IdeEditorArea` | `IdeEditorArea.tsx` | 编辑器区域（空状态、加载状态） |
+| `IdeEditorTabs` | `IdeEditorTabs.tsx` | 标签栏（拖拽排序、Pin、关闭、dirty 标记） |
+| `IdeSearchPanel` | `IdeSearchPanel.tsx` | 全项目搜索（Agent/grep 双后端 + 缓存） |
+| `IdeStatusBar` | `IdeStatusBar.tsx` | 底部状态栏（语言、行列号、Git 分支） |
+| `IdeTerminal` | `IdeTerminal.tsx` | 内嵌终端面板 |
+| `IdeInlineInput` | `IdeInlineInput.tsx` | 行内输入框（重命名、新建文件） |
+| `IdeTreeContextMenu` | `IdeTreeContextMenu.tsx` | 文件树右键菜单 |
+| `CodeEditorSearchBar` | `CodeEditorSearchBar.tsx` | 编辑器内搜索替换栏 |
+
+**Hooks（4 个）**
+
+| Hook | 文件 | 职责 |
+|------|------|------|
+| `useCodeMirrorEditor` | `hooks/useCodeMirrorEditor.ts` | CodeMirror 6 实例管理（创建、销毁、内容同步） |
+| `useGitStatus` | `hooks/useGitStatus.ts` | Git 状态轮询 + Agent-first 获取 + 事件驱动刷新 |
+| `useAgentStatus` | `hooks/useAgentStatus.ts` | Agent 部署状态监听 |
+| `useIdeTerminal` | `hooks/useIdeTerminal.ts` | IDE 内嵌终端生命周期管理 |
+
+**对话框（5 个）**
+
+| 对话框 | 文件 | 职责 |
+|--------|------|------|
+| `IdeAgentOptInDialog` | `dialogs/IdeAgentOptInDialog.tsx` | Agent 部署确认（`agentMode === 'ask'` 时） |
+| `IdeConflictDialog` | `dialogs/IdeConflictDialog.tsx` | 文件冲突处理（覆盖 / 重新加载） |
+| `IdeDeleteConfirmDialog` | `dialogs/IdeDeleteConfirmDialog.tsx` | 文件 / 目录删除确认 |
+| `IdeRemoteFolderDialog` | `dialogs/IdeRemoteFolderDialog.tsx` | 远程目录选择 |
+| `IdeSaveConfirmDialog` | `dialogs/IdeSaveConfirmDialog.tsx` | 未保存内容确认（关闭标签/项目时） |
+
+#### 组件树层级
+
+```
+IdeWorkspace
+├─ IdeTree
+│  ├─ GitStatusContext.Provider
+│  ├─ FetchLockContext.Provider
+│  ├─ TreeNode (recursive)
+│  │  └─ IdeInlineInput (rename/create)
+│  └─ IdeTreeContextMenu
+├─ IdeEditorTabs
+├─ IdeEditorArea
+│  └─ IdeEditor
+│     ├─ useCodeMirrorEditor
+│     └─ CodeEditorSearchBar
+├─ IdeTerminal
+│  └─ useIdeTerminal
+├─ IdeStatusBar
+├─ IdeSearchPanel
+└─ Dialogs (conditional)
+   ├─ IdeAgentOptInDialog
+   ├─ IdeConflictDialog
+   ├─ IdeDeleteConfirmDialog
+   ├─ IdeRemoteFolderDialog
+   └─ IdeSaveConfirmDialog
+```
+
+### 10.3 核心架构
+
+IDE 模式遵循连接池章节（第 1 章）定义的三大系统不变量，并在此基础上做了 IDE 特定的适配。
+
+#### State Gating（状态门禁）
+
+所有 SFTP / Agent I/O 操作前均调用 `assertNodeReady(nodeId)`：
+
+```typescript
+function assertNodeReady(nodeId: string): void {
+  const node = useSessionTreeStore.getState().getNode(nodeId);
+  if (!node) throw new Error('Node not found in session tree');
+  const status = node.runtime?.status;
+  if (status !== 'active' && status !== 'connected') {
+    throw new Error(`Node is not connected (status: ${status ?? 'unknown'})`);
+  }
+}
+```
+
+关键设计：直接从 `sessionTreeStore.getNode()` 读取状态，**避免一次 IPC 往返**——IDE 操作频繁（每次保存、文件树展开都会触发），性能敏感。
+
+#### Key-Driven Reset
+
+IDE 组件使用 `key={nodeId}` 挂载：当重连编排器分配新 `connectionId`（映射到新 nodeId 关联的运行时状态）时，React 自动卸载旧组件树、remount 新实例。
+
+#### 多 Store 协同
+
+```mermaid
+graph LR
+  subgraph "用户意图层"
+    ST[sessionTreeStore]
+  end
+  subgraph "事实层"
+    AS[appStore]
+  end
+  subgraph "IDE 状态"
+    IS[ideStore]
+  end
+  subgraph "服务层"
+    AG[agentService]
+    SFTP[SFTP API]
+  end
+
+  ST -->|getNode 状态门禁| IS
+  AS -->|refreshConnections| IS
+  IS -->|openProject / saveFile| AG
+  AG -->|降级| SFTP
+  IS -->|triggerGitRefresh| GH[useGitStatus]
+  IS -->|triggerSearchCacheClear| SP[IdeSearchPanel]
+```
+
+IDE 模式涉及三个 Store 的协同：
+
+| Store | 角色 | IDE 中的作用 |
+|-------|------|-------------|
+| `sessionTreeStore` | 用户意图层 | 提供 `getNode()` 供 `assertNodeReady` 检查连接状态 |
+| `appStore` | 事实层 | `refreshConnections()` 驱动全局 UI 更新 |
+| `ideStore` | IDE 专用状态 | 项目、标签、文件树、冲突、布局的完整状态管理 |
+
+### 10.4 文件树与按需加载
+
+#### 按需加载策略
+
+文件树采用惰性展开模式：只有用户点击展开目录时才通过 SFTP / Agent 获取子节点列表。这避免了对大型远程文件系统的全量扫描。
+
+```mermaid
+sequenceDiagram
+    participant U as 用户
+    participant Tree as IdeTree
+    participant Store as ideStore
+    participant Agent as agentService
+    participant SFTP as nodeSftpList
+
+    U->>Tree: 点击展开目录
+    Tree->>Store: togglePath(path)
+    Tree->>Agent: listDir(nodeId, path)
+    alt Agent 可用
+        Agent-->>Tree: 文件列表 + stat 信息
+    else Agent 不可用
+        Tree->>SFTP: nodeSftpList(nodeId, path)
+        SFTP-->>Tree: 文件列表
+    end
+    Tree->>Tree: 渲染子节点
+```
+
+#### FetchLockContext 与 AbortController
+
+为防止并发展开同一目录导致重复请求，`IdeTree` 使用 `FetchLockContext` 管理每个路径的请求锁：
+
+- 每次展开操作创建一个 `AbortController`
+- 如果用户快速折叠再展开同一目录，上一次请求被 abort
+- 锁粒度为路径级别，不同目录可并行加载
+
+#### 大目录保护
+
+当目录包含超过 **500** 个条目时，IdeTree 截断显示并提示用户，防止渲染性能问题。
+
+#### 路径规范化
+
+IDE 模式处理多种远程环境的路径差异：
+
+| 来源 | 规范化方式 |
+|------|-----------|
+| 后端 `canonicalize` | Rust `std::path::Path::canonicalize()` 解析符号链接 |
+| Agent `resolve_path` | Agent 侧解析 `~` 和相对路径 |
+| Windows SSH | 正斜杠/反斜杠统一处理 |
+| 前端 `normalizePath` | 移除尾部斜杠、合并重复分隔符 |
+
+#### treeRefreshSignal（按路径刷新）
+
+```typescript
+treeRefreshSignal: Record<string, number>  // { 规范化路径: 版本计数器 }
+```
+
+文件操作（创建、删除、重命名）后，`refreshTreeNode(parentPath)` 递增对应路径的版本计数器。`IdeTree` 通过 `useEffect` 监听 `treeRefreshSignal` 变化，**仅重新加载受影响的目录**而非整棵树。
+
+### 10.5 Git 状态集成
+
+#### Agent-first 策略
+
+```mermaid
+flowchart TD
+    A[useGitStatus.refresh] --> B{Agent 可用?}
+    B -->|是| C[agentService.gitStatus]
+    C -->|成功| D[转换为 GitStatus 格式]
+    C -->|失败| E[Exec 回退]
+    B -->|否| E
+    E --> F["nodeIdeExecCommand('git status --porcelain=v1 --branch')"]
+    F -->|exitCode === 0| G[解析 porcelain 输出]
+    F -->|exitCode !== 0| H[返回空状态]
+    D --> I[setStatus]
+    G --> I
+    H --> I
+```
+
+`useGitStatus` hook 的完整流程：
+
+1. **Agent 优先**：调用 `agentService.gitStatus(nodeId, rootPath)`
+2. **Exec 回退**：Agent 不可用或失败时，通过 `nodeIdeExecCommand` 执行 `git status --porcelain=v1 --branch 2>/dev/null`
+3. **输出解析**：`parseBranchInfo()` 解析分支/ahead/behind，`parseGitStatusOutput()` 解析文件状态
+
+#### GitStatusContext
+
+`IdeTree` 通过 React Context 向整棵树分发 Git 状态，避免每个树节点独立查询：
+
+```typescript
+interface GitStatusContextValue {
+  getFileStatus: (relativePath: string) => GitFileStatus | undefined;
+  // ...
+}
+const GitStatusContext = createContext<GitStatusContextValue | null>(null);
+```
+
+树节点通过 `useGitStatusContext()` 获取状态，O(1) 查询。
+
+#### 文件状态颜色
+
+| 状态 | GitFileStatus | 颜色 |
+|------|--------------|------|
+| 已修改 | `modified` | 黄色 |
+| 新增 | `added` | 绿色 |
+| 已删除 | `deleted` | 红色 |
+| 重命名 | `renamed` | 蓝色 |
+| 未跟踪 | `untracked` | 灰色 |
+| 冲突 | `conflict` | 深红色 |
+| 忽略 | `ignored` | 不显示 |
+
+#### 行为驱动刷新
+
+| 触发事件 | 时机 | 机制 |
+|---------|------|------|
+| 保存文件 | `saveFile` 成功后 | `triggerGitRefresh()` → 防抖 1s |
+| 文件操作 | 创建 / 删除 / 重命名后 | `triggerGitRefresh()` → 防抖 1s |
+| 终端回车 | 用户在 IDE 终端执行命令后 | `triggerGitRefresh()` → 防抖 1s |
+| 窗口聚焦 | `window.focus` 事件 | 防抖 1s |
+| 保底轮询 | `setInterval` | 60s (`REFRESH_INTERVAL_MS`) |
+
+刷新回调通过模块级 `registerGitRefreshCallback` / `triggerGitRefresh` 桥接 ideStore 与 useGitStatus hook（见 10.9 节）。
+
+### 10.6 编辑器与标签管理
+
+#### CodeMirror 6 集成
+
+`useCodeMirrorEditor` hook 管理 CodeMirror 6 实例的完整生命周期：
+
+- **创建**：根据文件语言加载对应的语法高亮扩展
+- **内容同步**：双向绑定——编辑器变更 → `updateTabContent()`，外部内容变更 → `EditorView.dispatch()`
+- **光标恢复**：标签切换时恢复光标位置（`cursor.line`, `cursor.col`）
+- **搜索跳转**：响应 `pendingScroll` 触发滚动到指定行列
+- **销毁**：组件卸载时 `EditorView.destroy()`，防止内存泄漏
+
+#### IdeTab 接口
+
+```typescript
+interface IdeTab {
+  id: string;                        // UUID
+  path: string;                      // 远程文件完整路径
+  name: string;                      // 文件名（显示用）
+  language: string;                  // CodeMirror 语言标识
+  content: string | null;            // null = 尚未加载
+  originalContent: string | null;    // 打开时的原始内容（dirty 检测基准）
+  isDirty: boolean;                  // 是否有未保存更改
+  isLoading: boolean;                // 是否正在加载
+  isPinned: boolean;                 // 是否已 Pin（不参与 LRU 驱逐）
+  cursor?: { line: number; col: number };
+  serverMtime?: number;              // 服务器文件修改时间（Unix 秒）
+  agentHash?: string;                // Agent 乐观锁 hash
+  lastAccessTime: number;            // 最后访问时间（LRU 驱逐依据）
+  contentVersion: number;            // 内容版本号（冲突 reload 时递增强制刷新）
+}
+```
+
+#### LRU 标签驱逐
+
+常量 `MAX_OPEN_TABS = 20`。当打开新文件导致标签数超过上限时：
+
+```mermaid
+flowchart TD
+    A[openFile] --> B{tabs.length >= 20?}
+    B -->|否| C[直接打开]
+    B -->|是| D[查找驱逐候选]
+    D --> E["过滤: !isDirty && !isPinned"]
+    E --> F["按 lastAccessTime 升序排序"]
+    F --> G{有候选?}
+    G -->|是| H[驱逐最旧标签]
+    G -->|否| I[抛出 IDE_ALL_TABS_PROTECTED]
+    H --> C
+```
+
+驱逐规则：
+
+| 条件 | 受保护 |
+|------|--------|
+| `isDirty === true` | 有未保存内容，不驱逐 |
+| `isPinned === true` | 用户已固定，不驱逐 |
+| 最小 `lastAccessTime` | 最久未访问的非保护标签被驱逐 |
+
+#### pendingScroll（搜索跳转）
+
+```typescript
+pendingScroll: { tabId: string; line: number; col?: number } | null
+```
+
+搜索面板点击结果时，调用 `setPendingScroll(tabId, line, col)`——如果目标文件尚未打开，先 `openFile`，然后 `useCodeMirrorEditor` 在编辑器就绪后消费 `pendingScroll` 并滚动到指定位置，最后 `clearPendingScroll()`。
+
+#### 标签固定
+
+`togglePinTab(tabId)` 切换 `isPinned` 状态。固定标签在 UI 上有视觉标记，且不参与 LRU 驱逐。
+
+### 10.7 文件冲突处理
+
+IDE 模式采用 **Agent hash 乐观锁（主路径）** + **SFTP mtime 对比（回退路径）** 的双层冲突检测策略。
+
+#### 保存流程
+
+```mermaid
+sequenceDiagram
+    participant Tab as IdeTab
+    participant Store as ideStore.saveFile
+    participant Agent as agentService.writeFile
+    participant Dialog as IdeConflictDialog
+
+    Store->>Agent: writeFile(nodeId, path, content, agentHash)
+    alt 写入成功
+        Agent-->>Store: { hash: newHash, mtime }
+        Store->>Tab: 更新 agentHash / serverMtime / isDirty=false
+    else hash 不匹配（CONFLICT）
+        Agent-->>Store: 抛出 hash mismatch 错误
+        Store->>Store: set conflictState
+        Store->>Dialog: 显示冲突对话框
+    end
+```
+
+#### Agent Hash 乐观锁（主路径）
+
+当 Agent 可用时，每次读取文件获得内容 hash（`agentHash`）。保存时将此 hash 作为 `expectHash` 传入 `agentService.writeFile()`。如果远程文件在此期间被修改（hash 已变），Agent 返回冲突错误。
+
+- **优势**：精确到内容级别，hash 不一致立即检测
+- **局限**：仅 Agent 在线时可用
+
+#### SFTP mtime 对比（回退路径）
+
+Agent 不可用时，`agentService.writeFile` 内部降级到 SFTP 写入。此时使用 `serverMtime` 字段进行时间戳对比作为辅助冲突检测。
+
+#### 冲突解决
+
+`IdeConflictDialog` 提供两种解决方式：
+
+| 操作 | 行为 |
+|------|------|
+| **覆盖（overwrite）** | 强制保存当前内容（不传 `expectHash`），更新 `agentHash` |
+| **重新加载（reload）** | 丢弃本地修改，重新读取远程内容，递增 `contentVersion` |
+
+#### contentVersion 强制刷新
+
+`resolveConflict('reload')` 时递增 `tab.contentVersion`，触发 `useCodeMirrorEditor` 重新 dispatch 编辑器内容，确保 CodeMirror 视图与新内容同步。
+
+### 10.8 搜索缓存
+
+`IdeSearchPanel` 使用模块级 `Map` 缓存搜索结果，组件卸载后缓存依然保留。
+
+#### 缓存键格式
+
+```
+${rootPath}:${searchQuery}
+```
+
+示例：`/home/user/project:TODO`
+
+#### 缓存参数
+
+| 参数 | 值 | 说明 |
+|------|-----|------|
+| TTL | 60s | `SEARCH_CACHE_TTL = 60 * 1000` |
+| 最大条目数 | 50 | `MAX_SEARCH_CACHE_SIZE = 50` |
+| 驱逐策略 | LRU（Map 插入序）| 删除最早插入的条目 |
+
+#### LRU 驱逐机制
+
+利用 ES `Map` 的插入顺序保证实现 LRU：
+
+```typescript
+function searchCacheSet(key: string, entry: SearchCacheEntry) {
+  searchCache.delete(key);   // 命中时先删除，再重新插入移到末尾
+  searchCache.set(key, entry);
+  while (searchCache.size > MAX_SEARCH_CACHE_SIZE) {
+    const oldest = searchCache.keys().next().value;
+    if (oldest !== undefined) searchCache.delete(oldest);
+    else break;
+  }
+}
+```
+
+#### 缓存失效
+
+文件写入操作（`saveFile`）触发 `triggerSearchCacheClear()` → 回调执行 `searchCache.clear()` 清空全部缓存。此设计确保搜索结果不会返回过期内容。
+
+### 10.9 ideStore 状态与持久化
+
+#### IdeState 完整接口
+
+```typescript
+interface IdeState {
+  // 会话关联
+  nodeId: string | null;
+  terminalSessionId: string | null;
+
+  // 项目状态
+  project: IdeProject | null;   // { rootPath, name, isGitRepo, gitBranch? }
+
+  // 编辑器状态
+  tabs: IdeTab[];
+  activeTabId: string | null;
+
+  // 布局状态
+  treeWidth: number;            // 默认 280
+  terminalHeight: number;       // 默认 200
+  terminalVisible: boolean;
+
+  // 文件树状态
+  expandedPaths: Set<string>;
+  treeRefreshSignal: Record<string, number>;  // { 规范化路径: 版本号 }
+
+  // 冲突状态
+  conflictState: {
+    tabId: string;
+    localMtime: number;
+    remoteMtime: number;
+  } | null;
+
+  // 搜索跳转
+  pendingScroll: { tabId: string; line: number; col?: number } | null;
+
+  // 重连恢复缓存
+  cachedProjectPath: string | null;
+  cachedTabPaths: string[];
+  cachedNodeId: string | null;
+
+  // 用户意图追踪
+  lastClosedAt: number | null;
+}
+```
+
+#### IdeActions 接口
+
+```typescript
+interface IdeActions {
+  // 项目操作
+  openProject: (nodeId: string, rootPath: string) => Promise<void>;
+  closeProject: (force?: boolean) => void;
+  changeRootPath: (newRootPath: string) => Promise<void>;
+
+  // 文件操作
+  openFile: (path: string) => Promise<void>;
+  closeTab: (tabId: string) => Promise<boolean>;
+  closeAllTabs: () => Promise<boolean>;
+  saveFile: (tabId: string) => Promise<void>;
+  saveAllFiles: () => Promise<void>;
+
+  // 标签操作
+  setActiveTab: (tabId: string) => void;
+  updateTabContent: (tabId: string, content: string) => void;
+  updateTabCursor: (tabId: string, line: number, col: number) => void;
+  togglePinTab: (tabId: string) => void;
+
+  // 布局操作
+  setTreeWidth: (width: number) => void;
+  setTerminalHeight: (height: number) => void;
+  toggleTerminal: () => void;
+
+  // 文件树操作
+  togglePath: (path: string) => void;
+  refreshTreeNode: (parentPath: string) => void;
+
+  // 终端操作
+  setTerminalSession: (sessionId: string | null) => void;
+
+  // 冲突处理
+  resolveConflict: (resolution: 'overwrite' | 'reload') => Promise<void>;
+  clearConflict: () => void;
+
+  // 搜索跳转
+  setPendingScroll: (tabId: string, line: number, col?: number) => void;
+  clearPendingScroll: () => void;
+
+  // 文件系统操作
+  createFile: (parentPath: string, name: string) => Promise<string>;
+  createFolder: (parentPath: string, name: string) => Promise<string>;
+  deleteItem: (path: string, isDirectory: boolean) => Promise<void>;
+  renameItem: (oldPath: string, newName: string) => Promise<string>;
+  getAffectedTabs: (path: string) => { affected: IdeTab[]; unsaved: IdeTab[] };
+}
+```
+
+#### Persist 中间件配置
+
+```typescript
+persist(
+  (set, get) => ({ /* ... */ }),
+  {
+    name: 'oxideterm-ide',
+    partialize: (state) => ({
+      treeWidth: state.treeWidth,
+      terminalHeight: state.terminalHeight,
+      cachedProjectPath: state.cachedProjectPath,
+      cachedTabPaths: state.cachedTabPaths,
+      cachedNodeId: state.cachedNodeId,
+    }),
+  }
+)
+```
+
+仅持久化布局配置和恢复缓存，**不持久化运行时状态**（项目、标签、文件内容等）。运行时状态在 `openProject` 时从远程重建，或在重连时从 snapshot 恢复。
+
+#### 模块级回调系统
+
+ideStore 通过模块级变量桥接外部组件的回调，避免循环依赖：
+
+| 回调 | 注册方 | 触发方 | 用途 |
+|------|--------|--------|------|
+| `onSearchCacheClear` | `IdeSearchPanel`（`registerSearchCacheClearCallback`） | `ideStore.saveFile`（`triggerSearchCacheClear`） | 文件保存后清空搜索缓存 |
+| `onGitRefresh` | `useGitStatus`（`registerGitRefreshCallback`） | `ideStore.saveFile` / 文件操作（`triggerGitRefresh`） | 文件变更后刷新 Git 状态 |
+
+#### 自动保存
+
+`useIdeStore.subscribe` 监听 `activeTabId` 变化——切换标签时自动保存上一个 dirty 标签（需 `ide.autoSave` 启用）。窗口 `blur` 事件触发 `saveAllFiles()`。
+
+#### 常量
+
+| 常量 | 值 | 位置 |
+|------|-----|------|
+| `MAX_OPEN_TABS` | 20 | `ideStore.ts` |
+| `SEARCH_CACHE_TTL` | 60000 (ms) | `IdeSearchPanel.tsx` |
+| `MAX_SEARCH_CACHE_SIZE` | 50 | `IdeSearchPanel.tsx` |
+| `REFRESH_INTERVAL_MS` | 60000 (ms) | `useGitStatus.ts` |
+| `DEBOUNCE_DELAY_MS` | 1000 (ms) | `useGitStatus.ts` |
+
+### 10.10 重连恢复
+
+#### ideSnapshot 结构
+
+重连编排器在 `phaseSnapshot` 阶段捕获 IDE 状态：
+
+```typescript
+ideSnapshot?: {
+  projectPath: string;                    // 当前项目根路径
+  tabPaths: string[];                     // 所有打开标签的路径
+  connectionId: string;                   // 实际存储 nodeId（历史字段名）
+  dirtyContents: Record<string, string>;  // 未保存文件内容快照
+};
+```
+
+`dirtyContents` 遍历所有 `isDirty && content !== null` 的标签，以 `tab.path → tab.content` 形式保存。这确保断线重连后未保存的编辑内容不会丢失。
+
+#### phaseRestoreIde 流程
+
+```mermaid
+flowchart TD
+    A[phaseRestoreIde] --> B{ideSnapshot 存在?}
+    B -->|否| Z[跳过]
+    B -->|是| C{IDE 节点仍存在?}
+    C -->|否| Z
+    C -->|是| D{新 connectionId / sftpSessionId 就绪?}
+    D -->|否| Z
+    D -->|是| E{用户已打开其他项目?}
+    E -->|是| Z
+    E -->|否| F{用户在 snapshot 后主动关闭 IDE?}
+    F -->|是| Z
+    F -->|否| G[openProject]
+    G --> H[逐一 openFile 恢复标签]
+    H --> I[恢复 dirtyContents]
+    I --> J[完成]
+```
+
+#### lastClosedAt 用户意图追踪
+
+`closeProject()` 时设置 `lastClosedAt = Date.now()`。重连编排器在 `phaseRestoreIde` 中对比 `lastClosedAt` 与 `snapshot.snapshotAt`——如果用户在快照之后手动关闭了 IDE，则不恢复，尊重用户意图。
+
+#### dirtyContents 恢复
+
+恢复时遍历 `ideSnapshot.dirtyContents`，找到已重新打开的标签，将保存的内容写入 `tab.content` 并标记 `isDirty: true`，确保用户可以继续编辑或保存。
+
+#### 持久化缓存字段
+
+| 字段 | 类型 | 用途 |
+|------|------|------|
+| `cachedProjectPath` | `string \| null` | 上次打开的项目路径（用于 UI 快速恢复建议） |
+| `cachedTabPaths` | `string[]` | 上次打开的标签路径列表 |
+| `cachedNodeId` | `string \| null` | 上次关联的节点 ID |
+
+这些字段通过 persist 中间件保存到 `localStorage`（key: `oxideterm-ide`），跨会话保留。与 `ideSnapshot` 的区别在于：缓存字段是长期持久化的 UI 便利功能，`ideSnapshot` 是短暂的重连恢复数据，存在于 `reconnectOrchestratorStore` 内存中。
+
+### 10.11 Node-first API
+
+IDE 模式使用 4 个 `node_ide_*` Tauri IPC 命令，全部通过 `nodeId` 路由：
+
+| 前端 API | Tauri 命令 | 参数 | 用途 |
+|----------|-----------|------|------|
+| `nodeIdeOpenProject(nodeId, path)` | `node_ide_open_project` | `nodeId`, `path` | 打开项目，返回 `{ rootPath, name, isGitRepo, gitBranch? }` |
+| `nodeIdeExecCommand(nodeId, command, cwd?, timeoutSecs?)` | `node_ide_exec_command` | `nodeId`, `command`, `cwd?`, `timeoutSecs?` | 在远程执行命令（Git status 回退等） |
+| `nodeIdeCheckFile(nodeId, path)` | `node_ide_check_file` | `nodeId`, `path` | 检查文件可编辑性（大小/二进制/权限） |
+| `nodeIdeBatchStat(nodeId, paths)` | `node_ide_batch_stat` | `nodeId`, `paths[]` | 批量获取文件 stat 信息 |
+
+这些命令与 SFTP API 平行存在。`nodeIdeCheckFile` 在 `openFile` 流程中提前检查文件是否可编辑，避免先加载内容再发现问题：
+
+| 检查结果 | 类型 | 行为 |
+|---------|------|------|
+| `too_large` | 超过大小限制 | 关闭标签，抛出错误 |
+| `binary` | 二进制文件 | 静默关闭标签 |
+| `not_editable` | 不可编辑 | 关闭标签，抛出错误 |
+| 其他 | 可编辑 | 继续加载内容 |
+
+### 10.12 设计不变量
+
+| 编号 | 不变量 | 说明 |
+|------|--------|------|
+| **I1** | Agent-first, SFTP fallback | 所有文件操作优先走 Agent，不可用时自动降级到 SFTP，用户无感 |
+| **I2** | State Gating 前置校验 | 每次 I/O 操作前调用 `assertNodeReady()`，从 sessionTreeStore 读取状态（零 IPC） |
+| **I3** | 标签 LRU 驱逐保护 | `isDirty` 或 `isPinned` 的标签不被驱逐；所有标签都受保护时抛出错误而非覆盖 |
+| **I4** | 冲突检测双层保障 | Agent hash 乐观锁为主，SFTP mtime 为辅；冲突必须经用户确认才能解决 |
+| **I5** | 搜索缓存按写失效 | 任何 `saveFile` 操作清空全部搜索缓存，不存在过期结果 |
+| **I6** | dirtyContents 跨重连保留 | 重连 snapshot 保存所有未保存标签内容，恢复后标记 `isDirty` |
+| **I7** | lastClosedAt 用户意图优先 | 用户主动关闭 IDE 后重连不恢复，即使 snapshot 中有 IDE 状态 |
+| **I8** | treeRefreshSignal 路径粒度 | 文件操作仅刷新受影响目录，不触发全树重载 |
+| **I9** | 模块级回调无循环依赖 | ideStore ↔ IdeSearchPanel / useGitStatus 通过注册回调解耦，不直接 import 对方 |
+
+### 10.13 已知限制与路线图
+
+#### 当前限制
+
+| 限制 | 说明 |
+|------|------|
+| 文件大小 | 仅支持 <10MB 的文本文件（`nodeIdeCheckFile` 预检） |
+| 二进制文件 | 不支持编辑，打开时静默跳过 |
+| 实时协作 | 不支持多用户同时编辑同一文件 |
+| LSP | 不支持 Language Server Protocol，无补全/诊断/跳转定义 |
+| 文件监听 | 无远程 `inotify`/`fsevents`，依赖手动刷新和保底轮询 |
+
+#### 路线图
+
+| 方向 | 说明 |
+|------|------|
+| LSP 集成 | 通过 Agent 中继 LSP 协议，提供补全和诊断能力 |
+| 文件监听 | Agent 侧 `inotify` 推送文件变更事件 |
+| Diff 视图 | 基于 `originalContent` 的 inline diff 显示 |
+| 多文件搜索替换 | 全项目替换 + 预览确认 |
+| 大文件分段加载 | 超过 10MB 的文件按需加载可视区域 |
+
+---
+
 ## 附录
 
 ### A. 跨章引用索引
@@ -3149,22 +3854,27 @@ if (remoteEnv === undefined) {
 
 | 概念 | 涉及章节 | 说明 |
 |------|---------|------|
-| **nodeId 路由** | 2, 3, 4, 5, 6 | 所有 API 均通过 nodeId 路由到具体连接，取代旧的 sessionId 寻址；重连编排器按 nodeId 调度恢复 |
-| **State Gating（状态门禁）** | 1, 2, 3, 4, 5 | UI 操作须检查 `connectionState === 'active'`；连接池、拓扑、端口转发和 SFTP 均遵守此规则 |
-| **Key-Driven Reset** | 1, 2, 3, 4, 5 | 连接重建触发组件重挂载机制；连接池核心策略，拓扑级联、重连编排、端口转发和 SFTP 均利用此机制恢复状态 |
-| **强一致性同步** | 1, 2, 3, 4, 5 | appStore 刷新驱动 UI 更新；第 1 章定义核心流程，后续章节为各模块的具体应用 |
-| **重连编排器（Reconnect Orchestrator）** | 1, 3, 4, 5 | 管理断线重连后的恢复流程，含 `restore-forwards` 和 `resume-transfers` 阶段；第 1 章历史债务清理提及，第 3 章完整设计 |
-| **sessionTreeStore / appStore 双 Store** | 1, 4, 5 | 用户意图层与事实层分离，第 1 章定义架构拓扑，所有功能模块从 appStore 读取连接状态 |
+| **nodeId 路由** | 2, 3, 4, 5, 6, 10 | 所有 API 均通过 nodeId 路由到具体连接，取代旧的 sessionId 寻址；重连编排器按 nodeId 调度恢复；IDE 模式 4 个 `node_ide_*` 命令 |
+| **State Gating（状态门禁）** | 1, 2, 3, 4, 5, 10 | UI 操作须检查 `connectionState === 'active'`；连接池、拓扑、端口转发和 SFTP 均遵守此规则；IDE 模式通过 `assertNodeReady()` 零 IPC 实现 |
+| **Key-Driven Reset** | 1, 2, 3, 4, 5, 10 | 连接重建触发组件重挂载机制；连接池核心策略，拓扑级联、重连编排、端口转发和 SFTP 均利用此机制恢复状态；IDE 组件 `key={nodeId}` 触发全树重建 |
+| **强一致性同步** | 1, 2, 3, 4, 5, 10 | appStore 刷新驱动 UI 更新；第 1 章定义核心流程，后续章节为各模块的具体应用；IDE 模式三 Store 协同 |
+| **重连编排器（Reconnect Orchestrator）** | 1, 3, 4, 5, 10 | 管理断线重连后的恢复流程，含 `restore-forwards`、`resume-transfers` 和 `restore-ide` 阶段；第 1 章历史债务清理提及，第 3 章完整设计，第 10 章 IDE 恢复含 `dirtyContents` 保留 |
+| **sessionTreeStore / appStore 双 Store** | 1, 4, 5, 10 | 用户意图层与事实层分离，第 1 章定义架构拓扑，所有功能模块从 appStore 读取连接状态；IDE 模式额外引入 ideStore 形成三 Store 协同 |
 | **级联故障传播** | 2, 3 | 跳板机断开时下游节点级联标记 link_down；第 2 章级联故障处理，第 3 章 snapshot 阶段捕获 |
 | **transferStore** | 5 | SFTP 专用传输队列 Zustand store |
 | **agentService / agentStore** | 6 | Remote Agent 状态管理与门面层 |
 | **原子写入** | 5, 6 | SFTP `nodeSftpWrite` 和 Agent `fs/writeFile` 均支持原子写入（tmpfile → rename） |
-| **Agent → SFTP 降级** | 5, 6 | agentService 中文件操作自动降级到 SFTP；SFTP 是基础能力层 |
-| **SSH 连接** | 1, 2, 3, 4, 5, 6, 7, 8, 9 | 全系统基础设施；第 8 章 Profiler 通过 SSH Shell Channel 采样，第 9 章 Detector 通过 SSH Shell Channel 探测 |
-| **Tauri IPC** | 1, 3, 4, 5, 6, 8, 9 | 前端通过 `invoke()` 调用后端命令；第 8 章 6 个 Profiler 命令，第 9 章 `get_remote_env` |
+| **Agent → SFTP 降级** | 5, 6, 10 | agentService 中文件操作自动降级到 SFTP；SFTP 是基础能力层；IDE 模式不变量 I1：Agent-first, SFTP fallback |
+| **SSH 连接** | 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 | 全系统基础设施；第 8 章 Profiler 通过 SSH Shell Channel 采样，第 9 章 Detector 通过 SSH Shell Channel 探测，第 10 章 IDE 通过 SFTP/Agent 操作远程文件 |
+| **Tauri IPC** | 1, 3, 4, 5, 6, 8, 9, 10 | 前端通过 `invoke()` 调用后端命令；第 8 章 6 个 Profiler 命令，第 9 章 `get_remote_env`，第 10 章 4 个 `node_ide_*` 命令 |
 | **Tauri Event** | 1, 3, 4, 5, 8, 9 | 连接状态变更事件驱动全系统响应；第 8 章 `profiler:update` / `port-detected`，第 9 章 `env:detected` |
 | **ForwardStatus::Suspended** | 3, 4 | 端口转发在断线时进入 Suspended，重连编排器在 restore-forwards 阶段恢复 |
 | **`useNodeState` hook** | 4, 5 | 前端组件通过此 hook 感知连接就绪状态 |
+| **ideStore** | 10 | IDE 专用 Zustand store，管理项目、标签、文件树、冲突状态，persist 中间件跨会话缓存布局 |
+| **CodeMirror 6** | 10 | 前端编辑器引擎，通过 `useCodeMirrorEditor` hook 管理实例生命周期 |
+| **LRU 驱逐** | 10 | 标签页 `MAX_OPEN_TABS=20`，搜索缓存 `MAX_SEARCH_CACHE_SIZE=50`，均基于访问时间 / 插入序驱逐 |
+| **dirtyContents** | 3, 10 | 重连 snapshot 保存未保存的编辑内容；第 3 章 `ideSnapshot.dirtyContents`，第 10 章恢复流程 |
+| **Agent Hash 乐观锁** | 6, 10 | Agent `writeFile` 的 `expectHash` 参数；第 6 章 Agent 协议，第 10 章冲突检测主路径 |
 | **JSON-RPC 协议** | 6 | Agent 通信协议，行分隔 JSON-RPC via SSH exec stdin/stdout |
 | **russh** | 7 | SSH 协议库，Agent 认证中 `Signer` trait 的实现基础 |
 | **跳板机（Proxy Hop）** | 2, 7 | 第 2 章 proxy_chain 路由配置，第 7 章 Agent 认证跳板机支持 |
@@ -3286,3 +3996,12 @@ if (remoteEnv === undefined) {
 | 前端函数 | 后端命令 | 参数 |
 |---------|---------|------|
 | `api.getRemoteEnv(connId)` | `get_remote_env` | `connectionId` |
+
+#### B.7 IDE 模式 API
+
+| 前端函数 | 后端命令 | 参数 |
+|---------|---------|------|
+| `nodeIdeOpenProject(nodeId, path)` | `node_ide_open_project` | `nodeId`, `path` |
+| `nodeIdeExecCommand(nodeId, command, cwd?, timeoutSecs?)` | `node_ide_exec_command` | `nodeId`, `command`, `cwd?`, `timeoutSecs?` |
+| `nodeIdeCheckFile(nodeId, path)` | `node_ide_check_file` | `nodeId`, `path` |
+| `nodeIdeBatchStat(nodeId, paths)` | `node_ide_batch_stat` | `nodeId`, `paths[]` |
