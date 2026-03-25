@@ -1424,15 +1424,19 @@ const bracketedPaste = `\x1b[200~${command}\x1b[201~`;
 
 **定位**：为 OxideSens 提供**可检索的本地知识库**（向量 + 关键词），数据与索引落在本机应用数据目录，经 Tauri 命令暴露给前端。
 
+> **详细文档**：请参阅 [RAG_SYSTEM.md](./RAG_SYSTEM.md)，包含完整的算法参数、数据模型、混合搜索管线与调优指南。
+
 **后端模块** [`src-tauri/src/rag/`](../../src-tauri/src/rag/)：
 
 - **分块与类型**：`chunker`、`types`
 - **嵌入**：`embedding`（离线/批处理与查询路径）
-- **稀疏检索**：`bm25`
-- **持久化集合**：`store`（与 `lib.rs` 中 `RagStore` 状态注入配合）
-- **命令入口**：[`commands/rag.rs`](../../src-tauri/src/commands/rag.rs)（集合与文档 CRUD、检索、重索引等）
+- **稀疏检索**：`bm25`（CJK 二字组 + Snowball 英文词干化 + 停用词过滤）
+- **稠密检索**：`hnsw`（HNSW 近似最近邻，instant-distance）+ `embedding`（搜索调度）
+- **混合搜索**：`search`（BM25 + 向量 → RRF 融合 → 阈值过滤 → MMR 多样性重排序）
+- **持久化集合**：`store`（redb 嵌入式 KV，9 张表，zstd 压缩）
+- **命令入口**：[`commands/rag.rs`](../../src-tauri/src/commands/rag.rs)（17 个 IPC 命令：集合与文档 CRUD、检索、嵌入、重索引等）
 
-**前端**：`ragStore.ts` 与 AI 侧组装上下文；强一致性与安全边界仍以 [SYSTEM_INVARIANTS.md](./SYSTEM_INVARIANTS.md) 为准。
+**前端**：`ragStore.ts` 与 AI 侧组装上下文；`aiChatStore.ts` 自动注入 Top-5 检索结果到系统提示词；`toolExecutor.ts` 支持 AI 工具调用搜索。强一致性与安全边界仍以 [SYSTEM_INVARIANTS.md](./SYSTEM_INVARIANTS.md) 为准。
 
 ---
 
