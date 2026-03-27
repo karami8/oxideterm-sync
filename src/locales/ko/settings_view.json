@@ -275,6 +275,18 @@
         "batch_import_success": "{{count}}개의 호스트를 성공적으로 가져왔습니다",
         "batch_import_skipped": "{{count}}개의 호스트를 건너뛰었습니다 (이미 존재)",
         "already_imported": "이미 가져옴"
+      },
+      "idle_timeout": {
+        "title": "연결 풀",
+        "description": "유휴 SSH 연결 관리 설정을 구성합니다.",
+        "label": "유휴 시간 초과",
+        "5min": "5분",
+        "15min": "15분",
+        "30min": "30분 (기본값)",
+        "1hr": "1시간",
+        "never": "시간 초과 없음 (연결 유지)",
+        "hint": "열린 터미널이 없는 SSH 연결은 이 시간이 지나면 연결이 해제됩니다. '시간 초과 없음'으로 설정하면 연결이 계속 유지됩니다.",
+        "save_failed": "유휴 시간 초과 설정 저장 실패"
       }
     },
     "ssh_keys": {

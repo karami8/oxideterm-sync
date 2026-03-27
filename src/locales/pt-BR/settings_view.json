@@ -275,6 +275,18 @@
         "batch_import_success": "{{count}} host(s) importado(s) com sucesso",
         "batch_import_skipped": "{{count}} host(s) ignorado(s) (já existente(s))",
         "already_imported": "Já importado"
+      },
+      "idle_timeout": {
+        "title": "Pool de conexões",
+        "description": "Configure o gerenciamento de conexões SSH ociosas.",
+        "label": "Tempo limite de inatividade",
+        "5min": "5 minutos",
+        "15min": "15 minutos",
+        "30min": "30 minutos (padrão)",
+        "1hr": "1 hora",
+        "never": "Nunca (manter conexão)",
+        "hint": "Conexões SSH sem terminais abertos serão desconectadas após esse período. Defina como 'Nunca' para manter as conexões indefinidamente.",
+        "save_failed": "Falha ao salvar configuração de tempo limite"
       }
     },
     "ssh_keys": {

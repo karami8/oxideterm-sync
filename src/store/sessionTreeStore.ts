@@ -1432,12 +1432,8 @@ export const useSessionTreeStore = create<SessionTreeStore>()(
         });
       }
       
-      // 调用 API 关闭终端
-      try {
-        await api.closeTerminal(terminalId);
-      } catch (e) {
-        console.error('Failed to close terminal:', e);
-      }
+      // 注意：不在这里调用 api.closeTerminal — 后端终端关闭
+      // 由 closeTerminalSession (appStore) 或 closeTab Phase 6 负责
       
       // 重建统一节点
       get().rebuildUnifiedNodes();

@@ -275,6 +275,18 @@
         "batch_import_success": "成功导入 {{count}} 个主机",
         "batch_import_skipped": "跳过 {{count}} 个主机（已存在）",
         "already_imported": "已导入"
+      },
+      "idle_timeout": {
+        "title": "连接池",
+        "description": "配置空闲 SSH 连接的管理策略。",
+        "label": "空闲超时",
+        "5min": "5 分钟",
+        "15min": "15 分钟",
+        "30min": "30 分钟（默认）",
+        "1hr": "1 小时",
+        "never": "永不超时（保持连接）",
+        "hint": "没有打开终端的 SSH 连接将在此时间后断开。设为「永不超时」可保持连接始终在线。",
+        "save_failed": "保存空闲超时设置失败"
       }
     },
     "ssh_keys": {

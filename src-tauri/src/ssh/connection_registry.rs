@@ -1497,12 +1497,6 @@ impl SshConnectionRegistry {
         let connection_id = conn.id.clone();
         let timeout = self.idle_timeout().await;
 
-        info!(
-            "Connection {} idle, starting {} minute timer",
-            connection_id,
-            timeout.as_secs() / 60
-        );
-
         conn.set_state(ConnectionState::Idle).await;
 
         // Oxide-Next Phase 2: Active → Idle 事件
@@ -1513,6 +1507,21 @@ impl SshConnectionRegistry {
                 "idle (timer started)",
             );
         }
+
+        // idle_timeout_secs=0 表示永不超时，仅设为 Idle 状态
+        if timeout.is_zero() {
+            info!(
+                "Connection {} idle, timeout disabled (never)",
+                connection_id
+            );
+            return;
+        }
+
+        info!(
+            "Connection {} idle, starting {} minute timer",
+            connection_id,
+            timeout.as_secs() / 60
+        );
 
         let conn_clone = conn.clone();
         let connections = self.connections.clone();

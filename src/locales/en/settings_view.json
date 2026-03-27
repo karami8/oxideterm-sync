@@ -275,6 +275,18 @@
         "batch_import_success": "Successfully imported {{count}} host(s)",
         "batch_import_skipped": "{{count}} host(s) skipped (already exist)",
         "already_imported": "Already imported"
+      },
+      "idle_timeout": {
+        "title": "Connection Pool",
+        "description": "Configure how idle SSH connections are managed.",
+        "label": "Idle Timeout",
+        "5min": "5 minutes",
+        "15min": "15 minutes",
+        "30min": "30 minutes (default)",
+        "1hr": "1 hour",
+        "never": "Never (keep alive)",
+        "hint": "SSH connections with no open terminals will be disconnected after this period. Set to 'Never' to keep connections alive indefinitely.",
+        "save_failed": "Failed to save idle timeout setting"
       }
     },
     "ssh_keys": {

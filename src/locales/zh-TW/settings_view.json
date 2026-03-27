@@ -275,6 +275,18 @@
         "batch_import_success": "成功匯入 {{count}} 個主機",
         "batch_import_skipped": "跳過 {{count}} 個主機（已存在）",
         "already_imported": "已導入"
+      },
+      "idle_timeout": {
+        "title": "連線池",
+        "description": "設定閒置 SSH 連線的管理策略。",
+        "label": "閒置逾時",
+        "5min": "5 分鐘",
+        "15min": "15 分鐘",
+        "30min": "30 分鐘（預設）",
+        "1hr": "1 小時",
+        "never": "永不逾時（保持連線）",
+        "hint": "沒有開啟終端的 SSH 連線將在此時間後中斷。設為「永不逾時」可保持連線持續在線。",
+        "save_failed": "儲存閒置逾時設定失敗"
       }
     },
     "ssh_keys": {

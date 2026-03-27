@@ -1094,6 +1094,9 @@ export const SettingsView = () => {
     const [selectedSshHosts, setSelectedSshHosts] = useState<Set<string>>(new Set());
     const [batchImporting, setBatchImporting] = useState(false);
 
+    // Connection pool config state
+    const [poolConfig, setPoolConfig] = useState<{ idleTimeoutSecs: number } | null>(null);
+
     // Data directory state
     const [dataDirInfo, setDataDirInfo] = useState<DataDirInfo | null>(null);
     const [dataDirLoading, setDataDirLoading] = useState(false);
@@ -1124,6 +1127,11 @@ export const SettingsView = () => {
                 .catch((e) => {
                     console.error('Failed to load SSH hosts:', e);
                     setSshHosts([]);
+                });
+            api.sshGetPoolConfig()
+                .then(config => setPoolConfig({ idleTimeoutSecs: config.idleTimeoutSecs }))
+                .catch((e) => {
+                    console.error('Failed to load pool config:', e);
                 });
         }
     }, [activeTab]);
@@ -2095,6 +2103,41 @@ export const SettingsView = () => {
                                             </Button>
                                         </div>
                                     ))}
+                                </div>
+                            </div>
+
+                            <div className="pt-8">
+                                <h3 className="text-xl font-medium text-theme-text mb-2">{t('settings_view.connections.idle_timeout.title')}</h3>
+                                <p className="text-sm text-theme-text-muted mb-4">{t('settings_view.connections.idle_timeout.description')}</p>
+                                <Separator className="mb-4" />
+                                <div className="grid gap-2 max-w-xs">
+                                    <Label>{t('settings_view.connections.idle_timeout.label')}</Label>
+                                    <Select
+                                        value={poolConfig ? String(poolConfig.idleTimeoutSecs) : '1800'}
+                                        onValueChange={async (val) => {
+                                            const secs = parseInt(val);
+                                            setPoolConfig({ idleTimeoutSecs: secs });
+                                            try {
+                                                const current = await api.sshGetPoolConfig();
+                                                await api.sshSetPoolConfig({ ...current, idleTimeoutSecs: secs });
+                                            } catch (e) {
+                                                console.error('Failed to update pool config:', e);
+                                                toastError(t('settings_view.connections.idle_timeout.save_failed'));
+                                            }
+                                        }}
+                                    >
+                                        <SelectTrigger className="w-full">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="300">{t('settings_view.connections.idle_timeout.5min')}</SelectItem>
+                                            <SelectItem value="900">{t('settings_view.connections.idle_timeout.15min')}</SelectItem>
+                                            <SelectItem value="1800">{t('settings_view.connections.idle_timeout.30min')}</SelectItem>
+                                            <SelectItem value="3600">{t('settings_view.connections.idle_timeout.1hr')}</SelectItem>
+                                            <SelectItem value="0">{t('settings_view.connections.idle_timeout.never')}</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <p className="text-xs text-theme-text-muted">{t('settings_view.connections.idle_timeout.hint')}</p>
                                 </div>
                             </div>
 

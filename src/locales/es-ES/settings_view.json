@@ -275,6 +275,18 @@
         "batch_import_success": "{{count}} host(s) importado(s) con éxito",
         "batch_import_skipped": "{{count}} host(s) omitido(s) (ya existente(s))",
         "already_imported": "Ya importado"
+      },
+      "idle_timeout": {
+        "title": "Pool de conexiones",
+        "description": "Configura la gestión de conexiones SSH inactivas.",
+        "label": "Tiempo de espera inactivo",
+        "5min": "5 minutos",
+        "15min": "15 minutos",
+        "30min": "30 minutos (predeterminado)",
+        "1hr": "1 hora",
+        "never": "Nunca (mantener conexión)",
+        "hint": "Las conexiones SSH sin terminales abiertos se desconectarán después de este periodo. Establece en «Nunca» para mantener las conexiones indefinidamente.",
+        "save_failed": "Error al guardar la configuración de tiempo de espera"
       }
     },
     "ssh_keys": {

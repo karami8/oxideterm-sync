@@ -704,15 +704,10 @@ export const useAppStore = create<AppStore>((set, get) => ({
     
     // ========== Phase 3: 从 sessions Map 移除所有关联 session ==========
     const allSessionIds = [...localTerminalIds, ...sshTerminalIds];
-    const connectionIds = new Set<string>();
     
     set((state) => {
       const newSessions = new Map(state.sessions);
       for (const sid of allSessionIds) {
-        const session = newSessions.get(sid);
-        if (session?.connectionId) {
-          connectionIds.add(session.connectionId);
-        }
         newSessions.delete(sid);
       }
       return { sessions: newSessions };
@@ -770,33 +765,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
       }
     }
     
-    // ========== Phase 7: 检查是否需要断开 SSH 连接 ==========
-    // 只有当该连接下没有其他终端时才断开
-    for (const connectionId of connectionIds) {
-      const remainingTerminals = Array.from(get().sessions.values())
-        .filter(s => s.connectionId === connectionId);
-      
-      if (remainingTerminals.length === 0) {
-        console.log(`[closeTab] No remaining terminals for connection ${connectionId}, disconnecting SSH`);
-        try {
-          await api.sshDisconnect(connectionId);
-          
-          // 从 connections Map 移除
-          set((state) => {
-            const newConnections = new Map(state.connections);
-            newConnections.delete(connectionId);
-            return { connections: newConnections };
-          });
-          
-          console.log(`[closeTab] SSH connection ${connectionId} disconnected`);
-        } catch (e) {
-          // 连接可能已经断开，忽略错误
-          console.warn(`[closeTab] Failed to disconnect SSH ${connectionId}:`, e);
-        }
-      } else {
-        console.debug(`[closeTab] Connection ${connectionId} still has ${remainingTerminals.length} terminals`);
-      }
-    }
+    // SSH 连接生命周期由后端 idle timer 管理，不在 closeTab 中断连
+    // 用户可通过右键"断开"或后端空闲超时来断开 SSH
   },
 
   setActiveTab: (tabId) => {
