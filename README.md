@@ -542,7 +542,7 @@ OxideTerm/
 │       ├── commands/               #   24 Tauri IPC command modules
 │       └── state/                  #   Global state types
 │
-├── cli/                            # CLI companion — `oxide` binary
+├── cli/                            # CLI companion — `oxt` binary
 │   └── src/
 │       ├── main.rs                 #   Clap CLI entry point
 │       ├── connect.rs              #   IPC client (Unix Socket / Named Pipe)

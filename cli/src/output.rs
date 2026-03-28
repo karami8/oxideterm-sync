@@ -167,6 +167,49 @@ impl OutputMode {
         }
     }
 
+    /// Print local terminals list.
+    pub fn print_local_terminals(&self, value: &Value) {
+        match self {
+            Self::Json => {
+                println!("{}", serde_json::to_string(value).unwrap_or_default());
+            }
+            Self::Human => {
+                let items = value.as_array().map(|a| a.as_slice()).unwrap_or(&[]);
+                if items.is_empty() {
+                    println!("  No local terminals");
+                    return;
+                }
+
+                println!(
+                    "  {:<14} {:<16} {:<10} {}",
+                    "ID", "SHELL", "RUNNING", "DETACHED"
+                );
+                for item in items {
+                    let id = item.get("id").and_then(|v| v.as_str()).unwrap_or("-");
+                    let short_id = if id.len() > 12 { &id[..12] } else { id };
+                    let shell = item
+                        .get("shell_name")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("-");
+                    let running = item
+                        .get("running")
+                        .and_then(|v| v.as_bool())
+                        .unwrap_or(false);
+                    let detached = item
+                        .get("detached")
+                        .and_then(|v| v.as_bool())
+                        .unwrap_or(false);
+                    println!(
+                        "  {:<14} {:<16} {:<10} {}",
+                        short_id, sanitize_display(shell),
+                        if running { "yes" } else { "no" },
+                        if detached { "yes" } else { "no" },
+                    );
+                }
+            }
+        }
+    }
+
     /// Print port forwards list.
     pub fn print_forwards(&self, value: &Value) {
         match self {

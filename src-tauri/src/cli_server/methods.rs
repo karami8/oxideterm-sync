@@ -40,6 +40,7 @@ pub async fn dispatch(
         "connect" => connect(app, params).await,
         "open_tab" => open_tab(app, params).await,
         "focus_tab" => focus_tab(app, params).await,
+        "list_local_terminals" => list_local_terminals(app).await,
         _ => Err((
             protocol::ERR_METHOD_NOT_FOUND,
             format!("Method not found: {method}"),
@@ -147,6 +148,40 @@ async fn list_sessions(app: &tauri::AppHandle) -> Result<Value, (i32, String)> {
         .collect();
 
     Ok(json!(sessions))
+}
+
+/// List active local terminal sessions.
+async fn list_local_terminals(app: &tauri::AppHandle) -> Result<Value, (i32, String)> {
+    #[cfg(feature = "local-terminal")]
+    {
+        let state = app
+            .try_state::<Arc<crate::commands::local::LocalTerminalState>>()
+            .ok_or((
+                protocol::ERR_INTERNAL,
+                "Local terminal state not initialized".to_string(),
+            ))?;
+
+        let terminals: Vec<Value> = state
+            .registry
+            .list_sessions()
+            .await
+            .iter()
+            .map(|t| {
+                json!({
+                    "id": t.id,
+                    "shell_name": t.shell.label,
+                    "shell_id": t.shell.id,
+                    "running": t.running,
+                    "detached": t.detached,
+                })
+            })
+            .collect();
+
+        Ok(json!(terminals))
+    }
+
+    #[cfg(not(feature = "local-terminal"))]
+    Ok(json!([]))
 }
 
 /// List active SSH connections in the pool.
@@ -671,7 +706,12 @@ async fn open_tab(app: &tauri::AppHandle, params: Value) -> Result<Value, (i32, 
     Ok(json!({ "success": true }))
 }
 
-/// Focus an existing session tab in the GUI.
+/// Focus an existing tab in the GUI.
+///
+/// Resolution order:
+/// 1. SSH session (by ID or name)
+/// 2. Local terminal (by ID or shell name)
+/// 3. Raw target passed to frontend (matches by tab title/id)
 async fn focus_tab(app: &tauri::AppHandle, params: Value) -> Result<Value, (i32, String)> {
     let target = params
         .get("target")
@@ -681,35 +721,76 @@ async fn focus_tab(app: &tauri::AppHandle, params: Value) -> Result<Value, (i32,
             "Missing required parameter: target".to_string(),
         ))?;
 
-    // Resolve: try as session ID, then by name
-    let registry = app
-        .try_state::<Arc<SessionRegistry>>()
-        .ok_or((
-            protocol::ERR_INTERNAL,
-            "Session registry not initialized".to_string(),
-        ))?;
-
-    let sessions = registry.list();
-    let session = sessions
-        .iter()
-        .find(|s| s.id == target || s.name == target)
-        .ok_or((
-            protocol::ERR_INVALID_PARAMS,
-            format!("Session not found: {target}"),
-        ))?;
-
     use tauri::Emitter;
-    app.emit("cli:focus-tab", json!({ "session_id": session.id }))
+
+    // 1. Try SSH session registry (by ID, name, or prefix)
+    if let Some(registry) = app.try_state::<Arc<SessionRegistry>>() {
+        let sessions = registry.list();
+        if let Some(session) = sessions
+            .iter()
+            .find(|s| s.id == target || s.name == target)
+            .or_else(|| {
+                sessions
+                    .iter()
+                    .find(|s| s.id.starts_with(target))
+            })
+        {
+            app.emit("cli:focus-tab", json!({ "session_id": session.id }))
+                .map_err(|e| (protocol::ERR_INTERNAL, format!("Failed to emit event: {e}")))?;
+
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.set_focus();
+            }
+
+            return Ok(json!({
+                "success": true,
+                "matched": "session",
+                "session_id": session.id,
+            }));
+        }
+    }
+
+    // 2. Try local terminal registry (by ID or shell name)
+    #[cfg(feature = "local-terminal")]
+    if let Some(state) = app.try_state::<Arc<crate::commands::local::LocalTerminalState>>() {
+        let locals = state.registry.list_sessions().await;
+        if let Some(local) = locals
+            .iter()
+            .find(|l| l.id == target)
+            .or_else(|| {
+                let lower = target.to_lowercase();
+                locals
+                    .iter()
+                    .find(|l| l.shell.id.to_lowercase() == lower || l.shell.label.to_lowercase() == lower)
+            })
+        {
+            app.emit("cli:focus-tab", json!({ "session_id": local.id }))
+                .map_err(|e| (protocol::ERR_INTERNAL, format!("Failed to emit event: {e}")))?;
+
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.set_focus();
+            }
+
+            return Ok(json!({
+                "success": true,
+                "matched": "local_terminal",
+                "session_id": local.id,
+            }));
+        }
+    }
+
+    // 3. Fallback: pass raw target to frontend for title/id matching
+    app.emit("cli:focus-tab", json!({ "target": target }))
         .map_err(|e| (protocol::ERR_INTERNAL, format!("Failed to emit event: {e}")))?;
 
-    // Bring window to front
     if let Some(window) = app.get_webview_window("main") {
         let _ = window.set_focus();
     }
 
     Ok(json!({
         "success": true,
-        "session_id": session.id,
+        "matched": "frontend",
+        "target": target,
     }))
 }
 

@@ -124,8 +124,8 @@ enum Commands {
 
     /// Focus an existing session tab
     Focus {
-        /// Session ID or name
-        target: String,
+        /// Session ID or name (omit to list available sessions)
+        target: Option<String>,
     },
 
     /// Ping the GUI (connectivity check)
@@ -429,8 +429,59 @@ fn run(cli: &Cli, out: &output::OutputMode) -> Result<(), String> {
             out.print_json(&resp);
         }
         Commands::Focus { target } => {
-            let resp = conn.call("focus_tab", serde_json::json!({ "target": target }))?;
-            out.print_json(&resp);
+            match target {
+                Some(t) => {
+                    let resp = conn.call("focus_tab", serde_json::json!({ "target": t }))?;
+                    out.print_json(&resp);
+                }
+                None => {
+                    // No target → list all focusable targets
+                    let sessions = conn.call("list_sessions", serde_json::json!({})).unwrap_or(serde_json::json!([]));
+                    let locals = conn.call("list_local_terminals", serde_json::json!({})).unwrap_or(serde_json::json!([]));
+                    let ssh_items = sessions.as_array().map(|a| a.as_slice()).unwrap_or(&[]);
+                    let local_items = locals.as_array().map(|a| a.as_slice()).unwrap_or(&[]);
+                    let total = ssh_items.len() + local_items.len();
+
+                    match total {
+                        0 => {
+                            eprintln!("No active tabs to focus.");
+                            std::process::exit(1);
+                        }
+                        1 => {
+                            // Auto-focus the single tab
+                            let (id, label) = if let Some(s) = ssh_items.first() {
+                                (
+                                    s.get("id").and_then(|v| v.as_str()).unwrap_or(""),
+                                    s.get("name").and_then(|v| v.as_str()).unwrap_or("?"),
+                                )
+                            } else {
+                                let l = &local_items[0];
+                                (
+                                    l.get("id").and_then(|v| v.as_str()).unwrap_or(""),
+                                    l.get("shell_name").and_then(|v| v.as_str()).unwrap_or("?"),
+                                )
+                            };
+                            eprintln!("Auto-focusing: {label}");
+                            let resp = conn.call("focus_tab", serde_json::json!({ "target": id }))?;
+                            out.print_json(&resp);
+                        }
+                        _ => {
+                            eprintln!("Multiple active tabs — specify a target:\n");
+                            if !ssh_items.is_empty() {
+                                eprintln!("  SSH Sessions:");
+                                out.print_sessions(&sessions);
+                            }
+                            if !local_items.is_empty() {
+                                eprintln!("\n  Local Terminals:");
+                                out.print_local_terminals(&locals);
+                            }
+                            eprintln!("\nUsage: oxt focus <NAME-OR-ID>");
+                            eprintln!("  Matches: session name/ID, shell name, or tab title");
+                            std::process::exit(1);
+                        }
+                    }
+                }
+            }
         }
         Commands::Ping => {
             let resp = conn.call("ping", serde_json::json!({}))?;
@@ -443,42 +494,85 @@ fn run(cli: &Cli, out: &output::OutputMode) -> Result<(), String> {
 }
 
 /// Parse a forward spec like `8080:localhost:80` or `0.0.0.0:8080:localhost:80`
+/// Also supports IPv6 addresses in brackets: `[::1]:8080:localhost:80`
 /// For dynamic forwards, spec is just `[bind_addr:]bind_port`
 fn parse_forward_spec(
     spec: &str,
     fwd_type: &str,
 ) -> Result<(String, u16, String, u16), String> {
-    let parts: Vec<&str> = spec.split(':').collect();
+    // Tokenize respecting bracketed IPv6 addresses
+    let tokens = tokenize_spec(spec)?;
 
     if fwd_type == "dynamic" {
         // Dynamic: [bind_addr:]bind_port
-        return match parts.len() {
+        return match tokens.len() {
             1 => {
-                let port: u16 = parts[0].parse().map_err(|_| format!("Invalid port: {}", parts[0]))?;
+                let port: u16 = tokens[0].parse().map_err(|_| format!("Invalid port: {}", tokens[0]))?;
                 Ok(("127.0.0.1".to_string(), port, String::new(), 0))
             }
             2 => {
-                let port: u16 = parts[1].parse().map_err(|_| format!("Invalid port: {}", parts[1]))?;
-                Ok((parts[0].to_string(), port, String::new(), 0))
+                let port: u16 = tokens[1].parse().map_err(|_| format!("Invalid port: {}", tokens[1]))?;
+                Ok((tokens[0].clone(), port, String::new(), 0))
             }
             _ => Err("Dynamic forward spec: [bind_addr:]bind_port".to_string()),
         };
     }
 
     // local/remote: [bind_addr:]bind_port:target_host:target_port
-    match parts.len() {
+    match tokens.len() {
         3 => {
-            let bind_port: u16 = parts[0].parse().map_err(|_| format!("Invalid bind port: {}", parts[0]))?;
-            let target_port: u16 = parts[2].parse().map_err(|_| format!("Invalid target port: {}", parts[2]))?;
-            Ok(("127.0.0.1".to_string(), bind_port, parts[1].to_string(), target_port))
+            let bind_port: u16 = tokens[0].parse().map_err(|_| format!("Invalid bind port: {}", tokens[0]))?;
+            let target_port: u16 = tokens[2].parse().map_err(|_| format!("Invalid target port: {}", tokens[2]))?;
+            Ok(("127.0.0.1".to_string(), bind_port, tokens[1].clone(), target_port))
         }
         4 => {
-            let bind_port: u16 = parts[1].parse().map_err(|_| format!("Invalid bind port: {}", parts[1]))?;
-            let target_port: u16 = parts[3].parse().map_err(|_| format!("Invalid target port: {}", parts[3]))?;
-            Ok((parts[0].to_string(), bind_port, parts[2].to_string(), target_port))
+            let bind_port: u16 = tokens[1].parse().map_err(|_| format!("Invalid bind port: {}", tokens[1]))?;
+            let target_port: u16 = tokens[3].parse().map_err(|_| format!("Invalid target port: {}", tokens[3]))?;
+            Ok((tokens[0].clone(), bind_port, tokens[2].clone(), target_port))
         }
         _ => Err("Forward spec: [bind_addr:]bind_port:target_host:target_port".to_string()),
     }
+}
+
+/// Tokenize a colon-separated spec, respecting `[...]` for IPv6 addresses.
+/// e.g. `[::1]:8080:localhost:80` → `["::1", "8080", "localhost", "80"]`
+fn tokenize_spec(spec: &str) -> Result<Vec<String>, String> {
+    let mut tokens = Vec::new();
+    let mut chars = spec.chars().peekable();
+
+    while chars.peek().is_some() {
+        if chars.peek() == Some(&'[') {
+            // Bracketed token (IPv6)
+            chars.next(); // consume '['
+            let mut token = String::new();
+            loop {
+                match chars.next() {
+                    Some(']') => break,
+                    Some(c) => token.push(c),
+                    None => return Err("Unclosed bracket in forward spec".to_string()),
+                }
+            }
+            tokens.push(token);
+            // Consume the following ':' separator if present
+            if chars.peek() == Some(&':') {
+                chars.next();
+            }
+        } else {
+            // Regular token until next ':'
+            let mut token = String::new();
+            while let Some(&c) = chars.peek() {
+                if c == ':' {
+                    chars.next(); // consume ':'
+                    break;
+                }
+                token.push(c);
+                chars.next();
+            }
+            tokens.push(token);
+        }
+    }
+
+    Ok(tokens)
 }
 
 /// Resolve a session target (name or ID) to a session ID.

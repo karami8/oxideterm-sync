@@ -15,6 +15,9 @@ const MAX_LINE_LENGTH: usize = 1_048_576;
 /// Idle timeout for a client connection (60 seconds).
 const IDLE_TIMEOUT: Duration = Duration::from_secs(60);
 
+/// Methods that use streaming (notifications + final response) instead of a single response.
+const STREAMING_METHODS: &[&str] = &["ask"];
+
 /// Handle a single CLI client connection.
 ///
 /// Reads lines from the stream, parses JSON-RPC requests,
@@ -89,7 +92,7 @@ pub async fn handle_client(stream: IpcStream, app: AppHandle) {
         };
 
         let id = req.id;
-        let resp = if req.method == "ask" {
+        let resp = if STREAMING_METHODS.contains(&req.method.as_str()) {
             // Streaming method: pass writer so method can send notifications
             match super::methods::dispatch_streaming(req.params, &app, &mut writer).await {
                 Ok(value) => Response::ok(id, value),

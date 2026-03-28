@@ -190,6 +190,9 @@ impl IpcConnection {
     /// The server may send notifications (lines without `id` but with `method`)
     /// before the final response (line with matching `id`). Each notification
     /// with method `stream_chunk` has `params.text` which is passed to `on_chunk`.
+    ///
+    /// On Unix, the read timeout is temporarily extended to 180s to accommodate
+    /// slow first-token latency from AI APIs, then restored when done.
     pub fn call_streaming<F>(
         &mut self,
         method: &str,
@@ -207,6 +210,30 @@ impl IpcConnection {
         self.write_all(&buf)?;
         self.flush()?;
 
+        // Extend read timeout for streaming (AI APIs may take >30s for first token)
+        const STREAMING_TIMEOUT: Duration = Duration::from_secs(180);
+        #[cfg(unix)]
+        let original_timeout = self.stream.read_timeout().ok().flatten();
+        #[cfg(unix)]
+        self.stream
+            .set_read_timeout(Some(STREAMING_TIMEOUT))
+            .map_err(|e| format!("Failed to set streaming timeout: {e}"))?;
+
+        let result = self.read_streaming_loop(&mut on_chunk);
+
+        // Restore original read timeout
+        #[cfg(unix)]
+        {
+            let _ = self.stream.set_read_timeout(original_timeout);
+        }
+
+        result
+    }
+
+    fn read_streaming_loop<F>(&mut self, on_chunk: &mut F) -> Result<serde_json::Value, String>
+    where
+        F: FnMut(&str),
+    {
         // Read lines until we get a response with our id
         loop {
             let line = self.read_line()?;

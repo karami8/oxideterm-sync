@@ -14,6 +14,7 @@ import { useLocalTerminalStore } from '../store/localTerminalStore';
 import { connectToSaved } from '../lib/connectToSaved';
 import { useToastStore } from './useToast';
 import { useTranslation } from 'react-i18next';
+import type { PaneNode } from '../types';
 
 interface CliConnectPayload {
   connection_id: string;
@@ -26,7 +27,8 @@ interface CliOpenTabPayload {
 }
 
 interface CliFocusTabPayload {
-  session_id: string;
+  session_id?: string;
+  target?: string;
 }
 
 export function useCliEvents(): void {
@@ -76,17 +78,33 @@ export function useCliEvents(): void {
       });
       listeners.push(unlistenOpen);
 
-      // cli:focus-tab — focus an existing tab by session ID
+      // cli:focus-tab — focus an existing tab by session ID or target string
       const unlistenFocus = await listen<CliFocusTabPayload>('cli:focus-tab', (event) => {
-        const { session_id } = event.payload;
-        console.info('[CLI] cli:focus-tab received', session_id);
+        const { session_id, target } = event.payload;
+        console.info('[CLI] cli:focus-tab received', session_id ?? target);
 
         const { tabs, setActiveTab } = useAppStore.getState();
-        const tab = tabs.find((t) => t.sessionId === session_id);
+
+        let tab;
+
+        if (session_id) {
+          // Match by sessionId (direct or in split-pane rootPane tree)
+          tab = tabs.find((t) => t.sessionId === session_id)
+            ?? tabs.find((t) => t.rootPane != null && paneTreeContainsSession(t.rootPane, session_id));
+        }
+
+        if (!tab && target) {
+          // Match by tab id, then by title (case-insensitive)
+          const lower = target.toLowerCase();
+          tab = tabs.find((t) => t.id === target)
+            ?? tabs.find((t) => t.title.toLowerCase() === lower)
+            ?? tabs.find((t) => t.title.toLowerCase().includes(lower));
+        }
+
         if (tab) {
           setActiveTab(tab.id);
         } else {
-          console.warn('[CLI] cli:focus-tab: no tab found for session', session_id);
+          console.warn('[CLI] cli:focus-tab: no tab found for', session_id ?? target);
         }
       });
       listeners.push(unlistenFocus);
@@ -98,4 +116,12 @@ export function useCliEvents(): void {
       listeners.forEach((unlisten) => unlisten());
     };
   }, [t]);
+}
+
+/** Recursively check if a pane tree contains a leaf with the given sessionId. */
+function paneTreeContainsSession(node: PaneNode, sessionId: string): boolean {
+  if (node.type === 'leaf') {
+    return node.sessionId === sessionId;
+  }
+  return node.children.some((child) => paneTreeContainsSession(child, sessionId));
 }
