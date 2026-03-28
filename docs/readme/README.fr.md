@@ -5,22 +5,22 @@
 <h1 align="center">⚡ OxideTerm</h1>
 
 <p align="center">
-  <strong>Terminal local + SSH + SFTP + IA dans une seule app native.</strong>
+  <strong>Zéro Electron. Zéro OpenSSL. SSH pur Rust.</strong>
   <br>
-  <em>Zéro Electron. Zéro OpenSSL. Pile SSH 100 % Rust.</em>
+  <em>Un seul binaire natif — shells locaux, SSH, SFTP, IDE distant, IA, redirection de ports, plugins, 30+ thèmes, 11 langues.</em>
 </p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/version-0.21.0-blue" alt="Version">
-  <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-blue" alt="Platform">
-  <img src="https://img.shields.io/badge/license-PolyForm%20Noncommercial-blueviolet" alt="License">
+  <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-blue" alt="Plateforme">
+  <img src="https://img.shields.io/badge/license-PolyForm%20Noncommercial-blueviolet" alt="Licence">
   <img src="https://img.shields.io/badge/rust-1.75+-orange" alt="Rust">
   <img src="https://img.shields.io/badge/tauri-2.0-purple" alt="Tauri">
 </p>
 
 <p align="center">
   <a href="https://github.com/AnalyseDeCircuit/oxideterm/releases/latest">
-    <img src="https://img.shields.io/github/v/release/AnalyseDeCircuit/oxideterm?label=T%C3%A9l%C3%A9charger&style=for-the-badge&color=brightgreen" alt="Télécharger la dernière version">
+    <img src="https://img.shields.io/github/v/release/AnalyseDeCircuit/oxideterm?label=Télécharger%20la%20dernière%20version&style=for-the-badge&color=brightgreen" alt="Télécharger la dernière version">
   </a>
 </p>
 
@@ -34,23 +34,23 @@
 
 https://github.com/user-attachments/assets/4ba033aa-94b5-4ed4-980c-5c3f9f21db7e
 
-*🤖 OxideSens — « Ouvrir un terminal local et exécuter echo hello, world! »*
+*🤖 OxideSens AI — « Ouvre un terminal local et exécute echo hello, world ! »*
 
 </div>
 
-## Qu'est-ce qu'OxideTerm ?
+---
 
-OxideTerm est une **application terminal multiplateforme** qui unifie shells locaux, sessions SSH distantes, gestion de fichiers, édition de code et OxideSens dans un seul binaire natif Rust. Ce n'est **pas** un wrapper Electron — le backend entier est écrit en Rust, livré sous forme d'exécutable natif d'environ 20-35 Mo via Tauri 2.0.
+## Pourquoi OxideTerm ?
 
-### Pourquoi un autre terminal ?
-
-| Point de douleur | Réponse d'OxideTerm |
+| Problème | La réponse d'OxideTerm |
 |---|---|
-| Les clients SSH ne font pas de shell local | Moteur hybride : PTY local + SSH distant dans une fenêtre |
-| Reconnexion = tout perdre | **Architecture Node-first** : reconnexion auto restaure redirections, transferts, état IDE |
-| L'édition distante nécessite VS Code Remote | **Mode IDE intégré** : éditeur CodeMirror 6 via SFTP, zéro install serveur par défaut ; agent distant optionnel sous Linux |
-| Pas de réutilisation de connexion SSH | **Multiplexage SSH** : terminal, SFTP, redirections partagent une connexion |
-| Les bibliothèques SSH dépendent d'OpenSSL | **russh 0.54** : SSH pur Rust, backend crypto `ring`, zéro deps C |
+| Les clients SSH ne font pas de shells locaux | **Moteur hybride** : PTY local (zsh/bash/fish/pwsh/WSL2) + SSH distant dans une seule fenêtre |
+| Reconnexion = tout perdu | **Reconnexion avec période de grâce** : sonde l'ancienne connexion 30 s avant de la couper — vos vim/htop/yazi survivent |
+| L'édition distante nécessite VS Code Remote | **IDE intégré** : CodeMirror 6 via SFTP avec 30+ langages, agent distant optionnel (~1 Mo) sur Linux |
+| Pas de réutilisation de connexion SSH | **Multiplexage** : terminal, SFTP, redirections, IDE partagent une seule connexion SSH via un pool à comptage de références |
+| Les bibliothèques SSH dépendent d'OpenSSL | **russh 0.54** : SSH pur Rust compilé avec `ring` — zéro dépendance C |
+| Applications Electron de 100+ Mo | **Tauri 2.0** : backend Rust natif, binaire de 25–40 Mo |
+| IA verrouillée sur un fournisseur | **OxideSens** : 40+ outils, protocole MCP, base de connaissances RAG — fonctionne avec OpenAI/Ollama/DeepSeek/toute API compatible |
 
 ---
 
@@ -58,395 +58,223 @@ OxideTerm est une **application terminal multiplateforme** qui unifie shells loc
 
 <table>
 <tr>
-<td align="center"><strong>Terminal SSH + OxideSens AI</strong><br/><br/><img src="../screenshots/terminal/SSHTERMINAL.png" alt="Terminal SSH avec barre latérale OxideSens AI" /></td>
-<td align="center"><strong>Gestionnaire de fichiers SFTP</strong><br/><br/><img src="../screenshots/sftp/sftp.png" alt="Gestionnaire SFTP à double panneau" /></td>
+<td align="center"><strong>Terminal SSH + OxideSens AI</strong><br/><br/><img src="../../docs/screenshots/terminal/SSHTERMINAL.png" alt="Terminal SSH avec barre latérale OxideSens AI" /></td>
+<td align="center"><strong>Gestionnaire de fichiers SFTP</strong><br/><br/><img src="../../docs/screenshots/sftp/sftp.png" alt="Gestionnaire de fichiers SFTP double volet avec file de transfert" /></td>
 </tr>
 <tr>
-<td align="center"><strong>IDE intégré (CodeMirror 6)</strong><br/><br/><img src="../screenshots/miniIDE/miniide.png" alt="Mode IDE intégré avec CodeMirror 6" /></td>
-<td align="center"><strong>Redirection de ports intelligente</strong><br/><br/><img src="../screenshots/PORTFORWARD/PORTFORWARD.png" alt="Redirection de ports avec auto-détection" /></td>
+<td align="center"><strong>IDE intégré (CodeMirror 6)</strong><br/><br/><img src="../../docs/screenshots/miniIDE/miniide.png" alt="Mode IDE intégré avec éditeur CodeMirror 6" /></td>
+<td align="center"><strong>Redirection de ports intelligente</strong><br/><br/><img src="../../docs/screenshots/PORTFORWARD/PORTFORWARD.png" alt="Redirection de ports intelligente avec détection automatique" /></td>
 </tr>
 </table>
 
 ---
 
-## Architecture en un coup d'œil
+## Aperçu des fonctionnalités
+
+| Catégorie | Fonctionnalités |
+|---|---|
+| **Terminal** | PTY local (zsh/bash/fish/pwsh/WSL2), SSH distant, panneaux divisés, diffusion d'entrée, enregistrement/lecture de sessions (asciicast v2), rendu WebGL, 30+ thèmes + éditeur personnalisé, palette de commandes (`⌘K`), mode zen |
+| **SSH & Auth** | Pool de connexions & multiplexage, ProxyJump (sauts illimités) avec graphe topologique, reconnexion automatique avec période de grâce. Auth : mot de passe, clé SSH (RSA/Ed25519/ECDSA), SSH Agent, certificats, 2FA interactif clavier, Known Hosts TOFU |
+| **SFTP** | Navigateur double volet, glisser-déposer, aperçu intelligent (images/vidéo/audio/code/PDF/hex/polices), file de transfert avec progression & ETA, signets, extraction d'archives |
+| **Mode IDE** | CodeMirror 6 avec 30+ langages, arborescence + statut Git, multi-onglets, résolution de conflits, terminal intégré. Agent distant optionnel pour Linux (10+ architectures) |
+| **Redirection de ports** | Local (-L), distant (-R), SOCKS5 dynamique (-D), I/O par passage de messages sans verrou, restauration automatique à la reconnexion, rapport d'arrêt, délai d'inactivité |
+| **IA (OxideSens)** | Panneau inline (`⌘I`) + chat latéral, capture du buffer terminal (panneau unique/tous), contexte multi-sources (IDE/SFTP/Git), 40+ outils autonomes, intégration serveur MCP, base de connaissances RAG (recherche hybride BM25 + vecteurs), streaming SSE |
+| **Plugins** | Chargement ESM en runtime, 8 espaces de noms API, 24 composants UI Kit, API gelée + ACL Proxy, disjoncteur, désactivation automatique en cas d'erreurs |
+| **CLI** | Companion `oxt` : JSON-RPC 2.0 via Unix Socket / Named Pipe, `status`/`list`/`ping`, sortie humaine + JSON |
+| **Sécurité** | Export chiffré .oxide (ChaCha20-Poly1305 + Argon2id 256 Mo), trousseau OS, Touch ID (macOS), TOFU clé hôte, nettoyage mémoire `zeroize` |
+| **i18n** | 11 langues : EN, 简体中文, 繁體中文, 日本語, 한국어, FR, DE, ES, IT, PT-BR, VI |
+
+---
+
+## Sous le capot
+
+### Architecture — Communication à double plan
+
+OxideTerm sépare les données du terminal des commandes de contrôle en deux plans indépendants :
 
 ```
 ┌─────────────────────────────────────┐
 │        Frontend (React 19)          │
-│                                     │
-│  SessionTreeStore ──► AppStore      │    16 stores Zustand
-│  IdeStore    LocalTerminalStore     │    20 répertoires composants
-│  ReconnectOrchestratorStore         │    11 langues × 21 espaces de noms
-│  PluginStore  AiChatStore  ...      │
-│                                     │
-│        xterm.js 6 + WebGL           │
+│  xterm.js 6 (WebGL) + 18 stores    │
 └──────────┬──────────────┬───────────┘
            │ Tauri IPC    │ WebSocket (binaire)
+           │ (JSON)       │ port par session
 ┌──────────▼──────────────▼───────────┐
 │         Backend (Rust)              │
-│                                     │
-│  NodeRouter ── resolve(nodeId) ──►  │    24 modules commandes IPC
-│  ├─ SshConnectionRegistry          │    État concurrent DashMap
-│  ├─ SessionRegistry                │    PTY local feature-gated
-│  ├─ ForwardingManager              │    Coffre ChaCha20-Poly1305
-│  ├─ SftpSession (au niveau conn.)  │    russh 0.54 (backend ring)
-│  └─ LocalTerminalRegistry          │    SSH Agent (AgentSigner)
-│                                     │
+│  NodeRouter → SshConnectionRegistry │
 │  Wire Protocol v1                   │
-│  [Type:1][Longueur:4][Charge:n]     │
+│  [Type:1][Length:4][Payload:n]       │
 └─────────────────────────────────────┘
 ```
 
-**Communication dual-plane** : trames binaires WebSocket pour les I/O terminal (zéro sérialisation), IPC Tauri pour les commandes structurées et événements. Le frontend ne touche jamais `sessionId` ni `connectionId` — tout est adressé par `nodeId`, résolu côté serveur par le `NodeRouter`.
-
----
-
-## Points forts techniques
+- **Plan de données (WebSocket)** : chaque session SSH obtient son propre port WebSocket. Les octets du terminal circulent sous forme de trames binaires avec un en-tête Type-Length-Payload — aucune sérialisation JSON, aucun encodage Base64, zéro surcharge sur le chemin critique.
+- **Plan de contrôle (Tauri IPC)** : gestion des connexions, opérations SFTP, redirections, configuration — JSON structuré, mais hors du chemin critique.
+- **Adressage par nœud** : le frontend ne touche jamais `sessionId` ni `connectionId`. Tout est adressé par `nodeId`, résolu atomiquement côté serveur par le `NodeRouter`. La reconnexion SSH modifie le `connectionId` sous-jacent — mais SFTP, IDE et redirections ne sont absolument pas affectés.
 
 ### 🔩 SSH pur Rust — russh 0.54
 
-OxideTerm embarque **russh 0.54** compilé avec le backend crypto `ring` :
-- **Zéro dépendance C/OpenSSL** dans le chemin SSH — pile crypto entièrement Rust
+L'intégralité de la pile SSH est **russh 0.54** compilée avec le backend cryptographique **`ring`** :
+
+- **Zéro dépendance C/OpenSSL** — toute la pile crypto est en Rust. Plus de débogage « quelle version d'OpenSSL ? ».
 - Protocole SSH2 complet : échange de clés, canaux, sous-système SFTP, redirection de ports
-- Suites ChaCha20-Poly1305 et AES-GCM, clés Ed25519/RSA/ECDSA
-
-### 🔑 Authentification SSH Agent (AgentSigner)
-
-Un `AgentSigner` sur mesure encapsule l'Agent SSH système et satisfait le trait `Signer` de russh :
+- Suites de chiffrement ChaCha20-Poly1305 et AES-GCM, clés Ed25519/RSA/ECDSA
+- **`AgentSigner`** personnalisé : encapsule le SSH Agent système et implémente le trait `Signer` de russh, résolvant les problèmes de bornes `Send` RPITIT dans russh 0.54 en clonant `&PublicKey` vers une valeur possédée avant de traverser `.await`
 
 ```rust
-// Résout le problème RPITIT Send bound dans russh 0.54
-// en clonant &PublicKey vers une valeur possédée avant le .await
-pub struct AgentSigner { /* ... */ }
-impl Signer for AgentSigner { /* défi-réponse via IPC Agent */ }
+pub struct AgentSigner { /* wraps system SSH Agent */ }
+impl Signer for AgentSigner { /* challenge-response via Agent IPC */ }
 ```
 
-- **Plateformes** : Unix (`SSH_AUTH_SOCK`), Windows (`\\.\pipe\openssh-ssh-agent`)
-- **Chaînes proxy** : chaque saut peut utiliser l'auth Agent indépendamment
+- **Support plateforme** : Unix (`SSH_AUTH_SOCK`), Windows (`\\.\pipe\openssh-ssh-agent`)
+- **Chaînes proxy** : chaque saut utilise indépendamment l'authentification Agent
 - **Reconnexion** : `AuthMethod::Agent` rejoué automatiquement
 
-### 🧭 Architecture Node-First (NodeRouter)
+### 🔄 Reconnexion intelligente avec période de grâce
 
-L'**abstraction Oxide-Next des nœuds** élimine une classe entière de conditions de course :
+La plupart des clients SSH détruisent tout à la déconnexion et repartent de zéro. L'orchestrateur de reconnexion d'OxideTerm adopte une approche fondamentalement différente :
 
-```
-Frontend : useNodeState(nodeId) → { readiness, sftpReady, error }
-Backend  : NodeRouter.resolve(nodeId) → ConnectionEntry → SftpSession
-```
+1. **Détection** du timeout heartbeat WebSocket (300 s, calibré pour macOS App Nap et le throttling des timers JS)
+2. **Snapshot** de l'état complet : panneaux terminal, transferts SFTP en cours, redirections de ports actives, fichiers IDE ouverts
+3. **Sondage intelligent** : événements `visibilitychange` + `online` déclenchent un keepalive SSH proactif (~2 s de détection contre 15–30 s en timeout passif)
+4. **Période de grâce** (30 s) : sonde l'ancienne connexion SSH via keepalive — si elle se rétablit (ex. : changement de point d'accès WiFi), vos applications TUI (vim, htop, yazi) survivent intégralement
+5. En cas d'échec de récupération → nouvelle connexion SSH → restauration automatique des redirections → reprise des transferts SFTP → réouverture des fichiers IDE
 
-- Les opérations frontend SFTP/IDE ne transmettent que `nodeId`
-- Le backend résout `nodeId → ConnectionEntry` de manière atomique
-- La reconnexion SSH change `connectionId` — SFTP/IDE **insensibles**
-- `NodeEventEmitter` pousse des événements typés avec compteurs de génération
+Pipeline : `queued → snapshot → grace-period → ssh-connect → await-terminal → restore-forwards → resume-transfers → restore-ide → verify → done`
 
-### ⚙️ Terminal local — PTY thread-safe
-
-Shell local multiplateforme via `portable-pty 0.8`, gate sous la feature `local-terminal` :
-
-- **Thread safety** : `MasterPty` encapsulé dans `std::sync::Mutex` + `unsafe impl Sync`
-- **Threads I/O dédiés** : les lectures PTY bloquantes ne touchent jamais la boucle Tokio
-- **Détection de shell** : découvre auto `zsh`, `bash`, `fish`, `pwsh`, Git Bash, WSL2
-- **Feature gate** : `cargo build --no-default-features` retire le PTY pour le mobile
-
-### 🔌 Système de plugins runtime (v1.6.2+)
-
-Chargement dynamique de plugins avec API gelée et sécurisée :
-
-- **API PluginContext** : 8 espaces de noms (terminal, ui, commands, settings, lifecycle, events, storage, system)
-- **24 composants UI Kit** : composants React pré-construits injectés dans les bacs à sable
-- **Modèle de sécurité** : `Object.freeze` + Proxy ACL, disjoncteur, liste blanche IPC
-- **Architecture Membrane** : plugins exécutés dans des contextes ESM isolés avec pont contrôlé
+Toute la logique passe par un `ReconnectOrchestratorStore` dédié — zéro code de reconnexion dispersé dans les hooks ou composants.
 
 ### 🛡️ Pool de connexions SSH
 
-`SshConnectionRegistry` avec comptage de références, basé sur DashMap :
+`SshConnectionRegistry` à comptage de références s'appuyant sur `DashMap` pour un accès concurrent sans verrou :
 
-- Plusieurs terminaux, SFTP, redirections partagent **une seule connexion SSH physique**
-- Machines d'état indépendantes par connexion
-- Timeout d'inactivité (configurable : 5min / 15min / 30min / 1h / jamais), keep-alive (15s), détection de pannes par heartbeat
-- Propagation en cascade : bastion down → tous les nœuds en aval marqués `link_down`
+- **Une connexion, plusieurs consommateurs** : terminal, SFTP, redirections de ports et IDE partagent une seule connexion SSH physique — pas de handshakes TCP redondants
+- **Machine à états par connexion** : `connecting → active → idle → link_down → reconnecting`
+- **Gestion du cycle de vie** : délai d'inactivité configurable (5 min / 15 min / 30 min / 1 h / jamais), intervalle keepalive de 15 s, détection de défaillance heartbeat
+- **Heartbeat WsBridge** : intervalle de 30 s, timeout de 5 min — tolère macOS App Nap et le throttling JS du navigateur
+- **Propagation en cascade** : défaillance de l'hôte de saut → tous les nœuds en aval automatiquement marqués `link_down` avec synchronisation du statut
+- **Déconnexion en inactivité** : émet `connection_status_changed` vers le frontend (pas seulement un `node:state` interne), empêchant la désynchronisation de l'interface
 
-### 🔀 Redirection de ports — I/O sans verrou
+### 🤖 OxideSens AI
 
-Redirection locale (-L), distante (-R) et SOCKS5 dynamique (-D) complète :
+Assistant IA axé sur la confidentialité avec deux modes d'interaction :
 
-- **Architecture message-passing** : Channel SSH détenu par une tâche `ssh_io` unique, pas de `Arc<Mutex<Channel>>`
-- **Rapport de décès** : les tâches signalent activement leur raison de sortie
-- **Auto-restauration** : les redirections `Suspended` reprennent après reconnexion
-- **Timeout** : `FORWARD_IDLE_TIMEOUT` (300s) empêche les connexions zombies
-
-### 🤖 OxideSens
-
-IA dual-mode, priorité à la vie privée :
-
-- **Panneau inline** (`⌘I`) : commandes rapides injectées via bracketed paste
-- **Chat latéral** : conversation persistante avec historique
-- **Capture de contexte** : Terminal Registry collecte le tampon des panneaux actifs ou tous les splits
-- **Contexte multi-sources** : injection automatique des fichiers IDE, chemins SFTP et statut Git dans les conversations IA
-- **Utilisation d'outils** : 40+ outils intégrés (opérations fichiers, gestion de processus, réseau, interaction TUI) invocables par l'IA
-- **Support MCP** : connexion à des serveurs [Model Context Protocol](https://modelcontextprotocol.io) externes (stdio & SSE) pour étendre l'IA avec des outils tiers — géré dans les Paramètres
-- **Compatible** : OpenAI, Ollama, DeepSeek, OneAPI, tout endpoint `/v1/chat/completions`
-- **Sécurisé** : clés API dans le trousseau système ; sous macOS, la lecture des clés est protégée par **Touch ID** via `LAContext` (`LocalAuthentication.framework`), sans entitlement ni signature de code requis
-
-### 📚 Base de connaissances RAG pour les opérations (v0.20)
-
-Génération augmentée par récupération, locale en priorité, pour la documentation opérationnelle :
-
-- **Collections de documents** : importez des runbooks, SOP et guides de déploiement en Markdown/TXT dans des collections à portée globale ou par connexion
-- **Recherche hybride** : index BM25 par mots-clés + similarité cosinus vectorielle, fusionnés via Reciprocal Rank Fusion (RRF)
-- **Découpage Markdown intelligent** : séparation par hiérarchie de titres, conservation du chemin de section (ex. « Déploiement > Docker > Dépannage »)
-- **Support CJK** : tokeniseur bigramme pour le chinois/japonais/coréen + tokenisation par espaces pour les scripts latins
-- **Intégration IA** : l'outil `search_docs` récupère automatiquement le contexte documentaire pertinent pendant les conversations IA — aucun déclenchement manuel nécessaire
-- **Édition externe** : ouvrez les documents dans l'éditeur système, synchronisation automatique au refocus de la fenêtre avec verrouillage optimiste de version
-- **Réindexation avec progression** : reconstruction complète du BM25 avec barre de progression en temps réel et support d'annulation
-- **Pipeline d'embeddings** : le frontend génère les vecteurs via le fournisseur IA, stockés dans le backend pour la récupération hybride
-- **Stockage** : base de données embarquée redb, 9 tables, sérialisation MessagePack avec compression automatique pour les gros fragments
+- **Panneau inline** (`⌘I`) : commandes terminal rapides, sortie injectée via bracketed paste
+- **Chat latéral** : conversations persistantes avec historique complet
+- **Capture de contexte** : le Terminal Registry collecte le buffer du panneau actif ou de tous les panneaux divisés simultanément ; injection automatique des fichiers IDE, chemins SFTP et statut Git
+- **40+ outils autonomes** : opérations fichiers, gestion de processus, diagnostics réseau, interaction avec les apps TUI, traitement de texte — l'IA invoque ces outils sans déclenchement manuel
+- **Support MCP** : connexion à des serveurs [Model Context Protocol](https://modelcontextprotocol.io) externes (stdio & SSE) pour l'intégration d'outils tiers
+- **Base de connaissances RAG** (v0.20) : importez des documents Markdown/TXT dans des collections ciblées (globales ou par connexion). La recherche hybride fusionne index de mots-clés BM25 + similarité cosinus vectorielle via Reciprocal Rank Fusion. Découpage Markdown préservant la hiérarchie des titres. Tokenizer bigramme CJK pour chinois/japonais/coréen.
+- **Fournisseurs** : OpenAI, Ollama, DeepSeek, OneAPI, ou tout endpoint `/v1/chat/completions`
+- **Sécurité** : clés API stockées dans le trousseau OS ; sur macOS, la lecture des clés est protégée par **Touch ID** via `LAContext` — aucun entitlement ni signature de code requis, mis en cache après la première authentification par session
 
 ### 💻 Mode IDE — Édition distante
 
-Éditeur CodeMirror 6 via SFTP — aucune installation côté serveur requise par défaut ; Linux prend en charge un agent distant optionnel pour des capacités étendues :
+Éditeur CodeMirror 6 opérant via SFTP — aucune installation côté serveur requise par défaut :
 
-- **Arborescence** : chargement paresseux SFTP avec indicateurs de statut Git
-- **30+ modes de langage** : 16 packs CodeMirror natifs + modes legacy
-- **Résolution de conflits** : verrouillage optimiste par `mtime`
-- **Git piloté par événements** : rafraîchissement auto sur sauvegarde, création, suppression, renommage
-- **State Gating** : IO bloqué si `readiness !== 'ready'`, Key-Driven Reset à la reconnexion
-- **Agent distant Linux (optionnel)** : binaire Rust ~1 Mo, déploiement auto sur x86_64/aarch64. Architectures supplémentaires (ARMv7, RISC-V64, LoongArch64, s390x, etc.) disponibles dans `agents/extra/` pour téléchargement manuel
+- **Arborescence de fichiers** : chargement paresseux des répertoires avec indicateurs de statut Git (modifié/non suivi/ajouté)
+- **30+ modes de langage** : 16 natifs CodeMirror + modes hérités via `@codemirror/legacy-modes`
+- **Résolution de conflits** : verrouillage optimiste par mtime — détecte les modifications distantes avant l'écrasement
+- **Git événementiel** : rafraîchissement automatique à la sauvegarde, création, suppression, renommage et touche Entrée du terminal
+- **State Gating** : toutes les E/S bloquées quand `readiness !== 'ready'`, Key-Driven Reset force un remontage complet à la reconnexion
+- **Agent distant** (optionnel) : binaire Rust d'environ 1 Mo, déployé automatiquement sur x86_64/aarch64 Linux. 10+ architectures supplémentaires (ARMv7, RISC-V64, LoongArch64, s390x, mips64, Power64LE…) dans `agents/extra/` pour upload manuel. Active l'arborescence améliorée, la recherche de symboles et la surveillance de fichiers.
+
+### 🔀 Redirection de ports — I/O sans verrou
+
+Redirection locale (-L), distante (-R) et dynamique SOCKS5 (-D) complète :
+
+- **Architecture par passage de messages** : le canal SSH est détenu par une seule tâche `ssh_io` — pas de `Arc<Mutex<Channel>>`, éliminant totalement la contention mutex
+- **Rapport d'arrêt** : les tâches de redirection signalent activement la raison de sortie (déconnexion SSH, fermeture du port distant, timeout) pour un diagnostic clair
+- **Restauration automatique** : les redirections `Suspended` reprennent automatiquement à la reconnexion sans intervention utilisateur
+- **Délai d'inactivité** : `FORWARD_IDLE_TIMEOUT` (300 s) empêche l'accumulation de connexions zombies
+
+### 🔌 Système de plugins en runtime
+
+Chargement ESM dynamique avec une surface API gelée et renforcée en sécurité :
+
+- **API PluginContext** : 8 espaces de noms — terminal, ui, commands, settings, lifecycle, events, storage, system
+- **24 composants UI Kit** : composants React préconstruits (boutons, champs de saisie, dialogues, tableaux…) injectés dans les sandboxes de plugins via `window.__OXIDE__`
+- **Membrane de sécurité** : `Object.freeze` sur tous les objets de contexte, ACL basée sur Proxy, liste blanche IPC, disjoncteur avec désactivation automatique après erreurs répétées
+- **Modules partagés** : React, ReactDOM, zustand, lucide-react exposés pour utilisation par les plugins sans duplication de bundles
+
+### ⚡ Rendu adaptatif
+
+Planificateur de rendu à trois niveaux remplaçant le batching fixe `requestAnimationFrame` :
+
+| Niveau | Déclencheur | Fréquence | Avantage |
+|---|---|---|---|
+| **Boost** | Données de trame ≥ 4 Ko | 120 Hz+ (ProMotion natif) | Élimine le lag de défilement sur `cat largefile.log` |
+| **Normal** | Saisie standard | 60 Hz (RAF) | Base fluide |
+| **Inactif** | 3 s sans E/S / onglet masqué | 1–15 Hz (décroissance exponentielle) | Charge GPU quasi nulle, économie de batterie |
+
+Les transitions sont entièrement automatiques — pilotées par le volume de données, les entrées utilisateur et l'API Page Visibility. Les onglets en arrière-plan continuent de vider les données via le timer d'inactivité sans réveiller RAF.
 
 ### 🔐 Export chiffré .oxide
 
-Format de sauvegarde portable :
+Sauvegarde de connexion portable et inviolable :
 
-- **ChaCha20-Poly1305 AEAD** chiffrement authentifié
-- **Argon2id KDF** (256 Mo mémoire, 4 itérations) — résistant au brute-force GPU
-- **SHA-256** somme de contrôle d'intégrité
-- **Intégration optionnelle de clés** : clés privées encodées en base64
-- **Analyse pré-vol** : répartition des types d'auth, détection des clés manquantes
+- Chiffrement authentifié **ChaCha20-Poly1305 AEAD**
+- **KDF Argon2id** : coût mémoire de 256 Mo, 4 itérations — résistant au brute-force GPU
+- Somme de contrôle d'intégrité **SHA-256**
+- **Intégration optionnelle de clés** : clés privées encodées en base64 dans la charge utile chiffrée
+- **Analyse préalable** : ventilation des types d'authentification, détection des clés manquantes avant l'export
 
-### 📡 ProxyJump — Multi-saut conscient de la topologie
+### 📡 ProxyJump — Multi-saut avec conscience topologique
 
 - Profondeur de chaîne illimitée : `Client → Saut A → Saut B → … → Cible`
-- Parse auto SSH Config, construction du graphe topologique, calcul de chemin Dijkstra
+- Analyse automatique de `~/.ssh/config`, construction du graphe topologique, algorithme de Dijkstra pour la route optimale
 - Nœuds de saut réutilisables comme sessions indépendantes
-- Propagation de pannes en cascade avec synchronisation auto en aval
+- Propagation de défaillance en cascade : hôte de saut en panne → tous les nœuds en aval automatiquement marqués `link_down`
 
-### 📊 Profileur de ressources
+### ⚙️ Terminal local — PTY thread-safe
 
-Surveillance en temps réel des hôtes distants via canal shell SSH persistant :
+Shell local multiplateforme via `portable-pty 0.8`, protégé par le feature gate `local-terminal` :
 
-- Lecture de `/proc/stat`, `/proc/meminfo`, `/proc/loadavg`, `/proc/net/dev`
-- Calcul CPU% et débit réseau basé sur le delta
-- Canal unique — évite l'épuisement de MaxSessions
-- Dégradation auto vers RTT-only sur hôtes non-Linux ou échecs consécutifs
-### 🖼️ Galerie d'images d'arrière-plan
+- `MasterPty` enveloppé dans `std::sync::Mutex` — des threads d'E/S dédiés gardent les lectures PTY bloquantes hors de la boucle d'événements Tokio
+- Détection automatique du shell : `zsh`, `bash`, `fish`, `pwsh`, Git Bash, WSL2
+- `cargo build --no-default-features` supprime le PTY pour les builds mobiles/légers
 
-Système multi-images avec contrôle de transparence par onglet :
+### 🪟 Optimisation Windows
 
-- **Gestion galerie** : téléversement multiple, cliquer sur les miniatures pour changer, suppression individuelle ou en bloc
-- **Interrupteur principal** : activer/désactiver l'arrière-plan globalement sans supprimer les images
-- **Contrôle par onglet** : 13 types d'onglets configurables individuellement (terminal, SFTP, IDE, paramètres, topologie, etc.)
-- **Personnalisation** : opacité (3–50%), flou (0–20px), mode d'ajustement (couvrir/contenir/remplir/mosaïque)
-- **Adapté aux plateformes** : transparence macOS ; chemin WSLg Windows exclu (canvas VNC opaque)
-- **Sécurité** : suppression canonicalisée empêchant la traversée de répertoire ; propagation complète des erreurs depuis le backend Rust
+- **ConPTY natif** : invoque directement l'API Windows Pseudo Console — support complet TrueColor et ANSI, pas de WinPTY obsolète
+- **Scanner de shells** : détecte automatiquement PowerShell 7, Git Bash, WSL2, CMD via le Registre et le PATH
 
-### ⚡ Rendu adaptatif — Taux de rafraîchissement dynamique
+### Et plus encore
 
-Un planificateur de rendu à trois niveaux remplace le batching RAF fixe, améliorant la réactivité lors de sorties intensives et réduisant la charge GPU/batterie au ralenti :
-
-| Niveau | Déclencheur | Cadence effective | Bénéfice |
-|---|---|---|---|
-| **Boost** | Données de trame ≥ 4 Ko | 120 Hz+ (RAF / ProMotion natif) | Élimine les saccades lors d'une sortie rapide |
-| **Normal** | Frappe standard / I/O légère | 60 Hz (RAF) | Interaction fluide de base |
-| **Idle** | 3 s sans I/O, page cachée ou fenêtre sans focus | 1–15 Hz (timer, croissance exponentielle) | Charge GPU quasi nulle, économie de batterie |
-
-- **Mode automatique** : transitions pilotées par le volume de données, l'activité utilisateur et l'API Page Visibility — aucun réglage manuel nécessaire
-- **Sécurité arrière-plan** : quand l'onglet est masqué, les données distantes entrantes continuent d'être vidées via le timer idle — le RAF n'est jamais réveillé, évitant l'accumulation de tampons en attente sur les onglets en arrière-plan
-- **Paramètres** : trois modes (Auto / Toujours 60 Hz / Désactivé) dans Paramètres → Terminal → Rendu
-- **Diagnostic en direct** : activer **Afficher la superposition FPS** pour voir un badge de niveau en temps réel (`B`=boost · `N`=normal · `I`=idle), la cadence de rendu et le compteur d'écritures par seconde dans le coin du terminal
-
-### 🎨 Moteur de thèmes personnalisés
-
-Personnalisation thématique en profondeur au-delà des palettes prédéfinies :
-
-- **30+ thèmes intégrés** : Oxide, Dracula, Nord, Catppuccin, Spring Rice, Tokyo Night, et plus
-- **Éditeur visuel** : sélecteur de couleurs + saisie hexadécimale RGB pour chaque champ
-- **Couleurs terminal** : les 22 champs xterm.js (arrière-plan, premier plan, curseur, sélection, 16 couleurs ANSI)
-- **Couleurs interface** : 19 variables CSS en 5 catégories — Arrière-plan (5), Texte (3), Bordures (3), Accent (4), Couleurs d'état sémantiques (4)
-- **Dérivation auto** : génération en un clic des couleurs UI depuis la palette terminal
-- **Aperçu en direct** : mini terminal + aperçu chrome UI en temps réel pendant l'édition
-- **Dupliquer & étendre** : créer de nouveaux thèmes à partir de n'importe quel thème intégré ou personnalisé
-- **Persistant** : thèmes personnalisés sauvegardés en localStorage, survivent aux mises à jour
-
-### 🪟 Optimisation Windows approfondie
-
-- **Intégration ConPTY native** : appel direct de l’API Windows Pseudo Console (ConPTY) pour un support parfait TrueColor et séquences ANSI — fini le WinPTY obsolète.
-- **Détection intelligente de shell** : scanner intégré auto-détecte **PowerShell 7 (pwsh)**, **Git Bash**, **WSL2** et CMD via registre et PATH.
-- **Expérience native** : Rust gère directement les événements fenêtre — vitesse de réponse bien supérieure aux apps Electron.
-
-### 📊 Tampon de défilement backend
-
-- **Persistance haute capacité** : **100 000 lignes** par défaut de sortie terminal, sérialisable sur disque (format MessagePack).
-- **Recherche haute performance** : `spawn_blocking` isole les tâches de recherche regex, évitant de bloquer le runtime Tokio.
-- **Mémoire efficace** : conception en tampon circulaire, éviction automatique des données les plus anciennes.
-
-### ⚛️ Architecture Multi-Store
-
-Le frontend adopte un pattern **Multi-Store** (16 stores) pour gérer des domaines d'état radicalement différents :
-
-| Store | Rôle |
-|---|---|
-| **SessionTreeStore** | Intention utilisateur — arborescence, flux de connexion |
-| **AppStore** | Couche factuelle — état SSH réel via `connections` Map |
-| **IdeStore** | Mode IDE — édition distante, statut Git, multi-onglets |
-| **LocalTerminalStore** | Cycle de vie PTY local, monitoring Shell |
-| **ReconnectOrchestratorStore** | Pipeline auto-reconnexion (snapshot → ssh-connect → restore) |
-| **TransferStore** | File de transfert SFTP et progrès |
-| **PluginStore** | État runtime des plugins et registre UI |
-| **ProfilerStore** | Métriques du profileur de ressources |
-| **AiChatStore** | OxideSens état des conversations |
-| **SettingsStore** | Paramètres de l'application |
-| **BroadcastStore** | Diffusion clavier — répliquer frappes vers plusieurs panneaux |
-| **CommandPaletteStore** | État ouverture/fermeture palette de commandes |
-| **EventLogStore** | Journal cycle de vie connexions & reconnexion |
-| **LauncherStore** | État lanceur d'applications plateforme |
-| **RecordingStore** | Enregistrement & lecture sessions terminal |
-| **UpdateStore** | Cycle de vie mise à jour auto (vérifier → télécharger → installer) |
-Malgré des sources d’état différentes, la logique de rendu est unifiée via les composants `TerminalView` et `IdeView`.
-### 🖥️ CLI Companion — `oxt`
-
-Un outil CLI autonome qui communique avec le GUI OxideTerm en cours d'exécution via IPC :
-
-- **Protocole** : JSON-RPC 2.0 via Unix Domain Socket (macOS/Linux) ou Named Pipe (Windows)
-- **Commandes** : `oxt status`, `oxt list connections`, `oxt list sessions`, `oxt ping`
-- **Modes de sortie** : détection automatique format lisible, `--json` pour les scripts
-- **Distribué avec le GUI** : intégré au package, installable via Paramètres → Général vers `~/.local/bin/`
-- **Sécurité** : 16 connexions simultanées max, limite de requête 1 Mo, délai d'inactivité 60s, permissions Socket propriétaire uniquement
----
-
-## Stack technique
-
-| Couche | Technologie | Détails |
-|---|---|---|
-| **Framework** | Tauri 2.0 | Binaire natif, ~15 Mo, zéro Electron |
-| **Runtime** | Tokio + DashMap 6 | Full async + maps concurrentes sans verrou |
-| **SSH** | russh 0.54 (`ring`) | Pur Rust, zéro deps C, SSH Agent |
-| **PTY local** | portable-pty 0.8 | Feature-gated, ConPTY sous Windows |
-| **Frontend** | React 19.1 + TypeScript 5.8 | Vite 7, Tailwind CSS 4 |
-| **État** | Zustand 5 | 16 stores spécialisés, sync événementielle |
-| **Terminal** | xterm.js 6 + WebGL | Rendu GPU, 60fps+ |
-| **Éditeur** | CodeMirror 6 | 16 packs de langage + modes legacy |
-| **Chiffrement** | ChaCha20-Poly1305 + Argon2id | AEAD + KDF à dureté mémoire |
-| **Stockage** | redb 2.1 | DB embarquée (sessions, redirections, transferts) |
-| **Sérialisation** | MessagePack (rmp-serde) | Persistance binaire tampon/état |
-| **i18n** | i18next 25 | 11 langues × 21 espaces de noms |
-| **SFTP** | russh-sftp 2.0 | Protocole de transfert de fichiers SSH |
-| **WebSocket** | tokio-tungstenite 0.24 | WebSocket async pour le plan de données terminal |
-| **Protocole** | Wire Protocol v1 | Binaire `[Type:1][Length:4][Payload:n]` sur WebSocket |
-| **Plugins** | Runtime ESM | PluginContext gelé + 24 composants UI Kit |
-| **CLI** | oxide-cli | JSON-RPC 2.0, Unix Socket / Named Pipe |
-
----
-
-## Matrice de fonctionnalités
-
-| Catégorie | Fonctionnalités |
-|---|---|
-| **Terminal** | PTY local, SSH distant, panneaux divisés (H/V), enregistrement/lecture de session (asciicast v2), contexte IA cross-pane, rendu WebGL, galerie d'images d'arrière-plan, 30+ thèmes + éditeur de thèmes, palette de commandes (`⌘K`), mode zen (`⌘⇧Z`), raccourcis taille de police (`⌘+`/`⌘-`) |
-| **SSH** | Pool de connexions, multiplexage, ProxyJump (∞ sauts), graphe topologique, pipeline auto-reconnexion |
-| **Auth** | Mot de passe, clé SSH (RSA/Ed25519/ECDSA), SSH Agent, certificat, Keyboard-Interactive (2FA), Known Hosts |
-| **Fichiers** | Navigateur SFTP double panneau, glisser-déposer, aperçu (images/vidéo/audio/PDF/code/hex), file de transfert |
-| **IDE** | Arborescence, éditeur CodeMirror, multi-onglets, statut Git, résolution de conflits, terminal intégré |
-| **Redirection** | Locale (-L), distante (-R), SOCKS5 dynamique (-D), auto-restauration, rapport de décès, I/O sans verrou |
-| **IA** | Panneau inline + chat latéral, SSE streaming, insertion de code, 40+ outils, intégration serveurs MCP, contexte multi-sources, base de connaissances RAG, OpenAI/Ollama/DeepSeek |
-| **Plugins** | Chargement ESM runtime, 8 espaces API, 24 UI Kit, exécution sandboxée, disjoncteur |
-| **WSL Graphics** ⚠️ | Visionneuse VNC intégrée (Expérimental) : mode Bureau (9 DE) + mode Application (GUI unique), détection WSLg, Xtigervnc + noVNC, reconnexion, feature-gated |
-| **CLI** | Outil compagnon `oxt`, IPC JSON-RPC, statut/liste/ping, sortie lisible + JSON, installation intégrée |
-| **Sécurité** | Chiffrement .oxide, trousseau système, `zeroize` mémoire, TOFU clé d'hôte |
-| **i18n** | EN, 简体中文, 繁體中文, 日本語, FR, DE, ES, IT, 한국어, PT-BR, VI |
-
----
-
-## Fonctionnalités détaillées
-
-### 🚀 Expérience terminale hybride
-- **Shell local zéro latence** : IPC direct avec les processus locaux.
-- **SSH distant haute performance** : flux binaire WebSocket, sans surcharge HTTP.
-- **Héritage d’environnement complet** : hérite PATH, HOME et toutes les variables — expérience identique au terminal système.
-
-### 🔐 Authentification diversifiée
-- **Mot de passe** : stocké sécurisé dans le trousseau système.
-- **Clés** : RSA / Ed25519 / ECDSA, scan auto de `~/.ssh/id_*`.
-- **SSH Agent** : via `AgentSigner` (macOS/Linux/Windows).
-- **Certificats** : OpenSSH Certificates.
-- **2FA/MFA** : authentification Keyboard-Interactive.
-- **Known Hosts** : vérification TOFU + `~/.ssh/known_hosts`.
-
-### 🔍 Recherche plein texte
-Recherche de contenu à l’échelle du projet avec cache intelligent :
-- **Recherche en temps réel** : saisie anti-rebond 300ms avec résultats instantanés.
-- **Cache de résultats** : TTL 60 secondes pour éviter les scans répétés.
-- **Groupement** : résultats groupés par fichier avec positionnement par numéro de ligne.
-- **Surlignage** : termes recherchés mis en évidence dans les aperçus.
-- **Invalidation auto** : cache vidé lors des modifications de fichiers.
-
-### 📦 Gestion de fichiers avancée
-- **Protocole SFTP v3** : gestionnaire double panneau complet.
-- **Glisser-déposer** : opérations multi-fichiers et dossiers par lots.
-- **Aperçu intelligent** :
-  - 🎨 Images (JPEG/PNG/GIF/WebP)
-  - 🎬 Vidéos (MP4/WebM) avec lecteur intégré
-  - 🎵 Audio (MP3/WAV/OGG/FLAC) avec affichage des métadonnées
-  - 💻 Coloration code (30+ langages)
-  - 📄 Documents PDF
-  - 🔍 Visionneuse Hex (fichiers binaires)
-- **Suivi de progression** : vitesse en temps réel, barres, ETA.
-
-### 🌍 Internationalisation (i18n)
-- **11 langues** : English, 简体中文, 繁體中文, 日本語, Français, Deutsch, Español, Italiano, 한국어, Português, Tiếng Việt.
-- **Chargement dynamique** : packs de langue à la demande via i18next.
-- **Type-safe** : définitions TypeScript pour toutes les clés de traduction.
+- **Profileur de ressources** : CPU/mémoire/réseau en direct via canal SSH persistant lisant `/proc/stat`, calcul basé sur les deltas, dégradation automatique vers RTT-only sur les systèmes non-Linux
+- **Moteur de thèmes personnalisé** : 30+ thèmes intégrés, éditeur visuel avec aperçu en direct, 22 champs xterm.js + 19 variables CSS, dérivation automatique des couleurs UI depuis la palette du terminal
+- **Enregistrement de session** : format asciicast v2, enregistrement et lecture complets
+- **Diffusion d'entrée** : tapez une fois, envoyez à tous les panneaux divisés — opérations serveur par lots
+- **Galerie d'arrière-plans** : images d'arrière-plan par onglet, 13 types d'onglets, contrôle opacité/flou/ajustement
+- **Companion CLI** (`oxt`) : binaire d'environ 1 Mo, JSON-RPC 2.0 via Unix Socket / Named Pipe, `status`/`list`/`ping` avec sortie humaine ou `--json`
+- **WSL Graphics** ⚠️ expérimental : visionneuse VNC intégrée — 9 environnements de bureau + mode application unique, détection WSLg, Xtigervnc + noVNC
 
 <details>
-<summary>📸 Les 11 langues en action</summary>
+<summary>📸 11 langues en action</summary>
 <br>
 <table>
   <tr>
-    <td align="center"><img src="../screenshots/overview/en.png" width="280"><br><b>English</b></td>
-    <td align="center"><img src="../screenshots/overview/zhHans.png" width="280"><br><b>简体中文</b></td>
-    <td align="center"><img src="../screenshots/overview/zhHant.png" width="280"><br><b>繁體中文</b></td>
+    <td align="center"><img src="../../docs/screenshots/overview/en.png" width="280"><br><b>English</b></td>
+    <td align="center"><img src="../../docs/screenshots/overview/zhHans.png" width="280"><br><b>简体中文</b></td>
+    <td align="center"><img src="../../docs/screenshots/overview/zhHant.png" width="280"><br><b>繁體中文</b></td>
   </tr>
   <tr>
-    <td align="center"><img src="../screenshots/overview/ja.png" width="280"><br><b>日本語</b></td>
-    <td align="center"><img src="../screenshots/overview/ko.png" width="280"><br><b>한국어</b></td>
-    <td align="center"><img src="../screenshots/overview/fr.png" width="280"><br><b>Français</b></td>
+    <td align="center"><img src="../../docs/screenshots/overview/ja.png" width="280"><br><b>日本語</b></td>
+    <td align="center"><img src="../../docs/screenshots/overview/ko.png" width="280"><br><b>한국어</b></td>
+    <td align="center"><img src="../../docs/screenshots/overview/fr.png" width="280"><br><b>Français</b></td>
   </tr>
   <tr>
-    <td align="center"><img src="../screenshots/overview/de.png" width="280"><br><b>Deutsch</b></td>
-    <td align="center"><img src="../screenshots/overview/es.png" width="280"><br><b>Español</b></td>
-    <td align="center"><img src="../screenshots/overview/it.png" width="280"><br><b>Italiano</b></td>
+    <td align="center"><img src="../../docs/screenshots/overview/de.png" width="280"><br><b>Deutsch</b></td>
+    <td align="center"><img src="../../docs/screenshots/overview/es.png" width="280"><br><b>Español</b></td>
+    <td align="center"><img src="../../docs/screenshots/overview/it.png" width="280"><br><b>Italiano</b></td>
   </tr>
   <tr>
-    <td align="center"><img src="../screenshots/overview/pt-BR.png" width="280"><br><b>Português</b></td>
-    <td align="center"><img src="../screenshots/overview/vi.png" width="280"><br><b>Tiếng Việt</b></td>
+    <td align="center"><img src="../../docs/screenshots/overview/pt-BR.png" width="280"><br><b>Português</b></td>
+    <td align="center"><img src="../../docs/screenshots/overview/vi.png" width="280"><br><b>Tiếng Việt</b></td>
     <td></td>
   </tr>
 </table>
 </details>
 
-### 🌐 Optimisation réseau
-- **Architecture dual-plane** : plan de données (WebSocket direct) et plan de contrôle (Tauri IPC) séparés.
-- **Protocole binaire custom** : `[Type:1][Length:4][Payload:n]`, zéro surcharge JSON.
-- **Contrôle de back-pressure** : prévient le débordement mémoire lors de pics.
-- **Auto-reconnexion** : recul exponentiel, jusqu’à 5 tentatives.
-### 🖥️ WSL Graphics (⚠️ Expérimental)
-- **Mode bureau** : exécutez des bureaux Linux GUI complets dans un onglet terminal — 9 environnements de bureau (Xfce / GNOME / KDE Plasma / MATE / LXDE / Cinnamon / Openbox / Fluxbox / IceWM), détection automatique.
-- **Mode application** : lancez une seule application GUI (ex. `gedit`, `firefox`) sans bureau complet — Xtigervnc léger + Openbox WM optionnel, nettoyage automatique à la fermeture.
-- **Détection WSLg** : détection automatique de la disponibilité WSLg (sockets Wayland / X11) par distribution, affichée comme badge dans l'interface.
-- **Xtigervnc + noVNC** : serveur X autonome rendu via `<canvas>` in-app, avec `scaleViewport` et `resizeSession`.
-- **Sécurité** : injection tableau `argv` (sans parsing shell), `env_clear()` + liste blanche minimale, `validate_argv()` 6 règles de défense, limites de concurrence (4 sessions app/distro, 8 global).
-- **Reconnexion** : rétablissement du pont WebSocket sans tuer la session VNC.
-- **Feature-gated** : feature Cargo `wsl-graphics`, commandes stub sur les plateformes non-Windows.
 ---
 
 ## Démarrage rapide
@@ -463,78 +291,41 @@ Recherche de contenu à l’échelle du projet avec cache intelligent :
 ### Développement
 
 ```bash
-git clone https://github.com/AnalyseDeCircuit/OxideTerm.git
-cd OxideTerm && pnpm install
+git clone https://github.com/AnalyseDeCircuit/oxideterm.git
+cd oxideterm && pnpm install
 
-# Application complète (frontend + backend Rust + PTY local)
+# Application complète (frontend + backend Rust avec hot reload)
 pnpm tauri dev
 
-# Frontend seul (rechargement chaud sur port 1420)
+# Frontend uniquement (Vite sur le port 1420)
 pnpm dev
 
-# Build production
+# Build de production
 pnpm tauri build
 
-# Noyau léger — retirer le PTY local pour mobile
+# Build léger — supprimer le PTY local pour mobile
 cd src-tauri && cargo build --no-default-features --release
 ```
 
 ---
 
-## Structure du projet
+## Stack technique
 
-```
-OxideTerm/
-├── src/                            # Frontend — 83K lignes TypeScript
-│   ├── components/                 # 20 répertoires
-│   │   ├── terminal/               #   Vues terminal, panneaux divisés
-│   │   ├── sftp/                   #   Navigateur fichiers double panneau
-│   │   ├── ide/                    #   Éditeur, arborescence, dialogues Git
-│   │   ├── ai/                     #   Chat inline + latéral
-│   │   ├── graphics/               #   WSL Graphics (visionneuse bureau VNC)
-│   │   ├── plugin/                 #   Gestionnaire de plugins & UI runtime
-│   │   ├── forwards/               #   Gestion des redirections de ports
-│   │   ├── connections/            #   CRUD connexions & import
-│   │   ├── topology/               #   Graphe de topologie réseau
-│   │   ├── layout/                 #   Barre latérale, en-tête, panneaux
-│   │   └── ...                     #   sessions, settings, modals, etc.
-│   ├── store/                      # 16 stores Zustand
-│   ├── lib/                        # Couche API, fournisseurs IA, runtime plugins
-│   ├── hooks/                      # Hooks React (événements, clavier, toast)
-│   ├── types/                      # Définitions de types TypeScript
-│   └── locales/                    # 11 langues × 21 espaces de noms
-│
-├── src-tauri/                      # Backend — 51K lignes Rust
-│   └── src/
-│       ├── router/                 #   NodeRouter (nodeId → ressource)
-│       ├── ssh/                    #   Client SSH (12 modules incl. Agent)
-│       ├── local/                  #   PTY local (feature-gated)
-│       ├── graphics/               #   WSL Graphics (feature-gated)
-│       ├── bridge/                 #   Pont WebSocket & Wire Protocol v1
-│       ├── session/                #   Gestion de sessions (16 modules)
-│       ├── forwarding/             #   Redirection de ports (6 modules)
-│       ├── sftp/                   #   Implémentation SFTP
-│       ├── config/                 #   Coffre, trousseau, SSH Config
-│       ├── oxide_file/             #   Chiffrement .oxide (ChaCha20)
-│       ├── commands/               #   24 modules commandes Tauri IPC
-│       └── state/                  #   Types d'état global
-│
-└── docs/                           # 27+ documents architecture & fonctionnalités
-```
-
----
-
-## Feuille de route
-
-### 🚧 En cours (v0.21)
-
-- [x] Base de connaissances RAG — collections de documents locales avec recherche hybride BM25 + vectorielle, récupération intégrée à l'IA
-- [x] Client MCP (Model Context Protocol) — connecter OxideSens à des serveurs d'outils externes
-- [ ] Recherche & changement rapide de sessions
-
-### 📋 Planifié
-
-- [ ] Transfert SSH Agent
+| Couche | Technologie | Détails |
+|---|---|---|
+| **Framework** | Tauri 2.0 | Binaire natif, 25–40 Mo |
+| **Runtime** | Tokio + DashMap 6 | Entièrement asynchrone, maps concurrentes sans verrou |
+| **SSH** | russh 0.54 (`ring`) | Pur Rust, zéro dépendance C, SSH Agent |
+| **PTY local** | portable-pty 0.8 | Feature-gated, ConPTY sous Windows |
+| **Frontend** | React 19.1 + TypeScript 5.8 | Vite 7, Tailwind CSS 4 |
+| **État** | Zustand 5 | 18 stores spécialisés |
+| **Terminal** | xterm.js 6 + WebGL | Accéléré GPU, 60 fps+ |
+| **Éditeur** | CodeMirror 6 | 30+ modes de langage |
+| **Chiffrement** | ChaCha20-Poly1305 + Argon2id | AEAD + KDF gourmande en mémoire (256 Mo) |
+| **Stockage** | redb 2.1 | Store KV embarqué |
+| **i18n** | i18next 25 | 11 langues × 21 espaces de noms |
+| **Plugins** | ESM Runtime | PluginContext gelé + 24 UI Kit |
+| **CLI** | JSON-RPC 2.0 | Unix Socket / Named Pipe |
 
 ---
 
@@ -542,39 +333,48 @@ OxideTerm/
 
 | Préoccupation | Implémentation |
 |---|---|
-| **Mots de passe** | Trousseau système (macOS Keychain / Windows Credential Manager / Linux libsecret) |
-| **Clés API IA** | Trousseau système sous service `com.oxideterm.ai` ; sous macOS, la lecture exige une authentification **Touch ID** (`LAContext.evaluatePolicy`, sans entitlement de protection des données) — les clés sont mises en cache en mémoire après la première authentification, Touch ID n'est donc demandé qu'une fois par session |
-| **Fichiers config** | `~/.oxideterm/connections.json` — stocke uniquement les IDs du trousseau |
-| **Export** | .oxide : ChaCha20-Poly1305 + Argon2id, intégration optionnelle de clés |
-| **Mémoire** | `zeroize` efface les données sensibles ; Rust garantit la sécurité mémoire |
-| **Clés d'hôte** | TOFU avec `~/.ssh/known_hosts` |
-| **Plugins** | Object.freeze + Proxy ACL, disjoncteur, liste blanche IPC |
+| **Mots de passe** | Trousseau OS (macOS Keychain / Windows Credential Manager / libsecret) |
+| **Clés API IA** | Trousseau OS + authentification biométrique Touch ID sous macOS |
+| **Export** | .oxide : ChaCha20-Poly1305 + Argon2id (256 Mo de mémoire, 4 itérations) |
+| **Mémoire** | Sécurité mémoire Rust + `zeroize` pour le nettoyage des données sensibles |
+| **Clés hôtes** | TOFU avec `~/.ssh/known_hosts`, rejette les modifications (prévention MITM) |
+| **Plugins** | Object.freeze + ACL Proxy, disjoncteur, liste blanche IPC |
+| **WebSocket** | Tokens à usage unique avec limites de temps |
+
+---
+
+## Feuille de route
+
+- [ ] Transfert d'agent SSH
+- [ ] Marketplace de plugins
+- [ ] Recherche de sessions & changement rapide
 
 ---
 
 ## Licence
 
-**PolyForm Noncommercial 1.0.0**
+**PolyForm Noncommercial 1.0.0** — ce logiciel est licencié exclusivement pour un **usage non commercial**.
 
-- ✅ Usage personnel / non lucratif : gratuit
-- 🚫 Usage commercial : nécessite une licence
-- ⚖️ Clause de défense de brevet (Clause Nucléaire)
+La licence autorise explicitement :
 
-Texte complet : https://polyformproject.org/licenses/noncommercial/1.0.0/
+- **Usage personnel** — recherche, expérimentation, tests pour le savoir public, étude personnelle, divertissement privé, projets de loisirs, activités amateurs — à condition qu'il n'y ait **aucune application commerciale anticipée**
+- **Organisations non commerciales** — organisations caritatives, établissements d'enseignement, organismes de recherche publique, organisations de sécurité/santé publique, organisations de protection de l'environnement et institutions gouvernementales — **quelle que soit la source de financement**
+- **Usage équitable** — vos droits d'usage équitable en vertu du droit applicable ne sont pas limités
+
+**Tout autre usage nécessite une licence commerciale séparée du concédant.** Cela inclut notamment : l'utilisation au sein d'une entreprise à but lucratif (y compris l'évaluation ou les tests internes), l'utilisation par des indépendants ou des sous-traitants pour du travail rémunéré, et toute distribution dans un contexte commercial.
+
+Si vous n'êtes pas sûr que votre usage soit qualifié, veuillez [ouvrir une issue](https://github.com/AnalyseDeCircuit/oxideterm/issues).
+
+Texte intégral : [polyformproject.org/licenses/noncommercial/1.0.0](https://polyformproject.org/licenses/noncommercial/1.0.0/)
 
 ---
 
 ## Remerciements
 
-- [russh](https://github.com/warp-tech/russh) — SSH pur Rust
-- [portable-pty](https://github.com/wez/wezterm/tree/main/pty) — Abstraction PTY multiplateforme
-- [Tauri](https://tauri.app/) — Framework d'application natif
-- [xterm.js](https://xtermjs.org/) — Émulateur de terminal
-- [CodeMirror](https://codemirror.net/) — Éditeur de code
-- [Radix UI](https://www.radix-ui.com/) — Primitives UI accessibles
+[russh](https://github.com/warp-tech/russh) · [portable-pty](https://github.com/wez/wezterm/tree/main/pty) · [Tauri](https://tauri.app/) · [xterm.js](https://xtermjs.org/) · [CodeMirror](https://codemirror.net/) · [Radix UI](https://www.radix-ui.com/)
 
 ---
 
 <p align="center">
-  <sub>Construit en Rust et Tauri — 130 000+ lignes de code</sub>
+  <sub>134 000+ lignes de Rust & TypeScript — construit avec ⚡ et ☕</sub>
 </p>

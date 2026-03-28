@@ -1,10 +1,10 @@
 # Third-Party Notices (Frontend)
 
 This file lists third-party components used by the frontend (including transitive production dependencies) and their declared licenses.
-Generated: 2026-03-18T18:04:27.220Z
+Generated: 2026-03-28T17:53:41.310Z
 
 ## Summary
-- MIT: 221
+- MIT: 228
 - ISC: 34
 - Apache-2.0: 18
 - BSD-3-Clause: 8
@@ -54,6 +54,10 @@ Generated: 2026-03-18T18:04:27.220Z
 | @codemirror/state | 6.5.4 | MIT | https://github.com/codemirror/state#readme |
 | @codemirror/theme-one-dark | 6.1.3 | MIT | https://github.com/codemirror/theme-one-dark#readme |
 | @codemirror/view | 6.39.11 | MIT | https://github.com/codemirror/view#readme |
+| @dnd-kit/accessibility | 3.1.1 | MIT | https://github.com/clauderic/dnd-kit#readme |
+| @dnd-kit/core | 6.3.1 | MIT | https://github.com/clauderic/dnd-kit#readme |
+| @dnd-kit/sortable | 10.0.0 | MIT | https://github.com/clauderic/dnd-kit#readme |
+| @dnd-kit/utilities | 3.2.2 | MIT | https://github.com/clauderic/dnd-kit#readme |
 | @floating-ui/core | 1.7.3 | MIT | https://floating-ui.com |
 | @floating-ui/dom | 1.7.4 | MIT | https://floating-ui.com |
 | @floating-ui/react-dom | 2.1.6 | MIT | https://floating-ui.com/docs/react-dom |
@@ -120,6 +124,9 @@ Generated: 2026-03-18T18:04:27.220Z
 | @radix-ui/react-visually-hidden | 1.2.3 | MIT | https://radix-ui.com/primitives |
 | @radix-ui/rect | 1.1.1 | MIT | https://radix-ui.com/primitives |
 | @replit/codemirror-indentation-markers | 6.5.3 | MIT | https://github.com/replit/codemirror-indentation-markers#readme |
+| @replit/codemirror-minimap | 0.5.2 | MIT | https://github.com/replit/codemirror-minimap#readme |
+| @tanstack/react-virtual | 3.13.23 | MIT | https://tanstack.com/virtual |
+| @tanstack/virtual-core | 3.13.23 | MIT | https://tanstack.com/virtual |
 | @tauri-apps/api | 2.10.1 | Apache-2.0 OR MIT | https://github.com/tauri-apps/tauri#readme |
 | @tauri-apps/plugin-dialog | 2.6.0 | MIT OR Apache-2.0 | https://github.com/tauri-apps/plugins-workspace#readme |
 | @tauri-apps/plugin-fs | 2.4.5 | MIT OR Apache-2.0 | https://github.com/tauri-apps/plugins-workspace#readme |

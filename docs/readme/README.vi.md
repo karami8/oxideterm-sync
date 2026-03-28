@@ -5,22 +5,22 @@
 <h1 align="center">⚡ OxideTerm</h1>
 
 <p align="center">
-  <strong>Terminal cục bộ + SSH + SFTP + AI trong một ứng dụng native.</strong>
+  <strong>Không Electron. Không OpenSSL. SSH thuần Rust.</strong>
   <br>
-  <em>Không Electron. Không OpenSSL. SSH stack thuần Rust.</em>
+  <em>Một tệp nhị phân gốc duy nhất — shell cục bộ, SSH, SFTP, IDE từ xa, AI, chuyển tiếp cổng, plugin, 30+ giao diện, 11 ngôn ngữ.</em>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.21.0-blue" alt="Version">
-  <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-blue" alt="Platform">
-  <img src="https://img.shields.io/badge/license-PolyForm%20Noncommercial-blueviolet" alt="License">
+  <img src="https://img.shields.io/badge/version-0.21.0-blue" alt="Phiên bản">
+  <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-blue" alt="Nền tảng">
+  <img src="https://img.shields.io/badge/license-PolyForm%20Noncommercial-blueviolet" alt="Giấy phép">
   <img src="https://img.shields.io/badge/rust-1.75+-orange" alt="Rust">
   <img src="https://img.shields.io/badge/tauri-2.0-purple" alt="Tauri">
 </p>
 
 <p align="center">
   <a href="https://github.com/AnalyseDeCircuit/oxideterm/releases/latest">
-    <img src="https://img.shields.io/github/v/release/AnalyseDeCircuit/oxideterm?label=T%E1%BA%A3i+xu%E1%BB%91ng&style=for-the-badge&color=brightgreen" alt="Tải xuống phiên bản mới nhất">
+    <img src="https://img.shields.io/github/v/release/AnalyseDeCircuit/oxideterm?label=Tải%20phiên%20bản%20mới%20nhất&style=for-the-badge&color=brightgreen" alt="Tải phiên bản mới nhất">
   </a>
 </p>
 
@@ -34,23 +34,23 @@
 
 https://github.com/user-attachments/assets/4ba033aa-94b5-4ed4-980c-5c3f9f21db7e
 
-*🤖 OxideSens — "Mở terminal cục bộ và chạy echo hello, world!"*
+*🤖 OxideSens AI — "Mở terminal cục bộ và chạy echo hello, world!"*
 
 </div>
 
-## OxideTerm là gì?
+---
 
-OxideTerm là một **ứng dụng terminal đa nền tảng** kết hợp shell cục bộ, phiên SSH từ xa, quản lý tệp, chỉnh sửa mã nguồn và OxideSens vào một tệp nhị phân gốc duy nhất được viết bằng Rust. Đây **không** phải là một wrapper Electron — toàn bộ backend được viết bằng Rust, đóng gói thành tệp thực thi gốc chỉ 20-35 MB thông qua Tauri 2.0.
-
-### Tại sao lại cần thêm một Terminal?
+## Tại sao chọn OxideTerm?
 
 | Vấn đề | Giải pháp của OxideTerm |
 |---|---|
-| Các SSH client không hỗ trợ shell cục bộ | Cơ chế lai: PTY cục bộ + SSH từ xa trong cùng một cửa sổ |
-| Kết nối lại = mất hết mọi thứ | **Kiến trúc Node-first**: tự động kết nối lại với Grace Period bảo toàn ứng dụng TUI; khôi phục chuyển tiếp cổng, truyền tải, trạng thái IDE |
-| Chỉnh sửa tệp từ xa cần VS Code Remote | **Chế độ IDE tích hợp**: trình soạn thảo CodeMirror 6 qua SFTP, mặc định không cần cài đặt trên máy chủ; hỗ trợ tùy chọn agent từ xa trên Linux |
-| Không tái sử dụng kết nối SSH | **SSH multiplexing**: terminal, SFTP, chuyển tiếp cổng dùng chung một kết nối |
-| Thư viện SSH phụ thuộc OpenSSL | **russh 0.54**: SSH thuần Rust, backend mã hóa `ring`, không phụ thuộc C |
+| Client SSH không hỗ trợ shell cục bộ | **Công cụ lai**: PTY cục bộ (zsh/bash/fish/pwsh/WSL2) + SSH từ xa trong cùng một cửa sổ |
+| Kết nối lại = mất hết mọi thứ | **Kết nối lại với thời gian ân hạn**: thăm dò kết nối cũ trong 30 giây trước khi ngắt — vim/htop/yazi của bạn vẫn sống sót |
+| Chỉnh sửa từ xa cần VS Code Remote | **IDE tích hợp**: CodeMirror 6 qua SFTP với 30+ ngôn ngữ, agent từ xa tùy chọn (~1 MB) trên Linux |
+| Không tái sử dụng kết nối SSH | **Ghép kênh**: terminal, SFTP, chuyển tiếp, IDE chia sẻ một kết nối SSH duy nhất qua pool đếm tham chiếu |
+| Thư viện SSH phụ thuộc OpenSSL | **russh 0.54**: SSH thuần Rust biên dịch với `ring` — không phụ thuộc C |
+| Ứng dụng Electron hơn 100 MB | **Tauri 2.0**: backend Rust gốc, tệp nhị phân 25–40 MB |
+| AI bị khóa vào một nhà cung cấp | **OxideSens**: 40+ công cụ, giao thức MCP, cơ sở kiến thức RAG — hoạt động với OpenAI/Ollama/DeepSeek/bất kỳ API tương thích nào |
 
 ---
 
@@ -58,404 +58,222 @@ OxideTerm là một **ứng dụng terminal đa nền tảng** kết hợp shell
 
 <table>
 <tr>
-<td align="center"><strong>Terminal SSH + OxideSens AI</strong><br/><br/><img src="../screenshots/terminal/SSHTERMINAL.png" alt="Terminal SSH với thanh bên OxideSens AI" /></td>
-<td align="center"><strong>Quản lý tệp SFTP</strong><br/><br/><img src="../screenshots/sftp/sftp.png" alt="Quản lý tệp SFTP hai bảng" /></td>
+<td align="center"><strong>Terminal SSH + OxideSens AI</strong><br/><br/><img src="../../docs/screenshots/terminal/SSHTERMINAL.png" alt="Terminal SSH với thanh bên OxideSens AI" /></td>
+<td align="center"><strong>Trình quản lý tệp SFTP</strong><br/><br/><img src="../../docs/screenshots/sftp/sftp.png" alt="Trình quản lý tệp SFTP hai bảng với hàng đợi truyền tải" /></td>
 </tr>
 <tr>
-<td align="center"><strong>IDE tích hợp (CodeMirror 6)</strong><br/><br/><img src="../screenshots/miniIDE/miniide.png" alt="Chế độ IDE tích hợp với CodeMirror 6" /></td>
-<td align="center"><strong>Chuyển tiếp cổng thông minh</strong><br/><br/><img src="../screenshots/PORTFORWARD/PORTFORWARD.png" alt="Chuyển tiếp cổng với tự động phát hiện" /></td>
+<td align="center"><strong>IDE tích hợp (CodeMirror 6)</strong><br/><br/><img src="../../docs/screenshots/miniIDE/miniide.png" alt="Chế độ IDE tích hợp với trình soạn thảo CodeMirror 6" /></td>
+<td align="center"><strong>Chuyển tiếp cổng thông minh</strong><br/><br/><img src="../../docs/screenshots/PORTFORWARD/PORTFORWARD.png" alt="Chuyển tiếp cổng thông minh với phát hiện tự động" /></td>
 </tr>
 </table>
 
 ---
 
-## Tổng quan Kiến trúc
+## Tổng quan tính năng
+
+| Danh mục | Tính năng |
+|---|---|
+| **Terminal** | PTY cục bộ (zsh/bash/fish/pwsh/WSL2), SSH từ xa, chia bảng, phát sóng đầu vào, ghi/phát lại phiên (asciicast v2), kết xuất WebGL, 30+ giao diện + trình biên tập tùy chỉnh, bảng lệnh (`⌘K`), chế độ zen |
+| **SSH & Xác thực** | Pool kết nối & ghép kênh, ProxyJump (nhảy không giới hạn) với đồ thị topo, tự động kết nối lại với thời gian ân hạn. Xác thực: mật khẩu, khóa SSH (RSA/Ed25519/ECDSA), SSH Agent, chứng chỉ, 2FA tương tác bàn phím, Known Hosts TOFU |
+| **SFTP** | Trình duyệt hai bảng, kéo thả, xem trước thông minh (ảnh/video/âm thanh/mã/PDF/hex/phông chữ), hàng đợi truyền tải với tiến trình & ETA, đánh dấu, giải nén lưu trữ |
+| **Chế độ IDE** | CodeMirror 6 với 30+ ngôn ngữ, cây tệp + trạng thái Git, đa tab, giải quyết xung đột, terminal tích hợp. Agent từ xa tùy chọn cho Linux (10+ kiến trúc) |
+| **Chuyển tiếp cổng** | Cục bộ (-L), từ xa (-R), SOCKS5 động (-D), I/O truyền thông điệp không khóa, tự động khôi phục khi kết nối lại, báo cáo ngừng hoạt động, hết thời gian nhàn rỗi |
+| **AI (OxideSens)** | Bảng inline (`⌘I`) + trò chuyện thanh bên, thu thập bộ đệm terminal (bảng đơn/tất cả), ngữ cảnh đa nguồn (IDE/SFTP/Git), 40+ công cụ tự động, tích hợp máy chủ MCP, cơ sở kiến thức RAG (tìm kiếm lai BM25 + vector), streaming SSE |
+| **Plugin** | Tải ESM runtime, 8 không gian tên API, 24 thành phần UI Kit, API đóng băng + ACL Proxy, ngắt mạch, tự động vô hiệu hóa khi có lỗi |
+| **CLI** | Công cụ đồng hành `oxt`: JSON-RPC 2.0 qua Unix Socket / Named Pipe, `status`/`list`/`ping`, đầu ra dạng người đọc + JSON |
+| **Bảo mật** | Xuất mã hóa .oxide (ChaCha20-Poly1305 + Argon2id 256 MB), chuỗi khóa hệ điều hành, Touch ID (macOS), TOFU khóa máy chủ, xóa bộ nhớ `zeroize` |
+| **i18n** | 11 ngôn ngữ: EN, 简体中文, 繁體中文, 日本語, 한국어, FR, DE, ES, IT, PT-BR, VI |
+
+---
+
+## Bên trong cỗ máy
+
+### Kiến trúc — Giao tiếp hai mặt phẳng
+
+OxideTerm tách dữ liệu terminal khỏi lệnh điều khiển thành hai mặt phẳng độc lập:
 
 ```
 ┌─────────────────────────────────────┐
 │        Frontend (React 19)          │
-│                                     │
-│  SessionTreeStore ──► AppStore      │    16 Zustand stores
-│  IdeStore    LocalTerminalStore     │    20 thư mục components
-│  ReconnectOrchestratorStore         │    11 ngôn ngữ × 21 namespaces
-│  PluginStore  AiChatStore  ...      │
-│                                     │
-│        xterm.js 6 + WebGL           │
+│  xterm.js 6 (WebGL) + 18 stores    │
 └──────────┬──────────────┬───────────┘
-           │ Tauri IPC    │ WebSocket (binary)
+           │ Tauri IPC    │ WebSocket (nhị phân)
+           │ (JSON)       │ cổng mỗi phiên
 ┌──────────▼──────────────▼───────────┐
 │         Backend (Rust)              │
-│                                     │
-│  NodeRouter ── resolve(nodeId) ──►  │    24 module lệnh IPC
-│  ├─ SshConnectionRegistry          │    DashMap trạng thái đồng thời
-│  ├─ SessionRegistry                │    PTY cục bộ gắn feature gate
-│  ├─ ForwardingManager              │    Kho bảo mật ChaCha20-Poly1305
-│  ├─ SftpSession (connection-level) │    russh 0.54 (ring backend)
-│  └─ LocalTerminalRegistry          │    SSH Agent (AgentSigner)
-│                                     │
+│  NodeRouter → SshConnectionRegistry │
 │  Wire Protocol v1                   │
 │  [Type:1][Length:4][Payload:n]       │
 └─────────────────────────────────────┘
 ```
 
-**Giao tiếp hai mặt phẳng**: WebSocket binary frames cho I/O terminal (không có chi phí serialization), Tauri IPC cho lệnh cấu trúc và sự kiện. Frontend không bao giờ chạm đến `sessionId` hay `connectionId` — mọi thứ đều được định danh bằng `nodeId`, giải quyết phía server bởi `NodeRouter`.
-
----
-
-## Điểm nổi bật về Kỹ thuật
+- **Mặt phẳng dữ liệu (WebSocket)**: mỗi phiên SSH có cổng WebSocket riêng. Các byte terminal chảy dưới dạng khung nhị phân với header Type-Length-Payload — không JSON serialization, không mã hóa Base64, không overhead trên đường dẫn nóng.
+- **Mặt phẳng điều khiển (Tauri IPC)**: quản lý kết nối, thao tác SFTP, chuyển tiếp, cấu hình — JSON có cấu trúc, nhưng ngoài đường dẫn nóng.
+- **Định danh theo nút**: frontend không bao giờ chạm `sessionId` hay `connectionId`. Mọi thứ được định danh bằng `nodeId`, được giải quyết nguyên tử phía máy chủ bởi `NodeRouter`. Kết nối lại SSH thay đổi `connectionId` bên dưới — nhưng SFTP, IDE và chuyển tiếp hoàn toàn không bị ảnh hưởng.
 
 ### 🔩 SSH thuần Rust — russh 0.54
 
-OxideTerm sử dụng **russh 0.54** biên dịch với backend mã hóa `ring`:
-- **Không phụ thuộc C/OpenSSL** trong đường dẫn SSH — toàn bộ ngăn xếp mã hóa là Rust
+Toàn bộ ngăn xếp SSH là **russh 0.54** biên dịch với backend mật mã **`ring`**:
+
+- **Không phụ thuộc C/OpenSSL** — toàn bộ ngăn xếp mật mã là Rust. Không còn debug "phiên bản OpenSSL nào?".
 - Giao thức SSH2 đầy đủ: trao đổi khóa, kênh, hệ thống con SFTP, chuyển tiếp cổng
-- Bộ mã hóa ChaCha20-Poly1305 và AES-GCM, khóa Ed25519/RSA/ECDSA
-
-### 🔑 Xác thực SSH Agent (AgentSigner)
-
-`AgentSigner` tùy chỉnh bọc SSH Agent hệ thống và triển khai trait `Signer` của russh:
+- Bộ mật mã ChaCha20-Poly1305 và AES-GCM, khóa Ed25519/RSA/ECDSA
+- **`AgentSigner`** tùy chỉnh: bọc SSH Agent hệ thống và thực thi trait `Signer` của russh, giải quyết vấn đề ràng buộc `Send` RPITIT trong russh 0.54 bằng cách clone `&PublicKey` thành giá trị owned trước khi vượt qua `.await`
 
 ```rust
-// Solves the RPITIT Send bound issue in russh 0.54
-// by cloning &PublicKey to an owned value before crossing .await
-pub struct AgentSigner { /* ... */ }
+pub struct AgentSigner { /* wraps system SSH Agent */ }
 impl Signer for AgentSigner { /* challenge-response via Agent IPC */ }
 ```
 
-- **Nền tảng**: Unix (`SSH_AUTH_SOCK`), Windows (`\\.\pipe\openssh-ssh-agent`)
-- **Chuỗi proxy**: mỗi bước nhảy có thể độc lập sử dụng xác thực Agent
-- **Kết nối lại**: `AuthMethod::Agent` được phát lại tự động khi kết nối lại
+- **Hỗ trợ nền tảng**: Unix (`SSH_AUTH_SOCK`), Windows (`\\.\pipe\openssh-ssh-agent`)
+- **Chuỗi proxy**: mỗi bước nhảy sử dụng xác thực Agent độc lập
+- **Kết nối lại**: `AuthMethod::Agent` được phát lại tự động
 
-### 🧭 Kiến trúc Node-First (NodeRouter)
+### 🔄 Kết nối lại thông minh với thời gian ân hạn
 
-**Hệ thống trừu tượng hóa Node Oxide-Next** loại bỏ hoàn toàn một lớp race conditions:
+Hầu hết client SSH hủy mọi thứ khi ngắt kết nối và bắt đầu lại từ đầu. Bộ điều phối kết nối lại của OxideTerm áp dụng cách tiếp cận khác biệt cơ bản:
 
-```
-Frontend: useNodeState(nodeId) → { readiness, sftpReady, error }
-Backend:  NodeRouter.resolve(nodeId) → ConnectionEntry → SftpSession
-```
+1. **Phát hiện** hết thời gian heartbeat WebSocket (300 giây, được hiệu chỉnh cho macOS App Nap và throttling bộ hẹn giờ JS)
+2. **Chụp ảnh** toàn bộ trạng thái: bảng terminal, chuyển SFTP đang thực hiện, chuyển tiếp cổng đang hoạt động, tệp IDE đang mở
+3. **Thăm dò thông minh**: sự kiện `visibilitychange` + `online` kích hoạt keepalive SSH chủ động (~2 giây phát hiện so với 15–30 giây timeout thụ động)
+4. **Thời gian ân hạn** (30 giây): thăm dò kết nối SSH cũ qua keepalive — nếu phục hồi (ví dụ: chuyển điểm truy cập WiFi), ứng dụng TUI của bạn (vim, htop, yazi) sống sót hoàn toàn
+5. Nếu phục hồi thất bại → kết nối SSH mới → tự động khôi phục chuyển tiếp → tiếp tục chuyển SFTP → mở lại tệp IDE
 
-- Các thao tác SFTP/IDE phía Frontend chỉ truyền `nodeId` — không có `sessionId`, không có `connectionId`
-- Backend giải quyết `nodeId → ConnectionEntry` một cách nguyên tử
-- Khi SSH kết nối lại thay đổi `connectionId` — SFTP/IDE **không bị ảnh hưởng**
-- `NodeEventEmitter` đẩy sự kiện có kiểu kèm bộ đếm thế hệ để sắp xếp thứ tự
+Pipeline: `queued → snapshot → grace-period → ssh-connect → await-terminal → restore-forwards → resume-transfers → restore-ide → verify → done`
 
-### ⚙️ Terminal cục bộ — PTY an toàn luồng
+Toàn bộ logic chạy qua một `ReconnectOrchestratorStore` chuyên dụng — không có mã kết nối lại rải rác trong hooks hay components.
 
-Shell cục bộ đa nền tảng qua `portable-pty 0.8`, được gắn feature gate `local-terminal`:
+### 🛡️ Pool kết nối SSH
 
-- **An toàn luồng**: `MasterPty` được bọc trong `std::sync::Mutex` với `unsafe impl Sync`
-- **Luồng I/O chuyên dụng**: thao tác đọc PTY chặn không bao giờ chạm vào vòng lặp sự kiện Tokio
-- **Phát hiện shell**: tự động tìm `zsh`, `bash`, `fish`, `pwsh`, Git Bash, WSL2
-- **Feature gate**: `cargo build --no-default-features` loại bỏ PTY cho bản build di động
+`SshConnectionRegistry` đếm tham chiếu dựa trên `DashMap` cho truy cập đồng thời không khóa:
 
-### 🔌 Hệ thống Plugin động (v1.6.2+)
+- **Một kết nối, nhiều người dùng**: terminal, SFTP, chuyển tiếp cổng và IDE chia sẻ một kết nối SSH vật lý duy nhất — không bắt tay TCP dư thừa
+- **Máy trạng thái mỗi kết nối**: `connecting → active → idle → link_down → reconnecting`
+- **Quản lý vòng đời**: hết thời gian nhàn rỗi có thể cấu hình (5 phút / 15 phút / 30 phút / 1 giờ / không bao giờ), khoảng keepalive 15 giây, phát hiện lỗi heartbeat
+- **Heartbeat WsBridge**: khoảng 30 giây, hết thời gian 5 phút — chịu được macOS App Nap và throttling JS trình duyệt
+- **Lan truyền dây chuyền**: lỗi máy chủ nhảy → tất cả nút hạ nguồn tự động đánh dấu `link_down` với đồng bộ trạng thái
+- **Ngắt kết nối nhàn rỗi**: phát `connection_status_changed` tới frontend (không chỉ `node:state` nội bộ), ngăn mất đồng bộ giao diện
 
-Tải plugin động với API được đóng băng và bảo mật:
+### 🤖 OxideSens AI
 
-- **PluginContext API**: 8 namespaces (terminal, ui, commands, settings, lifecycle, events, storage, system)
-- **24 thành phần UI Kit**: các React components dựng sẵn được inject vào sandbox plugin
-- **Mô hình bảo mật**: `Object.freeze` + Proxy ACL, circuit breaker, IPC whitelist
-- **Kiến trúc membrane**: plugin chạy trong ngữ cảnh ESM cách ly với cầu nối được kiểm soát đến host
+Trợ lý AI ưu tiên quyền riêng tư với hai chế độ tương tác:
 
-### 🛡️ SSH Connection Pool
-
-`SshConnectionRegistry` có đếm tham chiếu với DashMap:
-
-- Nhiều terminal, SFTP, chuyển tiếp cổng dùng chung **một kết nối SSH vật lý**
-- Máy trạng thái độc lập cho mỗi kết nối (connecting → active → idle → link_down → reconnecting)
-- Thời gian chờ nhàn rỗi (có thể cấu hình: 5 phút / 15 phút / 30 phút / 1 giờ / không giới hạn), keep-alive (15 giây), phát hiện lỗi heartbeat
-- WsBridge heartbeat cục bộ: chu kỳ 30 giây, thời gian chờ 5 phút (chịu được App Nap)
-- Ngắt kết nối khi hết thời gian nhàn rỗi phát sự kiện `connection_status_changed` để thông báo frontend
-- Lan truyền cascade: jump host gặp sự cố → tất cả node hạ nguồn được đánh dấu `link_down`
-- **Phát hiện thông minh**: `visibilitychange` + sự kiện `online` → thăm dò SSH chủ động (~2 giây so với 15-30 giây thụ động)
-- **Grace Period**: cửa sổ 30 giây để khôi phục kết nối hiện tại trước khi kết nối lại phá hủy (bảo toàn ứng dụng TUI như yazi/vim)
-
-### 🔀 Chuyển tiếp cổng — I/O không khóa
-
-Chuyển tiếp cổng đầy đủ: local (-L), remote (-R), và dynamic SOCKS5 (-D):
-
-- **Kiến trúc truyền thông điệp**: SSH Channel được sở hữu bởi một task `ssh_io` duy nhất, không dùng `Arc<Mutex<Channel>>`
-- **Báo cáo kết thúc**: task chuyển tiếp chủ động báo cáo lý do kết thúc khi SSH ngắt kết nối
-- **Tự động khôi phục**: các chuyển tiếp `Suspended` được tiếp tục khi kết nối lại
-- **Thời gian chờ nhàn rỗi**: `FORWARD_IDLE_TIMEOUT` (300 giây) ngăn kết nối zombie
-
-### 🤖 OxideSens
-
-AI chế độ kép với thiết kế ưu tiên quyền riêng tư:
-
-- **Bảng nội tuyến** (`⌘I`): lệnh nhanh, inject qua bracketed paste
-- **Chat bên lề**: hội thoại liên tục với lịch sử
-- **Bắt ngữ cảnh**: Terminal Registry thu thập buffer từ panel đang hoạt động hoặc tất cả panel chia
-- **Ngữ cảnh đa nguồn**: tự động inject tệp IDE, đường dẫn SFTP, và trạng thái Git vào hội thoại AI
-- **Sử dụng công cụ**: 40+ công cụ tích hợp (thao tác tệp, quản lý tiến trình, mạng, tương tác TUI) mà AI có thể tự động gọi
-- **Hỗ trợ MCP**: kết nối các server [Model Context Protocol](https://modelcontextprotocol.io) bên ngoài (stdio & SSE) để mở rộng AI với công cụ bên thứ ba — quản lý trong Settings
-- **Tương thích**: OpenAI, Ollama, DeepSeek, OneAPI, mọi endpoint `/v1/chat/completions`
-- **Bảo mật**: API keys trong OS keychain (macOS Keychain / Windows Credential Manager); trên macOS, thao tác đọc được bảo vệ bằng **Touch ID** qua `LAContext` — không cần entitlements hay code-signing
-
-### 📚 Cơ sở Kiến thức RAG cho Vận hành (v0.20)
-
-Hệ thống tạo sinh tăng cường bằng truy xuất, ưu tiên cục bộ, dành cho tài liệu vận hành:
-
-- **Bộ sưu tập tài liệu**: nhập runbook, SOP và hướng dẫn triển khai dạng Markdown/TXT vào các bộ sưu tập có phạm vi toàn cục hoặc theo kết nối
-- **Tìm kiếm lai**: chỉ mục từ khóa BM25 + độ tương đồng cosin vector, kết hợp qua Reciprocal Rank Fusion (RRF)
-- **Phân đoạn nhận biết Markdown**: tách theo cấp bậc tiêu đề, giữ lại đường dẫn phần (ví dụ: "Triển khai > Docker > Xử lý sự cố")
-- **Hỗ trợ CJK**: bộ phân tách bigram cho tiếng Trung/Nhật/Hàn + phân tách khoảng trắng cho các ký tự Latin
-- **Tích hợp AI**: công cụ `search_docs` tự động truy xuất ngữ cảnh tài liệu liên quan trong cuộc hội thoại AI — không cần kích hoạt thủ công
-- **Chỉnh sửa bên ngoài**: mở tài liệu trong trình soạn thảo hệ thống, tự động đồng bộ khi cửa sổ lấy lại tiêu điểm với khóa phiên bản lạc quan
-- **Tái lập chỉ mục với tiến trình**: xây dựng lại BM25 hoàn toàn với thanh tiến trình thời gian thực và hỗ trợ hủy bỏ
-- **Pipeline nhúng**: frontend tạo vector qua nhà cung cấp AI, lưu trữ trong backend cho truy xuất lai
-- **Lưu trữ**: cơ sở dữ liệu nhúng redb, 9 bảng, tuần tự hóa MessagePack với nén tự động cho các đoạn lớn
+- **Bảng inline** (`⌘I`): lệnh terminal nhanh, đầu ra được tiêm qua bracketed paste
+- **Trò chuyện thanh bên**: cuộc trò chuyện liên tục với lịch sử đầy đủ
+- **Thu thập ngữ cảnh**: Terminal Registry thu thập bộ đệm từ bảng đang hoạt động hoặc tất cả bảng chia đồng thời; tự động tiêm tệp IDE, đường dẫn SFTP và trạng thái Git
+- **40+ công cụ tự động**: thao tác tệp, quản lý tiến trình, chẩn đoán mạng, tương tác ứng dụng TUI, xử lý văn bản — AI gọi các công cụ này mà không cần kích hoạt thủ công
+- **Hỗ trợ MCP**: kết nối máy chủ [Model Context Protocol](https://modelcontextprotocol.io) bên ngoài (stdio & SSE) cho tích hợp công cụ bên thứ ba
+- **Cơ sở kiến thức RAG** (v0.20): nhập tài liệu Markdown/TXT vào bộ sưu tập có phạm vi (toàn cục hoặc mỗi kết nối). Tìm kiếm lai kết hợp chỉ mục từ khóa BM25 + tương đồng cosine vector qua Reciprocal Rank Fusion. Phân đoạn nhận biết Markdown bảo tồn phân cấp tiêu đề. Tokenizer bigram CJK cho tiếng Trung/Nhật/Hàn.
+- **Nhà cung cấp**: OpenAI, Ollama, DeepSeek, OneAPI, hoặc bất kỳ endpoint `/v1/chat/completions` nào
+- **Bảo mật**: khóa API lưu trong chuỗi khóa hệ điều hành; trên macOS, đọc khóa được bảo vệ bởi **Touch ID** qua `LAContext` — không cần entitlement hay ký mã, được cache sau lần xác thực đầu tiên mỗi phiên
 
 ### 💻 Chế độ IDE — Chỉnh sửa từ xa
 
-Trình soạn thảo CodeMirror 6 qua SFTP — mặc định không cần cài đặt phía server; Linux hỗ trợ tùy chọn agent từ xa nhẹ để nâng cao khả năng:
+Trình soạn thảo CodeMirror 6 hoạt động qua SFTP — không yêu cầu cài đặt phía máy chủ theo mặc định:
 
-- **Cây tệp**: tải lười với chỉ báo trạng thái Git
-- **30+ chế độ ngôn ngữ**: 16 CodeMirror gốc + các chế độ kế thừa
-- **Giải quyết xung đột**: khóa mtime lạc quan
-- **Git hướng sự kiện**: tự động làm mới khi lưu, tạo, xóa, đổi tên, nhấn Enter trong terminal
-- **State Gating**: I/O bị chặn khi `readiness !== 'ready'`, Key-Driven Reset khi kết nối lại
-- **Agent từ xa Linux (tùy chọn)**: tệp nhị phân Rust ~1 MB, tự động triển khai trên x86_64/aarch64. Kiến trúc bổ sung (ARMv7, RISC-V64, LoongArch64, s390x, v.v.) có sẵn trong `agents/extra/` để tải lên thủ công
+- **Cây tệp**: tải lazy thư mục với chỉ báo trạng thái Git (đã sửa đổi/chưa theo dõi/đã thêm)
+- **30+ chế độ ngôn ngữ**: 16 CodeMirror gốc + chế độ kế thừa qua `@codemirror/legacy-modes`
+- **Giải quyết xung đột**: khóa lạc quan bằng mtime — phát hiện thay đổi từ xa trước khi ghi đè
+- **Git theo sự kiện**: tự động làm mới khi lưu, tạo, xóa, đổi tên và nhấn Enter trong terminal
+- **State Gating**: tất cả I/O bị chặn khi `readiness !== 'ready'`, Key-Driven Reset buộc remount hoàn toàn khi kết nối lại
+- **Agent từ xa** (tùy chọn): nhị phân Rust ~1 MB, triển khai tự động trên x86_64/aarch64 Linux. 10+ kiến trúc bổ sung (ARMv7, RISC-V64, LoongArch64, s390x, mips64, Power64LE…) trong `agents/extra/` để tải thủ công. Kích hoạt cây tệp nâng cao, tìm kiếm biểu tượng và theo dõi tệp.
+
+### 🔀 Chuyển tiếp cổng — I/O không khóa
+
+Chuyển tiếp cục bộ (-L), từ xa (-R) và SOCKS5 động (-D) đầy đủ:
+
+- **Kiến trúc truyền thông điệp**: kênh SSH thuộc sở hữu của một task `ssh_io` duy nhất — không `Arc<Mutex<Channel>>`, loại bỏ hoàn toàn tranh chấp mutex
+- **Báo cáo ngừng hoạt động**: các task chuyển tiếp chủ động báo cáo lý do thoát (ngắt SSH, đóng cổng từ xa, hết thời gian) để chẩn đoán rõ ràng
+- **Tự động khôi phục**: chuyển tiếp `Suspended` tự động tiếp tục khi kết nối lại mà không cần can thiệp người dùng
+- **Hết thời gian nhàn rỗi**: `FORWARD_IDLE_TIMEOUT` (300 giây) ngăn tích tụ kết nối zombie
+
+### 🔌 Hệ thống plugin runtime
+
+Tải ESM động với bề mặt API đóng băng và được tăng cường bảo mật:
+
+- **API PluginContext**: 8 không gian tên — terminal, ui, commands, settings, lifecycle, events, storage, system
+- **24 thành phần UI Kit**: thành phần React dựng sẵn (nút, trường nhập liệu, hộp thoại, bảng…) được tiêm vào sandbox plugin qua `window.__OXIDE__`
+- **Màng bảo mật**: `Object.freeze` trên tất cả đối tượng ngữ cảnh, ACL dựa trên Proxy, whitelist IPC, ngắt mạch với tự động vô hiệu hóa sau lỗi lặp lại
+- **Module chia sẻ**: React, ReactDOM, zustand, lucide-react được cung cấp cho plugin sử dụng mà không trùng lặp bundle
+
+### ⚡ Kết xuất thích ứng
+
+Bộ lập lịch kết xuất ba tầng thay thế batching cố định `requestAnimationFrame`:
+
+| Tầng | Kích hoạt | Tần suất | Lợi ích |
+|---|---|---|---|
+| **Boost** | Dữ liệu khung ≥ 4 KB | 120 Hz+ (ProMotion gốc) | Loại bỏ lag cuộn khi `cat largefile.log` |
+| **Bình thường** | Nhập liệu chuẩn | 60 Hz (RAF) | Nền tảng mượt mà |
+| **Nhàn rỗi** | 3 giây không I/O / tab ẩn | 1–15 Hz (suy giảm lũy thừa) | Tải GPU gần bằng không, tiết kiệm pin |
+
+Các chuyển đổi hoàn toàn tự động — được điều khiển bởi lượng dữ liệu, đầu vào người dùng và API Page Visibility. Tab nền tiếp tục xả dữ liệu qua bộ hẹn giờ nhàn rỗi mà không đánh thức RAF.
 
 ### 🔐 Xuất mã hóa .oxide
 
-Định dạng sao lưu kết nối di động:
+Sao lưu kết nối di động, chống giả mạo:
 
-- **ChaCha20-Poly1305 AEAD** mã hóa có xác thực
-- **Argon2id KDF** (256 MB bộ nhớ, 4 vòng lặp) — chống brute-force GPU
-- **SHA-256** kiểm tra tính toàn vẹn
-- **Nhúng khóa tùy chọn**: khóa riêng base64 được mã hóa vào payload đã mã hóa
-- **Phân tích trước khi xuất**: phân loại phương thức xác thực, phát hiện khóa bị thiếu
+- Mã hóa xác thực **ChaCha20-Poly1305 AEAD**
+- **KDF Argon2id**: chi phí bộ nhớ 256 MB, 4 vòng lặp — chống brute-force GPU
+- Checksum toàn vẹn **SHA-256**
+- **Nhúng khóa tùy chọn**: khóa riêng tư được mã hóa base64 trong payload đã mã hóa
+- **Phân tích trước**: phân tích loại xác thực, phát hiện khóa thiếu trước khi xuất
 
-### 📡 ProxyJump — Multi-Hop nhận biết topo mạng
+### 📡 ProxyJump — Đa chặng nhận biết topo
 
-- Độ sâu chuỗi không giới hạn: `Client → Jump A → Jump B → … → Target`
-- Tự động phân tích SSH Config, xây dựng đồ thị topo, tính toán đường đi Dijkstra
-- Các node nhảy có thể tái sử dụng như phiên độc lập
-- Lan truyền lỗi cascade với đồng bộ trạng thái hạ nguồn tự động
+- Độ sâu chuỗi không giới hạn: `Client → Chặng A → Chặng B → … → Đích`
+- Tự động phân tích `~/.ssh/config`, xây dựng đồ thị topo, tìm đường Dijkstra cho tuyến tối ưu
+- Nút nhảy tái sử dụng như phiên độc lập
+- Lan truyền lỗi dây chuyền: máy chủ nhảy hỏng → tất cả nút hạ nguồn tự động đánh dấu `link_down`
 
-### 📊 Profiler tài nguyên
+### ⚙️ Terminal cục bộ — PTY an toàn luồng
 
-Giám sát trực tiếp host từ xa qua kênh shell SSH liên tục:
+Shell cục bộ đa nền tảng qua `portable-pty 0.8`, được bảo vệ bởi feature gate `local-terminal`:
 
-- Đọc `/proc/stat`, `/proc/meminfo`, `/proc/loadavg`, `/proc/net/dev`
-- Tính toán CPU% và thông lượng mạng dựa trên delta
-- Dùng một kênh duy nhất — tránh cạn kiệt MaxSessions
-- Tự động giảm cấp về chỉ RTT khi không phải Linux hoặc liên tiếp thất bại
+- `MasterPty` bọc trong `std::sync::Mutex` — luồng I/O chuyên dụng giữ đọc PTY chặn khỏi vòng lặp sự kiện Tokio
+- Tự động phát hiện shell: `zsh`, `bash`, `fish`, `pwsh`, Git Bash, WSL2
+- `cargo build --no-default-features` loại bỏ PTY cho bản build di động/nhẹ
 
-### 🖼️ Bộ sưu tập ảnh nền
+### 🪟 Tối ưu hóa Windows
 
-Hệ thống nền đa ảnh với điều khiển độ trong suốt theo từng tab:
+- **ConPTY gốc**: gọi trực tiếp API Windows Pseudo Console — hỗ trợ đầy đủ TrueColor và ANSI, không có WinPTY cũ
+- **Quét shell**: tự động phát hiện PowerShell 7, Git Bash, WSL2, CMD qua Registry và PATH
 
-- **Quản lý gallery**: tải lên nhiều ảnh, nhấn thumbnail để chuyển, xóa từng ảnh hoặc xóa hàng loạt
-- **Công tắc chính**: bật/tắt nền toàn cục mà không xóa ảnh
-- **Điều khiển theo tab**: 13 loại tab có thể bật/tắt riêng (terminal, SFTP, IDE, settings, topology, v.v.)
-- **Tùy chỉnh**: độ mờ (3–50%), blur (0–20px), chế độ hiển thị (cover/contain/fill/tile)
-- **Nhận biết nền tảng**: hỗ trợ trong suốt macOS; loại trừ đường dẫn WSLg trên Windows (canvas VNC không trong suốt)
-- **Bảo mật**: xóa đã chuẩn hóa đường dẫn để ngăn directory traversal; truyền lỗi đầy đủ từ backend Rust
+### Và nhiều hơn nữa
 
-### ⚡ Kết xuất thích ứng — Tốc độ làm mới động
-
-Bộ lập lịch kết xuất ba tầng thay thế batching RAF cố định, cải thiện khả năng phản hồi khi xuất dữ liệu nặng và giảm tải GPU/pin khi nhàn rỗi:
-
-| Tầng | Kích hoạt | Tốc độ hiệu dụng | Lợi ích |
-|---|---|---|---|
-| **Boost** | Dữ liệu frame ≥ 4 KB | 120 Hz+ (RAF / ProMotion gốc) | Loại bỏ lag cuộn khi xuất nhanh |
-| **Normal** | Gõ phím thường / I/O nhẹ | 60 Hz (RAF) | Tương tác mượt mà cơ bản |
-| **Idle** | 3 giây không I/O, trang ẩn, hoặc cửa sổ mất focus | 1–15 Hz (timer, tăng theo hàm mũ) | Gần như không tải GPU, tiết kiệm pin |
-
-- **Chế độ tự động**: chuyển đổi dựa trên khối lượng dữ liệu, đầu vào người dùng, và Page Visibility API — không cần điều chỉnh thủ công
-- **An toàn khi chạy nền**: khi tab bị ẩn, dữ liệu từ xa tiếp tục được xả qua idle timer — RAF không bao giờ bị đánh thức, ngăn tích tụ buffer trên tab chạy nền
-- **Cài đặt**: ba chế độ (Auto / Luôn 60 Hz / Tắt) trong Settings → Terminal → Renderer
-- **Chẩn đoán trực tiếp**: bật **Show FPS Overlay** để xem huy hiệu tầng thời gian thực (`B`=boost · `N`=normal · `I`=idle), tốc độ frame, và bộ đếm ghi/giây nổi ở góc terminal
-
-### 🎨 Công cụ tùy chỉnh giao diện
-
-Tùy chỉnh giao diện chuyên sâu vượt xa các bảng màu có sẵn:
-
-- **30+ giao diện tích hợp**: Oxide, Dracula, Nord, Catppuccin, Spring Rice, Tokyo Night, và nhiều hơn nữa
-- **Trình chỉnh sửa giao diện tùy chỉnh**: bộ chọn màu trực quan + nhập hex RGB cho mọi trường
-- **Màu terminal**: tất cả 22 trường xterm.js (nền, chữ, con trỏ, vùng chọn, 16 màu ANSI)
-- **Màu giao diện UI**: 19 biến CSS trên 5 danh mục — Nền (5), Văn bản (3), Đường viền (3), Nhấn (4), Màu trạng thái ngữ nghĩa (4)
-- **Tự động tạo**: tạo màu UI từ bảng màu terminal chỉ với một cú nhấp
-- **Xem trước trực tiếp**: terminal thu nhỏ thời gian thực + xem trước giao diện UI khi chỉnh sửa
-- **Nhân bản & mở rộng**: tạo giao diện mới bằng cách nhân bản bất kỳ giao diện tích hợp hoặc tùy chỉnh nào
-- **Lưu trữ lâu dài**: giao diện tùy chỉnh được lưu vào localStorage, tồn tại qua các bản cập nhật
-
-### 🪟 Tối ưu hóa chuyên sâu cho Windows
-
-- **Tích hợp ConPTY gốc**: gọi trực tiếp API Windows Pseudo Console (ConPTY) để hỗ trợ hoàn hảo TrueColor và chuỗi thoát ANSI — không dùng WinPTY lỗi thời.
-- **Phát hiện Shell thông minh**: bộ quét tích hợp tự động phát hiện **PowerShell 7 (pwsh)**, **Git Bash**, **WSL2**, và CMD kế thừa qua Registry và PATH.
-- **Trải nghiệm gốc**: Rust xử lý trực tiếp sự kiện cửa sổ — tốc độ phản hồi vượt xa ứng dụng Electron.
-
-### 📊 Bộ đệm cuộn Backend
-
-- **Lưu trữ dung lượng cao**: mặc định **100.000 dòng** đầu ra terminal, có thể serialize ra đĩa (định dạng MessagePack).
-- **Tìm kiếm hiệu năng cao**: `spawn_blocking` cách ly tác vụ tìm kiếm regex, tránh chặn runtime Tokio.
-- **Hiệu quả bộ nhớ**: thiết kế bộ đệm vòng tự động loại bỏ dữ liệu cũ nhất, kiểm soát mức sử dụng bộ nhớ.
-
-### ⚛️ Kiến trúc State đa Store
-
-Frontend áp dụng mẫu **Multi-Store** (16 stores) để xử lý các miền trạng thái khác nhau hoàn toàn:
-
-| Store | Vai trò |
-|---|---|
-| **SessionTreeStore** | Ý định người dùng — cấu trúc cây, luồng kết nối, tổ chức phiên |
-| **AppStore** | Lớp thực tế — trạng thái kết nối SSH thực qua `connections` Map, đồng bộ từ SessionTreeStore |
-| **IdeStore** | Chế độ IDE — chỉnh sửa tệp từ xa, trạng thái Git, trình soạn thảo đa tab |
-| **LocalTerminalStore** | Vòng đời PTY cục bộ, giám sát tiến trình Shell, I/O độc lập |
-| **ReconnectOrchestratorStore** | Pipeline kết nối lại tự động (snapshot → grace-period → ssh-connect → await-terminal → restore) |
-| **TransferStore** | Hàng đợi truyền tải SFTP và tiến độ |
-| **PluginStore** | Trạng thái runtime plugin và registry UI |
-| **ProfilerStore** | Số liệu profiler tài nguyên |
-| **AiChatStore** | Trạng thái hội thoại OxideSens |
-| **SettingsStore** | Cài đặt ứng dụng |
-| **BroadcastStore** | Broadcast input — sao chép phím gõ đến nhiều panel |
-| **CommandPaletteStore** | Trạng thái mở/đóng command palette |
-| **EventLogStore** | Nhật ký sự kiện vòng đời kết nối & kết nối lại |
-| **LauncherStore** | Trạng thái trình khởi chạy ứng dụng nền tảng |
-| **RecordingStore** | Ghi & phát lại phiên terminal |
-| **UpdateStore** | Vòng đời cập nhật tự động (check → download → install) |
-
-Mặc dù nguồn trạng thái khác nhau, logic kết xuất được thống nhất qua các component `TerminalView` và `IdeView`.
-
-### 🖥️ CLI Companion — `oxt`
-
-Công cụ dòng lệnh độc lập giao tiếp với OxideTerm GUI đang chạy qua IPC:
-
-- **Giao thức**: JSON-RPC 2.0 qua Unix Domain Socket (macOS/Linux) hoặc Named Pipe (Windows)
-- **Lệnh**: `oxt status`, `oxt list connections`, `oxt list sessions`, `oxt ping`
-- **Chế độ xuất**: tự động phát hiện định dạng đọc được, `--json` cho scripting
-- **Đi kèm GUI**: tích hợp trong gói ứng dụng, cài đặt qua Cài đặt → Tổng quát vào `~/.local/bin/`
-- **Bảo mật**: tối đa 16 kết nối đồng thời, giới hạn yêu cầu 1 MB, hết thời gian chờ 60s, quyền Socket chỉ chủ sở hữu
-
----
-
-## Ngăn xếp Công nghệ
-
-| Lớp | Công nghệ | Chi tiết |
-|---|---|---|
-| **Framework** | Tauri 2.0 | Tệp nhị phân gốc, ~15 MB, không Electron |
-| **Runtime** | Tokio + DashMap 6 | Bất đồng bộ hoàn toàn với bản đồ đồng thời không khóa |
-| **SSH** | russh 0.54 (`ring`) | Thuần Rust, không phụ thuộc C, SSH Agent |
-| **PTY cục bộ** | portable-pty 0.8 | Có feature gate, ConPTY trên Windows |
-| **Frontend** | React 19.1 + TypeScript 5.8 | Vite 7, Tailwind CSS 4 |
-| **State** | Zustand 5 | 16 stores chuyên biệt, đồng bộ hướng sự kiện |
-| **Terminal** | xterm.js 6 + WebGL | Tăng tốc GPU, 60fps+ |
-| **Trình soạn thảo** | CodeMirror 6 | 16 gói ngôn ngữ + chế độ kế thừa |
-| **Mã hóa** | ChaCha20-Poly1305 + Argon2id | AEAD + KDF chống bộ nhớ cứng |
-| **Lưu trữ** | redb 2.1 | DB nhúng cho phiên, chuyển tiếp, truyền tải |
-| **Serialization** | MessagePack (rmp-serde) | Lưu trữ nhị phân buffer/trạng thái |
-| **i18n** | i18next 25 | 11 ngôn ngữ × 21 namespaces |
-| **SFTP** | russh-sftp 2.0 | Giao thức truyền tệp SSH |
-| **WebSocket** | tokio-tungstenite 0.24 | WebSocket bất đồng bộ cho mặt phẳng dữ liệu terminal |
-| **Giao thức** | Wire Protocol v1 | Nhị phân `[Type:1][Length:4][Payload:n]` qua WebSocket |
-| **Plugin** | ESM Runtime | PluginContext đóng băng + 24 thành phần UI Kit |
-| **CLI** | oxide-cli | JSON-RPC 2.0, Unix Socket / Named Pipe |
-
----
-
-## Ma trận tính năng
-
-| Danh mục | Tính năng |
-|---|---|
-| **Terminal** | PTY cục bộ, SSH từ xa, chia panel (H/V), ghi/phát lại phiên (asciicast v2), ngữ cảnh AI xuyên panel, kết xuất WebGL, bộ sưu tập ảnh nền, 30+ giao diện + trình chỉnh sửa giao diện tùy chỉnh, command palette (`⌘K`), zen mode (`⌘⇧Z`), phím tắt cỡ chữ (`⌘+`/`⌘-`) |
-| **SSH** | Connection pool, multiplexing, ProxyJump (∞ hop), đồ thị topo, pipeline kết nối lại tự động |
-| **Xác thực** | Mật khẩu, SSH Key (RSA/Ed25519/ECDSA), SSH Agent, Certificate, Keyboard-Interactive (2FA), Known Hosts |
-| **Tệp** | Trình duyệt SFTP hai panel, kéo thả, xem trước (ảnh/video/audio/PDF/mã nguồn/hex), hàng đợi truyền tải |
-| **IDE** | Cây tệp, trình soạn thảo CodeMirror, đa tab, trạng thái Git, giải quyết xung đột, terminal tích hợp |
-| **Chuyển tiếp** | Local (-L), Remote (-R), Dynamic SOCKS5 (-D), tự động khôi phục, báo cáo kết thúc, I/O không khóa |
-| **AI** | Bảng nội tuyến + chat bên lề, streaming SSE, chèn mã, 40+ công cụ sử dụng, tích hợp MCP server, ngữ cảnh đa nguồn, cơ sở kiến thức RAG, OpenAI/Ollama/DeepSeek |
-| **Plugin** | Tải ESM runtime, 8 API namespaces, 24 UI Kit, sandbox, circuit breaker |
-| **WSL Graphics** ⚠️ | Trình xem VNC tích hợp (Thử nghiệm): Chế độ Desktop (9 DE) + Chế độ App (ứng dụng GUI đơn), phát hiện WSLg, Xtigervnc + noVNC, kết nối lại, gắn feature gate |
-| **CLI** | Công cụ `oxt`, IPC JSON-RPC, trạng thái/danh sách/ping, đầu ra đọc được + JSON, cài đặt tích hợp |
-| **Bảo mật** | Mã hóa .oxide, OS keychain, xóa bộ nhớ `zeroize`, TOFU host key |
-| **i18n** | EN, 简体中文, 繁體中文, 日本語, FR, DE, ES, IT, 한국어, PT-BR, VI |
-
----
-
-## Tính năng nổi bật
-
-### 🚀 Trải nghiệm Terminal lai
-- **Shell cục bộ không độ trễ**: IPC trực tiếp với tiến trình cục bộ, độ trễ gần bằng không.
-- **SSH từ xa hiệu năng cao**: luồng nhị phân WebSocket, bỏ qua chi phí HTTP truyền thống.
-- **Kế thừa môi trường đầy đủ**: kế thừa PATH, HOME, và tất cả biến môi trường — khớp với trải nghiệm terminal hệ thống.
-
-### 🔐 Xác thực đa dạng
-- **Mật khẩu**: lưu trữ an toàn trong keychain hệ thống.
-- **Xác thực bằng khóa**: RSA / Ed25519 / ECDSA, tự động quét `~/.ssh/id_*`.
-- **SSH Agent**: agent hệ thống qua `AgentSigner` (macOS/Linux/Windows).
-- **Certificate**: OpenSSH Certificates.
-- **2FA/MFA**: xác thực Keyboard-Interactive.
-- **Known Hosts**: xác minh host key với TOFU và `~/.ssh/known_hosts`.
-
-### 🔍 Tìm kiếm toàn văn
-Tìm kiếm nội dung tệp toàn dự án với bộ nhớ đệm thông minh:
-- **Tìm kiếm thời gian thực**: đầu vào debounce 300ms với kết quả tức thì.
-- **Bộ nhớ đệm kết quả**: cache TTL 60 giây tránh quét lặp.
-- **Nhóm kết quả**: nhóm theo tệp với vị trí số dòng.
-- **Đánh dấu khớp**: từ tìm kiếm được đánh dấu trong đoạn xem trước.
-- **Tự động xóa**: cache bị vô hiệu khi tệp thay đổi.
-
-### 📦 Quản lý tệp nâng cao
-- **Giao thức SFTP v3**: trình quản lý tệp hai panel đầy đủ.
-- **Kéo và thả**: thao tác hàng loạt nhiều tệp và thư mục.
-- **Xem trước thông minh**:
-  - 🎨 Hình ảnh (JPEG/PNG/GIF/WebP)
-  - 🎬 Video (MP4/WebM) với trình phát tích hợp
-  - 🎵 Âm thanh (MP3/WAV/OGG/FLAC) với hiển thị metadata
-  - 💻 Đánh dấu mã nguồn (30+ ngôn ngữ)
-  - 📄 Tài liệu PDF
-  - 🔍 Trình xem Hex (tệp nhị phân)
-- **Theo dõi tiến độ**: tốc độ thời gian thực, thanh tiến trình, ETA.
-
-### 🌍 Quốc tế hóa (i18n)
-- **11 Ngôn ngữ**: English, 简体中文, 繁體中文, 日本語, Français, Deutsch, Español, Italiano, 한국어, Português, Tiếng Việt.
-- **Tải động**: gói ngôn ngữ theo yêu cầu qua i18next.
-- **An toàn kiểu**: định nghĩa TypeScript cho tất cả khóa dịch thuật.
+- **Trình phân tích tài nguyên**: CPU/bộ nhớ/mạng trực tiếp qua kênh SSH liên tục đọc `/proc/stat`, tính toán dựa trên delta, tự động giảm xuống chỉ RTT trên hệ thống không phải Linux
+- **Công cụ giao diện tùy chỉnh**: 30+ giao diện tích hợp, trình biên tập trực quan với xem trước trực tiếp, 22 trường xterm.js + 19 biến CSS, tự động suy diễn màu UI từ bảng màu terminal
+- **Ghi phiên**: định dạng asciicast v2, ghi và phát lại đầy đủ
+- **Phát sóng đầu vào**: gõ một lần, gửi đến tất cả bảng chia — thao tác máy chủ hàng loạt
+- **Thư viện nền**: hình nền từng tab, 13 loại tab, điều khiển độ mờ/làm mờ/khớp
+- **CLI đồng hành** (`oxt`): nhị phân ~1 MB, JSON-RPC 2.0 qua Unix Socket / Named Pipe, `status`/`list`/`ping` với đầu ra dạng người đọc hoặc `--json`
+- **WSL Graphics** ⚠️ thử nghiệm: trình xem VNC tích hợp — 9 môi trường desktop + chế độ ứng dụng đơn, phát hiện WSLg, Xtigervnc + noVNC
 
 <details>
-<summary>📸 Giao diện 11 ngôn ngữ</summary>
+<summary>📸 11 ngôn ngữ đang hoạt động</summary>
 <br>
 <table>
   <tr>
-    <td align="center"><img src="../screenshots/overview/en.png" width="280"><br><b>English</b></td>
-    <td align="center"><img src="../screenshots/overview/zhHans.png" width="280"><br><b>简体中文</b></td>
-    <td align="center"><img src="../screenshots/overview/zhHant.png" width="280"><br><b>繁體中文</b></td>
+    <td align="center"><img src="../../docs/screenshots/overview/en.png" width="280"><br><b>English</b></td>
+    <td align="center"><img src="../../docs/screenshots/overview/zhHans.png" width="280"><br><b>简体中文</b></td>
+    <td align="center"><img src="../../docs/screenshots/overview/zhHant.png" width="280"><br><b>繁體中文</b></td>
   </tr>
   <tr>
-    <td align="center"><img src="../screenshots/overview/ja.png" width="280"><br><b>日本語</b></td>
-    <td align="center"><img src="../screenshots/overview/ko.png" width="280"><br><b>한국어</b></td>
-    <td align="center"><img src="../screenshots/overview/fr.png" width="280"><br><b>Français</b></td>
+    <td align="center"><img src="../../docs/screenshots/overview/ja.png" width="280"><br><b>日本語</b></td>
+    <td align="center"><img src="../../docs/screenshots/overview/ko.png" width="280"><br><b>한국어</b></td>
+    <td align="center"><img src="../../docs/screenshots/overview/fr.png" width="280"><br><b>Français</b></td>
   </tr>
   <tr>
-    <td align="center"><img src="../screenshots/overview/de.png" width="280"><br><b>Deutsch</b></td>
-    <td align="center"><img src="../screenshots/overview/es.png" width="280"><br><b>Español</b></td>
-    <td align="center"><img src="../screenshots/overview/it.png" width="280"><br><b>Italiano</b></td>
+    <td align="center"><img src="../../docs/screenshots/overview/de.png" width="280"><br><b>Deutsch</b></td>
+    <td align="center"><img src="../../docs/screenshots/overview/es.png" width="280"><br><b>Español</b></td>
+    <td align="center"><img src="../../docs/screenshots/overview/it.png" width="280"><br><b>Italiano</b></td>
   </tr>
   <tr>
-    <td align="center"><img src="../screenshots/overview/pt-BR.png" width="280"><br><b>Português</b></td>
-    <td align="center"><img src="../screenshots/overview/vi.png" width="280"><br><b>Tiếng Việt</b></td>
+    <td align="center"><img src="../../docs/screenshots/overview/pt-BR.png" width="280"><br><b>Português</b></td>
+    <td align="center"><img src="../../docs/screenshots/overview/vi.png" width="280"><br><b>Tiếng Việt</b></td>
     <td></td>
   </tr>
 </table>
 </details>
-
-### 🌐 Tối ưu hóa mạng
-- **Kiến trúc hai mặt phẳng**: mặt phẳng dữ liệu (WebSocket trực tiếp) và mặt phẳng điều khiển (Tauri IPC) tách biệt.
-- **Giao thức nhị phân tùy chỉnh**: `[Type:1][Length:4][Payload:n]`, không có chi phí serialization JSON.
-- **Kiểm soát backpressure**: ngăn tràn bộ nhớ trong lưu lượng bùng phát.
-- **Tự động kết nối lại**: thử lại exponential backoff, tối đa 5 lần.
-
-### 🖥️ WSL Graphics (⚠️ Thử nghiệm)
-- **Chế độ Desktop**: môi trường desktop Linux GUI đầy đủ bên trong tab terminal — 9 môi trường desktop (Xfce / GNOME / KDE Plasma / MATE / LXDE / Cinnamon / Openbox / Fluxbox / IceWM), phát hiện tự động.
-- **Chế độ App**: khởi chạy một ứng dụng GUI đơn lẻ (ví dụ: `gedit`, `firefox`) không cần desktop đầy đủ — Xtigervnc nhẹ + Openbox WM tùy chọn, tự động dọn dẹp khi ứng dụng thoát.
-- **Phát hiện WSLg**: tự động phát hiện khả dụng WSLg (socket Wayland / X11) theo mỗi distro, hiển thị dưới dạng huy hiệu trên UI.
-- **Xtigervnc + noVNC**: X server độc lập được kết xuất qua `<canvas>` trong ứng dụng, với `scaleViewport` và `resizeSession`.
-- **Bảo mật**: inject mảng `argv` (không phân tích shell), `env_clear()` + whitelist tối thiểu, `validate_argv()` 6 quy tắc phòng thủ, giới hạn đồng thời (4 phiên app/distro, 8 toàn cục).
-- **Kết nối lại**: WebSocket bridge tái thiết lập mà không dừng phiên VNC.
-- **Gắn feature gate**: Cargo feature `wsl-graphics`, lệnh stub trên nền tảng không phải Windows.
 
 ---
 
@@ -464,7 +282,7 @@ Tìm kiếm nội dung tệp toàn dự án với bộ nhớ đệm thông minh:
 ### Yêu cầu
 
 - **Rust** 1.75+
-- **Node.js** 18+ (khuyến nghị dùng pnpm)
+- **Node.js** 18+ (khuyến nghị pnpm)
 - **Công cụ nền tảng**:
   - macOS: Xcode Command Line Tools
   - Windows: Visual Studio C++ Build Tools
@@ -473,78 +291,41 @@ Tìm kiếm nội dung tệp toàn dự án với bộ nhớ đệm thông minh:
 ### Phát triển
 
 ```bash
-git clone https://github.com/AnalyseDeCircuit/OxideTerm.git
-cd OxideTerm && pnpm install
+git clone https://github.com/AnalyseDeCircuit/oxideterm.git
+cd oxideterm && pnpm install
 
-# Ứng dụng đầy đủ (frontend + Rust backend + PTY cục bộ)
+# Ứng dụng đầy đủ (frontend + backend Rust với hot reload)
 pnpm tauri dev
 
-# Chỉ frontend (hot reload trên cổng 1420)
+# Chỉ frontend (Vite trên cổng 1420)
 pnpm dev
 
-# Build production
+# Build sản phẩm
 pnpm tauri build
 
-# Kernel nhẹ — loại bỏ PTY cục bộ cho di động
+# Build nhẹ — loại bỏ PTY cục bộ cho di động
 cd src-tauri && cargo build --no-default-features --release
 ```
 
 ---
 
-## Cấu trúc dự án
+## Ngăn xếp công nghệ
 
-```
-OxideTerm/
-├── src/                            # Frontend — 83K dòng TypeScript
-│   ├── components/                 # 20 thư mục
-│   │   ├── terminal/               #   Giao diện terminal, chia panel, tìm kiếm
-│   │   ├── sftp/                   #   Trình duyệt tệp hai panel
-│   │   ├── ide/                    #   Trình soạn thảo, cây tệp, hộp thoại Git
-│   │   ├── ai/                     #   Chat nội tuyến + bên lề
-│   │   ├── graphics/               #   WSL Graphics (VNC desktop + trình xem app)
-│   │   ├── plugin/                 #   Trình quản lý plugin & UI runtime
-│   │   ├── forwards/               #   Quản lý chuyển tiếp cổng
-│   │   ├── connections/            #   CRUD kết nối & nhập khẩu
-│   │   ├── topology/               #   Đồ thị topo mạng
-│   │   ├── layout/                 #   Sidebar, header, chia panel
-│   │   └── ...                     #   sessions, settings, modals, v.v.
-│   ├── store/                      # 16 Zustand stores
-│   ├── lib/                        # Lớp API, nhà cung cấp AI, plugin runtime
-│   ├── hooks/                      # React hooks (sự kiện, bàn phím, thông báo)
-│   ├── types/                      # Định nghĩa kiểu TypeScript
-│   └── locales/                    # 11 ngôn ngữ × 21 namespaces
-│
-├── src-tauri/                      # Backend — 51K dòng Rust
-│   └── src/
-│       ├── router/                 #   NodeRouter (nodeId → tài nguyên)
-│       ├── ssh/                    #   SSH client (12 module bao gồm Agent)
-│       ├── local/                  #   PTY cục bộ (gắn feature gate)
-│       ├── graphics/               #   WSL Graphics (gắn feature gate)
-│       ├── bridge/                 #   WebSocket bridge & Wire Protocol v1
-│       ├── session/                #   Quản lý phiên (16 module)
-│       ├── forwarding/             #   Chuyển tiếp cổng (6 module)
-│       ├── sftp/                   #   Triển khai SFTP
-│       ├── config/                 #   Vault, keychain, cấu hình SSH
-│       ├── oxide_file/             #   Mã hóa .oxide (ChaCha20)
-│       ├── commands/               #   24 module lệnh Tauri IPC
-│       └── state/                  #   Kiểu trạng thái toàn cục
-│
-└── docs/                           # 27+ tài liệu kiến trúc & tính năng
-```
-
----
-
-## Lộ trình
-
-### 🚧 Đang phát triển (v0.21)
-
-- [x] Cơ sở kiến thức RAG — bộ sưu tập tài liệu cục bộ với tìm kiếm lai BM25 + vector, truy xuất tích hợp AI
-- [x] Máy khách MCP (Model Context Protocol) — kết nối OxideSens với các máy chủ công cụ bên ngoài
-- [ ] Tìm kiếm phiên & chuyển đổi nhanh
-
-### 📋 Kế hoạch
-
-- [ ] Chuyển tiếp SSH Agent
+| Tầng | Công nghệ | Chi tiết |
+|---|---|---|
+| **Framework** | Tauri 2.0 | Nhị phân gốc, 25–40 MB |
+| **Runtime** | Tokio + DashMap 6 | Hoàn toàn bất đồng bộ, map đồng thời không khóa |
+| **SSH** | russh 0.54 (`ring`) | Thuần Rust, không phụ thuộc C, SSH Agent |
+| **PTY cục bộ** | portable-pty 0.8 | Feature-gated, ConPTY trên Windows |
+| **Frontend** | React 19.1 + TypeScript 5.8 | Vite 7, Tailwind CSS 4 |
+| **Trạng thái** | Zustand 5 | 18 store chuyên biệt |
+| **Terminal** | xterm.js 6 + WebGL | Tăng tốc GPU, 60 fps+ |
+| **Trình soạn thảo** | CodeMirror 6 | 30+ chế độ ngôn ngữ |
+| **Mã hóa** | ChaCha20-Poly1305 + Argon2id | AEAD + KDF tiêu tốn bộ nhớ (256 MB) |
+| **Lưu trữ** | redb 2.1 | Store KV nhúng |
+| **i18n** | i18next 25 | 11 ngôn ngữ × 21 không gian tên |
+| **Plugin** | ESM Runtime | PluginContext đóng băng + 24 UI Kit |
+| **CLI** | JSON-RPC 2.0 | Unix Socket / Named Pipe |
 
 ---
 
@@ -552,39 +333,48 @@ OxideTerm/
 
 | Mối quan tâm | Triển khai |
 |---|---|
-| **Mật khẩu** | OS keychain (macOS Keychain / Windows Credential Manager / Linux libsecret) |
-| **API Keys AI** | OS keychain dưới dịch vụ `com.oxideterm.ai`; trên macOS, thao tác đọc khóa yêu cầu **Touch ID** (cổng sinh trắc học qua `LocalAuthentication.framework`, không cần data-protection entitlements) — khóa được cache trong bộ nhớ sau lần xác thực đầu tiên, nên Touch ID chỉ được yêu cầu một lần mỗi phiên |
-| **Tệp cấu hình** | `~/.oxideterm/connections.json` — chỉ lưu ID tham chiếu keychain |
-| **Xuất** | .oxide: ChaCha20-Poly1305 + Argon2id, nhúng khóa tùy chọn |
-| **Bộ nhớ** | `zeroize` xóa dữ liệu nhạy cảm; Rust đảm bảo an toàn bộ nhớ |
-| **Host keys** | TOFU với `~/.ssh/known_hosts` |
-| **Plugin** | Object.freeze + Proxy ACL, circuit breaker, IPC whitelist |
+| **Mật khẩu** | Chuỗi khóa hệ điều hành (macOS Keychain / Windows Credential Manager / libsecret) |
+| **Khóa API AI** | Chuỗi khóa hệ điều hành + xác thực sinh trắc học Touch ID trên macOS |
+| **Xuất** | .oxide: ChaCha20-Poly1305 + Argon2id (256 MB bộ nhớ, 4 vòng lặp) |
+| **Bộ nhớ** | An toàn bộ nhớ Rust + `zeroize` để xóa dữ liệu nhạy cảm |
+| **Khóa máy chủ** | TOFU với `~/.ssh/known_hosts`, từ chối thay đổi (ngăn MITM) |
+| **Plugin** | Object.freeze + ACL Proxy, ngắt mạch, whitelist IPC |
+| **WebSocket** | Token dùng một lần với giới hạn thời gian |
+
+---
+
+## Lộ trình
+
+- [ ] Chuyển tiếp SSH Agent
+- [ ] Marketplace plugin
+- [ ] Tìm kiếm phiên & chuyển đổi nhanh
 
 ---
 
 ## Giấy phép
 
-**PolyForm Noncommercial 1.0.0**
+**PolyForm Noncommercial 1.0.0** — phần mềm này được cấp phép chỉ cho **mục đích phi thương mại**.
 
-- ✅ Sử dụng cá nhân / phi lợi nhuận: miễn phí
-- 🚫 Sử dụng thương mại: yêu cầu giấy phép
-- ⚖️ Điều khoản bảo vệ bằng sáng chế (Nuclear Clause)
+Giấy phép cho phép rõ ràng:
 
-Toàn văn: https://polyformproject.org/licenses/noncommercial/1.0.0/
+- **Sử dụng cá nhân** — nghiên cứu, thử nghiệm, kiểm tra cho kiến thức công cộng, học tập cá nhân, giải trí riêng tư, dự án sở thích, hoạt động nghiệp dư — với điều kiện **không có ứng dụng thương mại dự kiến nào**
+- **Tổ chức phi thương mại** — tổ chức từ thiện, cơ sở giáo dục, tổ chức nghiên cứu công, tổ chức an toàn/sức khỏe công cộng, tổ chức bảo vệ môi trường và cơ quan chính phủ — **bất kể nguồn tài trợ**
+- **Sử dụng hợp lý** — quyền sử dụng hợp lý của bạn theo luật áp dụng không bị giới hạn
+
+**Bất kỳ mục đích sử dụng nào khác đều yêu cầu giấy phép thương mại riêng từ bên cấp phép.** Điều này bao gồm nhưng không giới hạn: sử dụng trong công ty vì lợi nhuận (bao gồm đánh giá hoặc thử nghiệm nội bộ), sử dụng bởi freelancer hoặc nhà thầu cho công việc có trả phí, và bất kỳ phân phối nào trong bối cảnh thương mại.
+
+Nếu bạn không chắc chắn liệu mục đích sử dụng của bạn có đủ điều kiện hay không, vui lòng [mở một issue](https://github.com/AnalyseDeCircuit/oxideterm/issues).
+
+Toàn văn: [polyformproject.org/licenses/noncommercial/1.0.0](https://polyformproject.org/licenses/noncommercial/1.0.0/)
 
 ---
 
 ## Lời cảm ơn
 
-- [russh](https://github.com/warp-tech/russh) — SSH thuần Rust
-- [portable-pty](https://github.com/wez/wezterm/tree/main/pty) — PTY đa nền tảng
-- [Tauri](https://tauri.app/) — Framework ứng dụng gốc
-- [xterm.js](https://xtermjs.org/) — Trình giả lập terminal
-- [CodeMirror](https://codemirror.net/) — Trình soạn thảo mã nguồn
-- [Radix UI](https://www.radix-ui.com/) — UI primitives dễ tiếp cận
+[russh](https://github.com/warp-tech/russh) · [portable-pty](https://github.com/wez/wezterm/tree/main/pty) · [Tauri](https://tauri.app/) · [xterm.js](https://xtermjs.org/) · [CodeMirror](https://codemirror.net/) · [Radix UI](https://www.radix-ui.com/)
 
 ---
 
 <p align="center">
-  <sub>Xây dựng với Rust và Tauri — Hơn 130.000 dòng mã</sub>
+  <sub>134.000+ dòng Rust & TypeScript — xây dựng với ⚡ và ☕</sub>
 </p>
