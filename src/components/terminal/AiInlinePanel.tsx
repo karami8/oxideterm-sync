@@ -477,7 +477,7 @@ export const AiInlinePanel: React.FC<AiInlinePanelProps> = ({
   return (
     <div
       ref={panelRef}
-      className="absolute z-50 w-[520px] bg-[#1e1e1e] border border-[#3c3c3c] rounded-md shadow-xl"
+      className="absolute z-50 w-[520px] bg-theme-bg-elevated border border-theme-border rounded-md shadow-xl"
       style={panelStyle}
       onKeyDown={handleKeyDown}
       onMouseDown={handleMouseDown}
@@ -485,13 +485,13 @@ export const AiInlinePanel: React.FC<AiInlinePanelProps> = ({
       {/* Loading indicator bar */}
       {isLoading && (
         <div className="absolute top-0 left-0 right-0 h-[2px] overflow-hidden">
-          <div className="h-full bg-gradient-to-r from-transparent via-[#0078d4] to-transparent animate-shimmer" />
+          <div className="h-full bg-gradient-to-r from-transparent via-theme-accent to-transparent animate-shimmer" />
         </div>
       )}
 
       {/* Main input row */}
       <div className="flex items-center gap-2 px-3 py-2">
-        <Sparkles className="w-4 h-4 text-[#0078d4] flex-shrink-0" />
+        <Sparkles className="w-4 h-4 text-theme-accent flex-shrink-0" />
         <ModelSelector onOpenSettings={handleOpenSettings} />
         
         <input
@@ -503,26 +503,26 @@ export const AiInlinePanel: React.FC<AiInlinePanelProps> = ({
             ? t('terminal.ai.selection_placeholder', 'Asking about selection...') 
             : t('terminal.ai.inline_placeholder', 'Ask AI for a command...')
           }
-          className="flex-1 bg-transparent text-sm text-[#cccccc] placeholder-[#6e6e6e] outline-none font-[var(--terminal-font-family)]"
+          className="flex-1 bg-transparent text-sm text-theme-text placeholder-theme-text-muted outline-none font-[var(--terminal-font-family)]"
           disabled={isLoading}
         />
 
         {/* Action hints */}
-        <div className="flex items-center gap-1.5 text-[10px] text-[#6e6e6e]">
+        <div className="flex items-center gap-1.5 text-[10px] text-theme-text-muted">
           {!response && !isLoading && prompt.trim() && (
             <span className="flex items-center gap-1">
-              <kbd className="px-1 py-0.5 bg-[#2d2d2d] rounded text-[9px]">Enter</kbd>
+              <kbd className="px-1 py-0.5 bg-theme-bg-hover rounded text-[9px]">Enter</kbd>
               <span>{t('terminal.ai.to_send', 'send')}</span>
             </span>
           )}
           {response && !isLoading && (
             <>
               <span className="flex items-center gap-1">
-                <kbd className="px-1 py-0.5 bg-[#2d2d2d] rounded text-[9px]">Tab</kbd>
+                <kbd className="px-1 py-0.5 bg-theme-bg-hover rounded text-[9px]">Tab</kbd>
                 <span>{t('terminal.ai.to_insert', 'insert')}</span>
               </span>
               <span className="flex items-center gap-1 ml-1">
-                <kbd className="px-1 py-0.5 bg-[#2d2d2d] rounded text-[9px]">Enter</kbd>
+                <kbd className="px-1 py-0.5 bg-theme-bg-hover rounded text-[9px]">Enter</kbd>
                 <span>{t('terminal.ai.to_run', 'run')}</span>
               </span>
             </>
@@ -532,7 +532,7 @@ export const AiInlinePanel: React.FC<AiInlinePanelProps> = ({
         {/* Close button */}
         <button
           onClick={handleClose}
-          className="p-1 text-[#6e6e6e] hover:text-[#cccccc] transition-colors"
+          className="p-1 text-theme-text-muted hover:text-theme-text transition-colors"
         >
           <X className="w-3.5 h-3.5" />
         </button>
@@ -540,7 +540,7 @@ export const AiInlinePanel: React.FC<AiInlinePanelProps> = ({
 
       {/* API Key Warning */}
       {!hasApiKey && !isLoading && (
-        <div className="mx-3 mb-2 px-2 py-1.5 bg-[#4d3800] border border-[#6e5c00] rounded text-xs text-[#cca700] flex items-center gap-2">
+        <div className="mx-3 mb-2 px-2 py-1.5 bg-theme-warning/10 border border-theme-warning/30 rounded text-xs text-theme-warning flex items-center gap-2">
           <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
           <span>{t('terminal.ai.api_key_hint')}</span>
         </div>
@@ -548,7 +548,7 @@ export const AiInlinePanel: React.FC<AiInlinePanelProps> = ({
 
       {/* Error message */}
       {error && (
-        <div className="mx-3 mb-2 px-2 py-1.5 bg-[#5a1d1d] border border-[#8b2c2c] rounded text-xs text-[#f48771] flex items-center gap-2">
+        <div className="mx-3 mb-2 px-2 py-1.5 bg-theme-error/10 border border-theme-error/30 rounded text-xs text-theme-error flex items-center gap-2">
           <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
           <span className="truncate">{error}</span>
         </div>
@@ -556,18 +556,18 @@ export const AiInlinePanel: React.FC<AiInlinePanelProps> = ({
 
       {/* Response preview */}
       {(response || isLoading) && !error && (
-        <div className="border-t border-[#3c3c3c]">
+        <div className="border-t border-theme-border">
           {/* Command preview */}
-          <div className="px-3 py-2 bg-[#252526] font-mono text-sm text-[#9cdcfe] whitespace-pre-wrap break-all max-h-[120px] overflow-y-auto">
-            {extractedCommand || (isLoading && <span className="text-[#6e6e6e]">{t('terminal.ai.generating', 'Generating...')}</span>)}
+          <div className="px-3 py-2 bg-theme-bg-sunken font-mono text-sm text-theme-accent whitespace-pre-wrap break-all max-h-[120px] overflow-y-auto">
+            {extractedCommand || (isLoading && <span className="text-theme-text-muted">{t('terminal.ai.generating', 'Generating...')}</span>)}
             {isLoading && extractedCommand && (
-              <span className="inline-block w-[2px] h-[14px] bg-[#0078d4] ml-0.5 animate-pulse" />
+              <span className="inline-block w-[2px] h-[14px] bg-theme-accent ml-0.5 animate-pulse" />
             )}
           </div>
 
           {/* Action buttons */}
           {response && !isLoading && (
-            <div className="flex items-center gap-1 px-2 py-1.5 bg-[#1e1e1e] border-t border-[#3c3c3c]">
+            <div className="flex items-center gap-1 px-2 py-1.5 bg-theme-bg-elevated border-t border-theme-border">
               <ActionButton icon={<Play className="w-3 h-3" />} label={t('terminal.ai.execute')} onClick={handleExecute} primary />
               <ActionButton icon={<CornerDownLeft className="w-3 h-3" />} label={t('terminal.ai.insert')} onClick={handleInsert} />
               <ActionButton icon={copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />} label={copied ? t('terminal.ai.copied') : t('terminal.ai.copy')} onClick={handleCopy} />
@@ -597,8 +597,8 @@ function ActionButton({ icon, label, onClick, primary }: ActionButtonProps) {
       onClick={onClick}
       className={`flex items-center gap-1 px-2 py-1 rounded text-[11px] transition-colors ${
         primary
-          ? 'bg-[#0078d4] text-white hover:bg-[#106ebe]'
-          : 'text-[#cccccc] hover:bg-[#2d2d2d]'
+          ? 'bg-theme-accent text-white hover:bg-theme-accent-hover'
+          : 'text-theme-text hover:bg-theme-bg-hover'
       }`}
     >
       {icon}

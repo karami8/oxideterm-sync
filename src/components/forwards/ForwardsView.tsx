@@ -292,7 +292,7 @@ export const ForwardsView = ({ nodeId }: { nodeId: string }) => {
             </div>
           </div>
 
-          <div className="border border-theme-border rounded-sm overflow-hidden min-h-[100px] bg-theme-bg-panel/50">
+          <div className="border border-theme-border rounded-sm overflow-hidden min-h-[100px] bg-theme-bg-card">
              <table className="w-full text-sm text-left">
                <thead className="bg-theme-bg-panel text-theme-text-muted border-b border-theme-border">
                  <tr>
@@ -704,7 +704,7 @@ export const ForwardsView = ({ nodeId }: { nodeId: string }) => {
             )}
           </div>
 
-          <div className="border border-theme-border rounded-sm overflow-hidden bg-theme-bg-panel/50">
+          <div className="border border-theme-border rounded-sm overflow-hidden bg-theme-bg-card">
             <table className="w-full text-sm text-left">
               <thead className="bg-theme-bg-panel text-theme-text-muted border-b border-theme-border">
                 <tr>

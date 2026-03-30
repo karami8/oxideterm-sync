@@ -117,11 +117,11 @@ export const TopologyDialog: React.FC = () => {
             <div className="absolute top-4 left-4 z-10 flex flex-col gap-2 p-3 rounded-lg bg-theme-bg-panel/40 backdrop-blur-sm border border-theme-border/50">
               <div className="text-[10px] uppercase tracking-widest text-theme-text-muted mb-1 font-bold">{t('topology.legend_title')}</div>
               <div className="flex items-center gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-[#22c55e] shadow-[0_0_8px_#22c55e]" />
+                <div className="w-1.5 h-1.5 rounded-full bg-theme-success shadow-[0_0_8px_var(--theme-success)]" />
                 <span className="text-xs text-theme-text">{t('topology.status_active')}</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-[#eab308] shadow-[0_0_8px_#eab308]" />
+                <div className="w-1.5 h-1.5 rounded-full bg-theme-warning shadow-[0_0_8px_var(--theme-warning)]" />
                 <span className="text-xs text-theme-text">{t('topology.status_connecting')}</span>
               </div>
               <div className="flex items-center gap-2">

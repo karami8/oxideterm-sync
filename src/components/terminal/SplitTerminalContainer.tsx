@@ -163,8 +163,8 @@ const PaneRenderer: React.FC<PaneRendererProps> = ({
                 className={cn(
                   'absolute transition-all duration-150',
                   orientation === 'horizontal'
-                    ? 'inset-y-0 left-0 right-0 bg-theme-bg-hover group-hover:bg-[#FF6B35] group-active:bg-[#FF6B35]'
-                    : 'inset-x-0 top-0 bottom-0 bg-theme-bg-hover group-hover:bg-[#FF6B35] group-active:bg-[#FF6B35]'
+                    ? 'inset-y-0 left-0 right-0 bg-theme-bg-hover group-hover:bg-theme-accent group-active:bg-theme-accent'
+                    : 'inset-x-0 top-0 bottom-0 bg-theme-bg-hover group-hover:bg-theme-accent group-active:bg-theme-accent'
                 )}
               />
             </Separator>

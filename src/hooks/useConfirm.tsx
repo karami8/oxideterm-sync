@@ -104,7 +104,7 @@ export function useConfirm() {
         <div className="flex border-t border-theme-border/40">
           <button
             onClick={handleCancel}
-            className="flex-1 py-2.5 text-sm font-medium text-theme-text-muted hover:text-theme-text hover:bg-theme-bg-panel/50 transition-colors border-r border-theme-border/40"
+            className="flex-1 py-2.5 text-sm font-medium text-theme-text-muted hover:text-theme-text hover:bg-theme-bg-hover transition-colors border-r border-theme-border/40"
           >
             {options.cancelLabel || t('common.actions.cancel', 'Cancel')}
           </button>

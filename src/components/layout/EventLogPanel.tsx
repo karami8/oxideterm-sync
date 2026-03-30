@@ -119,7 +119,7 @@ const EventRow = ({ entry }: { entry: EventLogEntry }) => {
   }, [entry.detail, entry.source, t]);
 
   return (
-    <div className="flex items-center gap-2 px-3 py-1 hover:bg-theme-bg-panel/50 text-xs font-mono group min-h-[24px]">
+    <div className="flex items-center gap-2 px-3 py-1 hover:bg-theme-bg-hover text-xs font-mono group min-h-[24px]">
       <span className="text-theme-text-muted w-[60px] shrink-0 tabular-nums">
         {formatTimestamp(entry.timestamp)}
       </span>

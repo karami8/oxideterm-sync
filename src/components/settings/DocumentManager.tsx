@@ -402,7 +402,7 @@ export function DocumentManager() {
       )}
 
       {/* ── Collections Panel ── */}
-      <div className="rounded-lg border border-theme-border bg-theme-bg-panel/50 p-5">
+      <div className="rounded-lg border border-theme-border bg-theme-bg-card p-5">
         <div className="flex items-center justify-between mb-4">
           <h4 className="text-sm font-medium text-theme-text uppercase tracking-wider">
             {t('settings_view.knowledge.collections')}
@@ -438,7 +438,7 @@ export function DocumentManager() {
 
       {/* ── Selected Collection Details ── */}
       {selectedCollection && (
-        <div className="rounded-lg border border-theme-border bg-theme-bg-panel/50 p-5">
+        <div className="rounded-lg border border-theme-border bg-theme-bg-card p-5">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h4 className="text-sm font-medium text-theme-text uppercase tracking-wider">

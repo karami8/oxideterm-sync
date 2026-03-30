@@ -95,9 +95,12 @@ const UI_COLOR_SECTIONS: UiColorSection[] = [
     fields: [
       { key: 'bg', labelKey: 'ui_bg' },
       { key: 'bgPanel', labelKey: 'ui_panel' },
+      { key: 'bgCard', labelKey: 'ui_bg_card' },
       { key: 'bgHover', labelKey: 'ui_hover' },
       { key: 'bgActive', labelKey: 'ui_active' },
       { key: 'bgSecondary', labelKey: 'ui_bg_secondary' },
+      { key: 'bgElevated', labelKey: 'ui_bg_elevated' },
+      { key: 'bgSunken', labelKey: 'ui_bg_sunken' },
     ],
   },
   {
@@ -251,7 +254,7 @@ export const ThemeEditorModal = ({ open, onOpenChange, editThemeId, baseThemeId 
   const [termColors, setTermColors] = useState<ITheme>({});
   const [uiColors, setUiColors] = useState<AppUiColors>({
     // Background
-    bg: '#09090b', bgPanel: '#18181b', bgHover: '#27272a',
+    bg: '#09090b', bgPanel: '#18181b', bgCard: '#1e1e22', bgHover: '#27272a',
     bgActive: '#3f3f46', bgSecondary: '#1c1c20',
     bgElevated: '#1f1f23', bgSunken: '#050506',
     // Text

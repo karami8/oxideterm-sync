@@ -212,7 +212,7 @@ export const ConnectionsPanel: React.FC = () => {
   return (
     <div className={`h-full flex flex-col ${bgActive ? '' : 'bg-theme-bg'}`} data-bg-active={bgActive || undefined}>
       {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-theme-border bg-theme-bg-panel/50">
+      <div className="flex items-center justify-between px-6 py-4 border-b border-theme-border bg-theme-bg-card">
         <div>
           <h2 className="text-xl font-semibold text-theme-text-heading">{t('connections.panel.title')}</h2>
           <p className="text-sm text-theme-text-muted mt-1">{t('connections.panel.description')}</p>

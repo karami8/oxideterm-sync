@@ -639,7 +639,7 @@ export const QuickLook: React.FC<QuickLookProps> = ({
         )}
 
         {/* Footer hint */}
-        <div className="px-4 py-2 border-t border-theme-border bg-theme-bg-panel/50 text-xs text-theme-text-muted">
+        <div className="px-4 py-2 border-t border-theme-border bg-theme-bg-card text-xs text-theme-text-muted">
           {canNavigate ? (
             <span>{t('fileManager.quickLookHintNav', 'Press ← → to navigate, Space or Esc to close, i to toggle info')}</span>
           ) : (

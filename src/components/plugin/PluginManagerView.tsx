@@ -6,7 +6,7 @@
  *
  * UI for managing installed plugins — view status, enable/disable, and inspect info.
  * Also supports browsing and installing plugins from a remote registry.
- * Styled to match SettingsView panels (rounded-lg border border-theme-border bg-theme-bg-panel/50).
+ * Styled to match SettingsView panels (rounded-lg border border-theme-border bg-theme-bg-card).
  */
 
 import { useState, useCallback, useEffect } from 'react';
@@ -282,7 +282,7 @@ function RegistryPluginCard({ entry, isInstalled, hasUpdate, onInstall, onUpdate
   const hasError = installProgress?.state === 'error';
 
   return (
-    <div className="p-4 rounded-lg border border-theme-border bg-theme-bg-panel/30 hover:bg-theme-bg-panel/50 transition-colors">
+    <div className="p-4 rounded-lg border border-theme-border bg-theme-bg-panel/30 hover:bg-theme-bg-hover transition-colors">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 mb-1">
@@ -607,7 +607,7 @@ export function PluginManagerView() {
           <Separator />
 
           {/* Actions card */}
-          <div className="rounded-lg border border-theme-border bg-theme-bg-panel/50 p-5">
+          <div className="rounded-lg border border-theme-border bg-theme-bg-card p-5">
             <h4 className="text-sm font-medium text-theme-text mb-4 uppercase tracking-wider">
               {t('plugin.manager_title')}
             </h4>
@@ -661,7 +661,7 @@ export function PluginManagerView() {
               onClick={() => setActiveTab('installed')}
               className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-all border ${activeTab === 'installed'
                 ? 'bg-theme-bg-panel text-theme-text border-theme-border shadow-sm'
-                : 'bg-transparent border-transparent text-theme-text-muted hover:text-theme-text hover:bg-theme-bg-panel/50'
+                : 'bg-transparent border-transparent text-theme-text-muted hover:text-theme-text hover:bg-theme-bg-hover'
                 }`}
             >
               <Puzzle className={`h-4 w-4 ${activeTab === 'installed' ? 'text-theme-accent' : ''}`} />
@@ -677,7 +677,7 @@ export function PluginManagerView() {
               onClick={() => setActiveTab('browse')}
               className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-all border ${activeTab === 'browse'
                 ? 'bg-theme-bg-panel text-theme-text border-theme-border shadow-sm'
-                : 'bg-transparent border-transparent text-theme-text-muted hover:text-theme-text hover:bg-theme-bg-panel/50'
+                : 'bg-transparent border-transparent text-theme-text-muted hover:text-theme-text hover:bg-theme-bg-hover'
                 }`}
             >
               <Globe className={`h-4 w-4 ${activeTab === 'browse' ? 'text-theme-accent' : ''}`} />
@@ -693,7 +693,7 @@ export function PluginManagerView() {
 
           {/* Installed tab content */}
           {activeTab === 'installed' && (
-            <div className="rounded-lg border border-theme-border bg-theme-bg-panel/50 p-5">
+            <div className="rounded-lg border border-theme-border bg-theme-bg-card p-5">
               <h4 className="text-sm font-medium text-theme-text mb-4 uppercase tracking-wider">
                 {t('plugin.empty_title')}
               </h4>
@@ -754,7 +754,7 @@ export function PluginManagerView() {
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         placeholder={t('plugin.search_placeholder')}
-                        className="w-full pl-10 pr-4 py-2 text-sm rounded-lg border border-theme-border bg-theme-bg-panel/50 text-theme-text placeholder:text-theme-text-muted focus:outline-none focus:ring-2 focus:ring-theme-accent/50"
+                        className="w-full pl-10 pr-4 py-2 text-sm rounded-lg border border-theme-border bg-theme-bg-card text-theme-text placeholder:text-theme-text-muted focus:outline-none focus:ring-2 focus:ring-theme-accent/50"
                       />
                     </div>
                     <button

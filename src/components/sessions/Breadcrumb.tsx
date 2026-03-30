@@ -32,7 +32,7 @@ export const Breadcrumb: React.FC<BreadcrumbProps> = ({
   return (
     <div 
       className={cn(
-        "flex items-center gap-1 px-3 py-2 text-sm border-b border-theme-border bg-theme-bg-panel/50",
+        "flex items-center gap-1 px-3 py-2 text-sm border-b border-theme-border bg-theme-bg-card",
         "overflow-x-auto scrollbar-thin scrollbar-thumb-theme-border scrollbar-track-transparent",
         className
       )}

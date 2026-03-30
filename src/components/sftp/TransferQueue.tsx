@@ -178,7 +178,7 @@ export const TransferQueue = ({ nodeId }: { nodeId: string }) => {
 
       {/* Incomplete Transfers Section */}
       {showIncomplete && hasIncomplete && (
-        <div className="border-b border-theme-border bg-theme-bg-panel/50">
+        <div className="border-b border-theme-border bg-theme-bg-card">
           <div className="px-2 py-1 text-[10px] text-theme-text-muted uppercase tracking-wide">
             {t('sftp.queue.incomplete_title')}
           </div>

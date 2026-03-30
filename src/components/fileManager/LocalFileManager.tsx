@@ -725,7 +725,7 @@ export const LocalFileManager: React.FC<LocalFileManagerProps> = ({ className })
     <div className={cn("flex h-full", bgActive ? '' : 'bg-theme-bg', className)} data-bg-active={bgActive || undefined}>
       {/* Sidebar - Bookmarks */}
       <div className={cn(
-        "border-r border-theme-border bg-theme-bg-panel/50 transition-all duration-200 flex flex-col",
+        "border-r border-theme-border bg-theme-bg-card transition-all duration-200 flex flex-col",
         sidebarOpen ? "w-52" : "w-10"
       )}>
         {/* Sidebar toggle */}

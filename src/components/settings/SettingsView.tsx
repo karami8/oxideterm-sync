@@ -103,7 +103,7 @@ const ProviderKeyInput = ({ providerId }: { providerId: string }) => {
             <div className="flex gap-2">
                 {hasKey ? (
                     <div className="flex-1 flex items-center gap-2">
-                        <div className="flex-1 h-8 px-2 flex items-center bg-theme-bg-panel/50 border border-theme-border/50 rounded text-theme-text-muted text-xs italic">
+                        <div className="flex-1 h-8 px-2 flex items-center bg-theme-bg-card border border-theme-border/50 rounded text-theme-text-muted text-xs italic">
                             ••••••••••••••••
                         </div>
                         <Button
@@ -193,7 +193,7 @@ const LocalTerminalSettings = () => {
             <Separator />
 
             {/* Default Shell Section */}
-            <div className="rounded-lg border border-theme-border bg-theme-bg-panel/50 p-5">
+            <div className="rounded-lg border border-theme-border bg-theme-bg-card p-5">
                 <h4 className="text-sm font-medium text-theme-text mb-4 uppercase tracking-wider">{t('settings_view.local_terminal.shell')}</h4>
                 <div className="space-y-5">
                     <div className="flex items-center justify-between">
@@ -245,7 +245,7 @@ const LocalTerminalSettings = () => {
             </div>
 
             {/* Shell Profile Section */}
-            <div className="rounded-lg border border-theme-border bg-theme-bg-panel/50 p-5">
+            <div className="rounded-lg border border-theme-border bg-theme-bg-card p-5">
                 <h4 className="text-sm font-medium text-theme-text mb-4 uppercase tracking-wider">{t('settings_view.local_terminal.shell_profile')}</h4>
                 <div className="space-y-5">
                     <div className="flex items-center justify-between">
@@ -262,7 +262,7 @@ const LocalTerminalSettings = () => {
             </div>
 
             {/* Oh My Posh Section (Windows-specific hint) */}
-            <div className="rounded-lg border border-theme-border bg-theme-bg-panel/50 p-5">
+            <div className="rounded-lg border border-theme-border bg-theme-bg-card p-5">
                 <h4 className="text-sm font-medium text-theme-text mb-4 uppercase tracking-wider">{t('settings_view.local_terminal.oh_my_posh')}</h4>
                 <div className="space-y-5">
                     <div className="flex items-center justify-between">
@@ -303,7 +303,7 @@ const LocalTerminalSettings = () => {
             </div>
 
             {/* Keyboard Shortcuts Section */}
-            <div className="rounded-lg border border-theme-border bg-theme-bg-panel/50 p-5">
+            <div className="rounded-lg border border-theme-border bg-theme-bg-card p-5">
                 <h4 className="text-sm font-medium text-theme-text mb-4 uppercase tracking-wider">{t('settings_view.local_terminal.shortcuts')}</h4>
                 <div className="space-y-3 text-sm">
                     <div className="flex items-center justify-between py-2">
@@ -319,7 +319,7 @@ const LocalTerminalSettings = () => {
             </div>
 
             {/* Available Shells Section */}
-            <div className="rounded-lg border border-theme-border bg-theme-bg-panel/50 p-5">
+            <div className="rounded-lg border border-theme-border bg-theme-bg-card p-5">
                 <h4 className="text-sm font-medium text-theme-text mb-4 uppercase tracking-wider">{t('settings_view.local_terminal.available_shells')}</h4>
                 <div className="space-y-2">
                     {shells.length === 0 ? (
@@ -394,7 +394,7 @@ const HelpAboutSection = () => {
             <Separator />
 
             {/* Version Info */}
-            <div className="rounded-lg border border-theme-border bg-theme-bg-panel/50 p-5">
+            <div className="rounded-lg border border-theme-border bg-theme-bg-card p-5">
                 <h4 className="text-sm font-medium text-theme-text mb-4 uppercase tracking-wider">
                     {t('settings_view.help.version_info')}
                 </h4>
@@ -595,7 +595,7 @@ const HelpAboutSection = () => {
             </div>
 
             {/* Tech Stack */}
-            <div className="rounded-lg border border-theme-border bg-theme-bg-panel/50 p-5">
+            <div className="rounded-lg border border-theme-border bg-theme-bg-card p-5">
                 <h4 className="text-sm font-medium text-theme-text mb-4 uppercase tracking-wider">
                     {t('settings_view.help.tech_stack')}
                 </h4>
@@ -610,7 +610,7 @@ const HelpAboutSection = () => {
             </div>
 
             {/* Keyboard Shortcuts */}
-            <div className="rounded-lg border border-theme-border bg-theme-bg-panel/50 p-5">
+            <div className="rounded-lg border border-theme-border bg-theme-bg-card p-5">
                 <h4 className="text-sm font-medium text-theme-text mb-4 uppercase tracking-wider flex items-center gap-2">
                     <Keyboard className="h-4 w-4" />
                     {t('settings_view.help.shortcuts')}
@@ -637,7 +637,7 @@ const HelpAboutSection = () => {
             </div>
 
             {/* Resources */}
-            <div className="rounded-lg border border-theme-border bg-theme-bg-panel/50 p-5">
+            <div className="rounded-lg border border-theme-border bg-theme-bg-card p-5">
                 <h4 className="text-sm font-medium text-theme-text mb-4 uppercase tracking-wider">
                     {t('settings_view.help.resources')}
                 </h4>
@@ -831,7 +831,7 @@ const BackgroundImageSection = ({ terminal, updateTerminal }: BackgroundImageSec
     };
 
     return (
-        <div className="rounded-lg border border-theme-border bg-theme-bg-panel/50 p-5">
+        <div className="rounded-lg border border-theme-border bg-theme-bg-card p-5">
             <h4 className="text-sm font-medium text-theme-text mb-4 uppercase tracking-wider flex items-center gap-2">
                 <ImageIcon className="h-4 w-4" />
                 {t('settings_view.terminal.bg_title')}
@@ -1394,7 +1394,7 @@ export const SettingsView = () => {
                             <Separator />
 
                             {/* Language Selection */}
-                            <div className="rounded-lg border border-theme-border bg-theme-bg-panel/50 p-5">
+                            <div className="rounded-lg border border-theme-border bg-theme-bg-card p-5">
                                 <h4 className="text-sm font-medium text-theme-text mb-4 uppercase tracking-wider">
                                     {t('settings_view.general.language')}
                                 </h4>
@@ -1430,7 +1430,7 @@ export const SettingsView = () => {
                             </div>
 
                             {/* Data Directory */}
-                            <div className="rounded-lg border border-theme-border bg-theme-bg-panel/50 p-5">
+                            <div className="rounded-lg border border-theme-border bg-theme-bg-card p-5">
                                 <h4 className="text-sm font-medium text-theme-text mb-4 uppercase tracking-wider">
                                     {t('settings_view.general.data_directory')}
                                 </h4>
@@ -1519,7 +1519,7 @@ export const SettingsView = () => {
                             </div>
 
                             {/* CLI Companion */}
-                            <div className="rounded-lg border border-theme-border bg-theme-bg-panel/50 p-5">
+                            <div className="rounded-lg border border-theme-border bg-theme-bg-card p-5">
                                 <h4 className="text-sm font-medium text-theme-text mb-4 uppercase tracking-wider">
                                     {t('settings_view.general.cli_companion')}
                                 </h4>
@@ -1614,7 +1614,7 @@ export const SettingsView = () => {
                             <Separator />
 
                             {/* Font Section */}
-                            <div className="rounded-lg border border-theme-border bg-theme-bg-panel/50 p-5">
+                            <div className="rounded-lg border border-theme-border bg-theme-bg-card p-5">
                                 <h4 className="text-sm font-medium text-theme-text mb-4 uppercase tracking-wider">{t('settings_view.terminal.font')}</h4>
                                 <div className="space-y-5">
                                     {/* 预设轨道: Preset Font Selector */}
@@ -1792,7 +1792,7 @@ export const SettingsView = () => {
                             </div>
 
                             {/* Cursor Section */}
-                            <div className="rounded-lg border border-theme-border bg-theme-bg-panel/50 p-5">
+                            <div className="rounded-lg border border-theme-border bg-theme-bg-card p-5">
                                 <h4 className="text-sm font-medium text-theme-text mb-4 uppercase tracking-wider">{t('settings_view.terminal.cursor')}</h4>
                                 <div className="space-y-5">
                                     <div className="flex items-center justify-between">
@@ -1832,7 +1832,7 @@ export const SettingsView = () => {
                             </div>
 
                             {/* Input Safety Section */}
-                            <div className="rounded-lg border border-theme-border bg-theme-bg-panel/50 p-5">
+                            <div className="rounded-lg border border-theme-border bg-theme-bg-card p-5">
                                 <h4 className="text-sm font-medium text-theme-text mb-4 uppercase tracking-wider">{t('settings_view.terminal.input_safety')}</h4>
                                 <div className="flex items-center justify-between">
                                     <div>
@@ -1863,7 +1863,7 @@ export const SettingsView = () => {
                             </div>
 
                             {/* Buffer Section */}
-                            <div className="rounded-lg border border-theme-border bg-theme-bg-panel/50 p-5">
+                            <div className="rounded-lg border border-theme-border bg-theme-bg-card p-5">
                                 <h4 className="text-sm font-medium text-theme-text mb-4 uppercase tracking-wider">{t('settings_view.terminal.buffer')}</h4>
                                 <div className="flex items-center justify-between">
                                     <div>
@@ -1892,7 +1892,7 @@ export const SettingsView = () => {
                             <Separator />
 
                             {/* Theme Section */}
-                            <div className="rounded-lg border border-theme-border bg-theme-bg-panel/50 p-5">
+                            <div className="rounded-lg border border-theme-border bg-theme-bg-card p-5">
                                 <div className="flex items-center justify-between mb-4">
                                     <h4 className="text-sm font-medium text-theme-text uppercase tracking-wider">{t('settings_view.appearance.theme')}</h4>
                                     <div className="flex gap-2">
@@ -2033,7 +2033,7 @@ export const SettingsView = () => {
                             </div>
 
                             {/* Layout & UI Customization Section */}
-                            <div className="rounded-lg border border-theme-border bg-theme-bg-panel/50 p-5">
+                            <div className="rounded-lg border border-theme-border bg-theme-bg-card p-5">
                                 <h4 className="text-sm font-medium text-theme-text mb-4 uppercase tracking-wider">{t('settings_view.appearance.layout')}</h4>
                                 <div className="space-y-5">
                                     {/* UI Density */}
@@ -2380,7 +2380,7 @@ export const SettingsView = () => {
                             <Separator />
 
                             {/* AI Settings Section */}
-                            <div className="rounded-lg border border-theme-border bg-theme-bg-panel/50 p-5">
+                            <div className="rounded-lg border border-theme-border bg-theme-bg-card p-5">
                                 <h4 className="text-sm font-medium text-theme-text mb-4 uppercase tracking-wider">{t('settings_view.ai.general')}</h4>
 
                                 {/* Enable Toggle - Standard Layout */}
@@ -2403,7 +2403,7 @@ export const SettingsView = () => {
                                 </div>
 
                                 {/* Privacy Note - Integrating subtly */}
-                                <div className="mb-6 p-3 rounded bg-theme-bg-panel/50 border border-theme-border">
+                                <div className="mb-6 p-3 rounded bg-theme-bg-card border border-theme-border">
                                     <p className="text-xs text-theme-text-muted leading-relaxed">
                                         <span className="font-semibold text-theme-text-muted">{t('settings_view.ai.privacy_notice')}:</span> {t('settings_view.ai.privacy_text')}
                                     </p>
@@ -3030,7 +3030,7 @@ export const SettingsView = () => {
                                 </div>
 
                                 {/* Backoff formula explanation */}
-                                <div className="p-4 bg-theme-bg-panel/50 border border-theme-border/50 rounded-md max-w-2xl">
+                                <div className="p-4 bg-theme-bg-card border border-theme-border/50 rounded-md max-w-2xl">
                                     <p className="text-xs text-theme-text-muted leading-relaxed">
                                         {t('settings_view.reconnect.formula_hint')}
                                     </p>
@@ -3052,7 +3052,7 @@ export const SettingsView = () => {
                             <Separator />
 
                             {/* Concurrent Transfers */}
-                            <div className="rounded-lg border border-theme-border bg-theme-bg-panel/50 p-5">
+                            <div className="rounded-lg border border-theme-border bg-theme-bg-card p-5">
                                 <div className="flex items-center justify-between mb-2">
                                     <div>
                                         <Label className="text-theme-text">{t('settings_view.sftp.concurrent')}</Label>
@@ -3079,7 +3079,7 @@ export const SettingsView = () => {
                             </div>
 
                             {/* Bandwidth Limit */}
-                            <div className="rounded-lg border border-theme-border bg-theme-bg-panel/50 p-5">
+                            <div className="rounded-lg border border-theme-border bg-theme-bg-card p-5">
                                 <div className="space-y-4">
                                     <div className="flex items-center justify-between">
                                         <div>
@@ -3116,7 +3116,7 @@ export const SettingsView = () => {
                             </div>
 
                             {/* Conflict Resolution */}
-                            <div className="rounded-lg border border-theme-border bg-theme-bg-panel/50 p-5">
+                            <div className="rounded-lg border border-theme-border bg-theme-bg-card p-5">
                                 <div className="flex items-center justify-between mb-2">
                                     <div>
                                         <Label className="text-theme-text">{t('settings_view.sftp.conflict')}</Label>
@@ -3152,7 +3152,7 @@ export const SettingsView = () => {
                             <Separator />
 
                             {/* Auto-save */}
-                            <div className="rounded-lg border border-theme-border bg-theme-bg-panel/50 p-5">
+                            <div className="rounded-lg border border-theme-border bg-theme-bg-card p-5">
                                 <div className="flex items-center justify-between">
                                     <div>
                                         <Label className="text-theme-text">{t('settings_view.ide.auto_save', 'Auto Save')}</Label>
@@ -3168,7 +3168,7 @@ export const SettingsView = () => {
                             </div>
 
                             {/* Word Wrap */}
-                            <div className="rounded-lg border border-theme-border bg-theme-bg-panel/50 p-5">
+                            <div className="rounded-lg border border-theme-border bg-theme-bg-card p-5">
                                 <div className="flex items-center justify-between">
                                     <div>
                                         <Label className="text-theme-text">{t('settings_view.ide.word_wrap', 'Word Wrap')}</Label>
@@ -3184,7 +3184,7 @@ export const SettingsView = () => {
                             </div>
 
                             {/* Editor Font & Spacing */}
-                            <div className="rounded-lg border border-theme-border bg-theme-bg-panel/50 p-5 space-y-4">
+                            <div className="rounded-lg border border-theme-border bg-theme-bg-card p-5 space-y-4">
                                 <h4 className="text-sm font-medium text-theme-text uppercase tracking-wider">
                                     {t('settings_view.ide.editor_typography', 'Editor Typography')}
                                 </h4>
@@ -3245,7 +3245,7 @@ export const SettingsView = () => {
                             </div>
 
                             {/* Remote Agent */}
-                            <div className="rounded-lg border border-theme-border bg-theme-bg-panel/50 p-5 space-y-4">
+                            <div className="rounded-lg border border-theme-border bg-theme-bg-card p-5 space-y-4">
                                 <h4 className="text-sm font-medium text-theme-text uppercase tracking-wider">
                                     {t('settings_view.ide.agent_title', 'Remote Agent')}
                                 </h4>

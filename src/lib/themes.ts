@@ -12,6 +12,7 @@ export type AppUiColors = {
   // ── Background Layer (背景层级) ──
   bg: string;
   bgPanel: string;
+  bgCard: string;
   bgHover: string;
   bgActive: string;
   bgSecondary: string;
@@ -211,6 +212,7 @@ export function deriveUiColorsFromTerminal(t: ITheme): AppUiColors {
     // Background
     bg,
     bgPanel: shift(bg, 15),
+    bgCard: shift(bg, 20),
     bgHover: shift(bg, 30),
     bgActive: shift(bg, 40),
     bgSecondary: shift(bg, 10),
@@ -245,6 +247,7 @@ const UI_CSS_PROPS: [keyof AppUiColors, string][] = [
   // Background
   ['bg', '--theme-bg'],
   ['bgPanel', '--theme-bg-panel'],
+  ['bgCard', '--theme-bg-card'],
   ['bgHover', '--theme-bg-hover'],
   ['bgActive', '--theme-bg-active'],
   ['bgSecondary', '--theme-bg-secondary'],

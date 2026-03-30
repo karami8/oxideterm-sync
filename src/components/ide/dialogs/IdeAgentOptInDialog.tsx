@@ -84,7 +84,7 @@ export function IdeAgentOptInDialog({
         <div className="flex border-t border-theme-border/40">
           <button
             onClick={() => onSftpOnly(remember)}
-            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-medium text-theme-text-muted hover:text-theme-text hover:bg-theme-bg-panel/50 transition-colors border-r border-theme-border/40"
+            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-medium text-theme-text-muted hover:text-theme-text hover:bg-theme-bg-hover transition-colors border-r border-theme-border/40"
           >
             <FolderSync className="w-3.5 h-3.5" />
             {t('ide.agent_optin_sftp_only')}

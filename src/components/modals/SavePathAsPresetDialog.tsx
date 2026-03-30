@@ -114,16 +114,16 @@ export const SavePathAsPresetDialog: React.FC<SavePathAsPresetDialogProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="bg-[#1e1e1e] border border-white/10 rounded-lg shadow-xl w-[480px] max-h-[80vh] overflow-hidden">
+      <div className="bg-theme-bg-elevated border border-theme-border rounded-lg shadow-xl w-[480px] max-h-[80vh] overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-theme-border">
           <div className="flex items-center gap-2">
             <Save className="w-5 h-5 text-blue-400" />
             <span className="font-medium">{t('modals.save_preset.title')}</span>
           </div>
           <button
             onClick={onClose}
-            className="p-1 hover:bg-white/10 rounded transition-colors"
+            className="p-1 hover:bg-theme-bg-hover rounded transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
@@ -132,7 +132,7 @@ export const SavePathAsPresetDialog: React.FC<SavePathAsPresetDialogProps> = ({
         {/* Content */}
         <div className="p-4 space-y-4">
           {/* Path preview */}
-          <div className="bg-black/20 rounded-lg p-3">
+          <div className="bg-theme-bg-sunken rounded-lg p-3">
             <div className="text-xs text-theme-text-muted mb-2">{t('modals.save_preset.connection_path')}</div>
             <div className="flex flex-wrap items-center gap-1">
               {pathNodes.map((node, index) => (
@@ -141,7 +141,7 @@ export const SavePathAsPresetDialog: React.FC<SavePathAsPresetDialogProps> = ({
                     className={`flex items-center gap-1 px-2 py-1 rounded text-xs ${
                       index === pathNodes.length - 1 
                         ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' 
-                        : 'bg-white/5 text-theme-text'
+                        : 'bg-theme-bg-card text-theme-text'
                     }`}
                   >
                     <Server className="w-3 h-3" />
@@ -163,7 +163,7 @@ export const SavePathAsPresetDialog: React.FC<SavePathAsPresetDialogProps> = ({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder={t('modals.save_preset.name_placeholder')}
-              className="w-full px-3 py-2 bg-black/20 border border-white/10 rounded-md text-sm focus:outline-none focus:border-blue-500"
+              className="w-full px-3 py-2 bg-theme-bg-sunken border border-theme-border rounded-md text-sm focus:outline-none focus:border-theme-accent"
               autoFocus
             />
           </div>
@@ -188,10 +188,10 @@ export const SavePathAsPresetDialog: React.FC<SavePathAsPresetDialogProps> = ({
         </div>
 
         {/* Footer buttons */}
-        <div className="flex justify-end gap-2 px-4 py-3 border-t border-white/10 bg-black/10">
+        <div className="flex justify-end gap-2 px-4 py-3 border-t border-theme-border bg-theme-bg-sunken">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm text-theme-text-muted hover:text-white hover:bg-white/10 rounded transition-colors"
+            className="px-4 py-2 text-sm text-theme-text-muted hover:text-theme-text hover:bg-theme-bg-hover rounded transition-colors"
           >
             {t('modals.save_preset.cancel')}
           </button>
