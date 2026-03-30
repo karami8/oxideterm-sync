@@ -125,7 +125,7 @@ const EmptyState = () => {
         <div className="text-center select-none">
           <h1 className="text-5xl font-bold tracking-tight text-theme-text empty-brand">
             {t('layout.empty.title')}
-            <span className="inline-block w-[3px] h-[0.7em] ml-1.5 translate-y-[0.05em] rounded-sm bg-theme-text opacity-40" />
+            <span className="inline-block w-[3px] h-[0.7em] ml-1.5 translate-y-[0.05em] rounded-sm bg-theme-accent animate-caret" />
           </h1>
         </div>
 
@@ -143,7 +143,7 @@ const EmptyState = () => {
         <div className="flex flex-wrap justify-center gap-x-5 gap-y-2 pt-1">
           {shortcuts.map(s => (
             <span key={s.key} className="inline-flex items-center gap-1.5 text-xs text-theme-text-muted">
-              <kbd className="px-1.5 py-0.5 rounded bg-theme-bg-hover border border-theme-border text-theme-text font-mono text-[10px] leading-tight">{s.key}</kbd>
+              <kbd className="px-1.5 py-0.5 rounded bg-theme-bg-panel border border-theme-border text-theme-text font-mono text-[11px] leading-tight shadow-sm">{s.key}</kbd>
               <span>{s.label}</span>
             </span>
           ))}
@@ -224,7 +224,7 @@ export const AppLayout = () => {
   }, [flushEventLogPanelSize]);
 
   return (
-    <div className="flex flex-col h-screen w-screen bg-theme-bg text-oxide-text overflow-hidden">
+    <div className="flex flex-col h-screen w-screen bg-theme-bg text-theme-text overflow-hidden">
       {/* Modals */}
       <NewConnectionModal />
 

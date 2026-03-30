@@ -304,7 +304,7 @@ const TerminalItem: React.FC<TerminalItemProps> = ({
         <Terminal className="w-3.5 h-3.5" />
         <span className="text-sm flex-1">{t('sessions.focused_list.terminal')} #{index + 1}</span>
         <button
-          className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-white/10 rounded transition-opacity"
+          className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-theme-bg-hover rounded transition-opacity"
           onClick={(e) => {
             e.stopPropagation();
             onClose();
@@ -398,9 +398,9 @@ const SessionNode = React.memo<SessionNodeProps>(({
     <TreeItem depth={node.depth} isLast={!node.isExpanded && node.isLastChild} lineColor={styles.line}>
       <div
         className={cn(
-          "flex items-center h-8 px-2 cursor-pointer group transition-colors rounded-sm",
-          "hover:bg-white/5",
-          isSelected && "bg-white/10 ring-1 ring-white/20",
+          "flex items-center h-8 px-2 cursor-pointer group transition-[color,background-color,border-color,box-shadow] duration-150 rounded-sm",
+          "hover:bg-theme-bg-hover",
+          isSelected && "bg-theme-accent/10 ring-1 ring-theme-accent/30",
           isConnecting && "animate-pulse",
           isLinkDown && "opacity-70"
         )}

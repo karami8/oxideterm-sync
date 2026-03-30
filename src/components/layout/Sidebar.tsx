@@ -726,7 +726,10 @@ export const Sidebar = () => {
             variant={getButtonVariant(def)}
             size="icon"
             onClick={() => handleButtonClick(def, collapsed)}
-            className="rounded-[min(var(--ui-radius),10px)] h-9 w-9"
+            className={cn(
+              "rounded-[min(var(--ui-radius),10px)] h-9 w-9 relative",
+              getButtonVariant(def) === 'secondary' && "before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-[2px] before:rounded-full before:bg-theme-accent"
+            )}
           >
             <Icon className="h-5 w-5" />
           </Button>

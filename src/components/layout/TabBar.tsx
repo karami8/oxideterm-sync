@@ -240,10 +240,10 @@ const TabItem = React.memo<TabItemProps>(({
         if (!isActuallyDragging) onSetActiveTab(tab.id);
       }}
       className={cn(
-        "flex-shrink-0 group flex items-center gap-2 px-3 h-full min-w-[120px] max-w-[240px] border-r border-theme-border cursor-pointer select-none text-sm transition-colors",
+        "flex-shrink-0 group flex items-center gap-2 px-3 h-full min-w-[120px] max-w-[240px] border-r border-theme-border cursor-pointer select-none text-sm transition-[color,background-color,border-color,box-shadow] duration-150",
         isActive
-          ? "bg-theme-bg-panel text-theme-text border-t-2 border-t-theme-accent"
-          : "bg-theme-bg text-theme-text-muted hover:bg-theme-bg-hover border-t-2 border-t-transparent",
+          ? "bg-theme-bg-panel text-theme-text border-t-2 border-t-theme-accent shadow-[inset_0_1px_0_var(--theme-accent)]"
+          : "bg-theme-bg text-theme-text-muted hover:bg-theme-bg-hover hover:text-theme-text border-t-2 border-t-transparent",
         showReconnectProgress && "border-t-amber-500",
         isBeingDragged && isActuallyDragging && "opacity-50",
         showDropIndicator && "border-l-2 border-l-theme-accent"
