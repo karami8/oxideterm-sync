@@ -22,10 +22,10 @@
   <a href="https://github.com/AnalyseDeCircuit/oxideterm/releases/latest">
     <img src="https://img.shields.io/github/v/release/AnalyseDeCircuit/oxideterm?label=%E6%9C%80%E6%96%B0%E7%89%88%E3%82%92%E3%83%80%E3%82%A6%E3%83%B3%E3%83%AD%E3%83%BC%E3%83%89&style=for-the-badge&color=brightgreen" alt="最新版をダウンロード">
   </a>
-  &nbsp;&nbsp;
-  <a href="https://oxideterm.app">
-    <img src="https://img.shields.io/badge/Website-oxideterm.app-blue?style=for-the-badge" alt="Website">
-  </a>
+</p>
+
+<p align="center">
+  🌐 <strong><a href="https://oxideterm.app">oxideterm.app</a></strong> — Documentation & website
 </p>
 
 <p align="center">
