@@ -516,6 +516,32 @@ function App() {
     return unlisten;
   }, []);
 
+  // Post-update: re-install CLI companion on Windows (copy-based, not symlink)
+  useEffect(() => {
+    (async () => {
+      try {
+        const { getVersion } = await import('@tauri-apps/api/app');
+        const currentVersion = await getVersion();
+        const store = useUpdateStore.getState();
+        const lastVersion = store.lastInstalledVersion;
+
+        if (lastVersion && lastVersion !== currentVersion) {
+          // Version changed — check if CLI is installed and re-install (fixes Windows copy staleness)
+          const { api } = await import('./lib/api');
+          const status = await api.cliGetStatus();
+          if (status.installed && status.bundled) {
+            await api.cliInstall();
+          }
+        }
+
+        // Always persist current version
+        useUpdateStore.setState({ lastInstalledVersion: currentVersion });
+      } catch {
+        // Non-critical — don't block startup
+      }
+    })();
+  }, []);
+
   // Setup SessionTree state sync
   useEffect(() => {
     setupTreeStoreSubscriptions();

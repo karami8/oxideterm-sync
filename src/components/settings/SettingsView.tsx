@@ -4,6 +4,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getVersion } from '@tauri-apps/api/app';
+import { marked } from 'marked';
+import DOMPurify from 'dompurify';
 import { invoke, convertFileSrc } from '@tauri-apps/api/core';
 import { open as openFileDialog } from '@tauri-apps/plugin-dialog';
 import { useAppStore } from '../../store/appStore';
@@ -488,9 +490,10 @@ const HelpAboutSection = () => {
                                     <h5 className="text-xs font-medium text-theme-text-muted uppercase tracking-wider mb-2">
                                         {t('settings_view.help.release_notes')}
                                     </h5>
-                                    <p className="text-sm text-theme-text whitespace-pre-wrap leading-relaxed">
-                                        {updater.releaseBody}
-                                    </p>
+                                    <div
+                                        className="prose prose-sm prose-invert max-w-none text-sm text-theme-text leading-relaxed [&_h1]:text-base [&_h1]:font-semibold [&_h1]:mt-3 [&_h1]:mb-1 [&_h2]:text-sm [&_h2]:font-semibold [&_h2]:mt-3 [&_h2]:mb-1 [&_h3]:text-sm [&_h3]:font-medium [&_h3]:mt-2 [&_h3]:mb-1 [&_ul]:my-1 [&_ul]:pl-5 [&_ol]:my-1 [&_ol]:pl-5 [&_li]:my-0.5 [&_p]:my-1 [&_code]:text-xs [&_code]:bg-theme-bg-hover [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_pre]:bg-theme-bg-hover [&_pre]:p-2 [&_pre]:rounded [&_pre]:my-2 [&_pre]:overflow-x-auto [&_a]:text-theme-accent [&_a]:underline"
+                                        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(String(marked.parse(updater.releaseBody, { async: false }))) }}
+                                    />
                                 </div>
                             ) : (
                                 <p className="text-xs text-theme-text-muted italic">

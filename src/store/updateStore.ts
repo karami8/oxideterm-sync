@@ -54,6 +54,7 @@ type ResumableEvent = {
 type PersistedState = {
   lastCheckedAt: number | null;
   skippedVersion: string | null;
+  lastInstalledVersion: string | null;
 };
 
 type UpdateState = PersistedState & {
@@ -169,6 +170,7 @@ export const useUpdateStore = create<UpdateState>()(
       // Persisted
       lastCheckedAt: null,
       skippedVersion: null,
+      lastInstalledVersion: null,
 
       // Transient
       stage: 'idle' as UpdateStage,
@@ -405,6 +407,7 @@ export const useUpdateStore = create<UpdateState>()(
       partialize: (state): PersistedState => ({
         lastCheckedAt: state.lastCheckedAt,
         skippedVersion: state.skippedVersion,
+        lastInstalledVersion: state.lastInstalledVersion,
       }),
     },
   ),
