@@ -127,7 +127,7 @@
   },
   "command_palette": {
     "title": "Befehlspalette",
-    "placeholder": "Befehle, Verbindungen suchen oder user@host eingeben...",
+    "placeholder": "Suchen oder user@host eingeben...",
     "no_results": "Keine Ergebnisse",
     "section_commands": "Befehle",
     "section_connections": "Gespeicherte Verbindungen",

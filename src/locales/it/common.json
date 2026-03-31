@@ -127,7 +127,7 @@
   },
   "command_palette": {
     "title": "Tavolozza comandi",
-    "placeholder": "Cerca comandi, connessioni o digita user@host...",
+    "placeholder": "Cerca o digita user@host...",
     "no_results": "Nessun risultato",
     "section_commands": "Comandi",
     "section_connections": "Connessioni salvate",

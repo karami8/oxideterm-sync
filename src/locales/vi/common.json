@@ -127,7 +127,7 @@
   },
   "command_palette": {
     "title": "Bảng lệnh",
-    "placeholder": "Tìm lệnh, kết nối hoặc nhập user@host...",
+    "placeholder": "Tìm hoặc nhập user@host...",
     "no_results": "Không có kết quả",
     "section_commands": "Lệnh",
     "section_connections": "Kết nối đã lưu",

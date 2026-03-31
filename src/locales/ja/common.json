@@ -127,7 +127,7 @@
   },
   "command_palette": {
     "title": "コマンドパレット",
-    "placeholder": "コマンド、接続を検索、または user@host でクイック接続...",
+    "placeholder": "検索または user@host を入力...",
     "no_results": "結果が見つかりません",
     "section_commands": "コマンド",
     "section_connections": "保存済み接続",

@@ -127,7 +127,7 @@
   },
   "command_palette": {
     "title": "Palette de commandes",
-    "placeholder": "Rechercher commandes, connexions, ou taper user@host...",
+    "placeholder": "Rechercher ou taper user@host...",
     "no_results": "Aucun résultat",
     "section_commands": "Commandes",
     "section_connections": "Connexions enregistrées",

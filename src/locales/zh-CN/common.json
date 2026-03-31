@@ -127,7 +127,7 @@
   },
   "command_palette": {
     "title": "命令面板",
-    "placeholder": "搜索命令、连接，或输入 user@host 快速连接...",
+    "placeholder": "搜索或输入 user@host...",
     "no_results": "无匹配结果",
     "section_commands": "命令",
     "section_connections": "已保存连接",

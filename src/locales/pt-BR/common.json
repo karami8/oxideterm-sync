@@ -127,7 +127,7 @@
   },
   "command_palette": {
     "title": "Paleta de comandos",
-    "placeholder": "Pesquisar comandos, conexões ou digitar user@host...",
+    "placeholder": "Pesquisar ou digitar user@host...",
     "no_results": "Nenhum resultado",
     "section_commands": "Comandos",
     "section_connections": "Conexões salvas",

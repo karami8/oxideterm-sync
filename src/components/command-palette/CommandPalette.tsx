@@ -1065,9 +1065,9 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ open, onOpenChan
             )}
           </CommandList>
 
-          {/* ── Footer hint ── */}
+          {/* ── Footer ── */}
           <div className="border-t border-theme-border px-3 py-1.5 text-[11px] text-theme-text-muted select-none flex items-center gap-3">
-            <span>{t('command_palette.mode_hint')}</span>
+            <span>{t('command_palette.footer_hint')}</span>
           </div>
         </Command>
       </DialogContent>
