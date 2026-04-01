@@ -18,7 +18,11 @@ use crate::bridge::{BridgeManager, WsBridge};
 use crate::commands::config::ConfigState;
 use crate::commands::forwarding::ForwardingRegistry;
 use crate::commands::{HealthRegistry, ProfilerRegistry};
+use crate::config::ssh_config::parse_ssh_config;
+use crate::config::{SavedAuth, SavedConnection, CONFIG_VERSION};
+use crate::router::NodeRouter;
 use crate::session::SessionRegistry;
+use crate::sftp::progress::DummyProgressStore;
 use crate::sftp::session::SftpRegistry;
 use crate::ssh::{ExtendedSessionHandle, SessionCommand, SshConnectionRegistry};
 use crate::state::{AiChatStore, ConversationMeta, PersistedMessage};
@@ -47,6 +51,11 @@ pub async fn dispatch(
         "focus_tab" => focus_tab(app, params).await,
         "list_local_terminals" => list_local_terminals(app).await,
         "attach" => attach(app, params).await,
+        "sftp_ls" => sftp_ls(app, params).await,
+        "sftp_get" => sftp_get(app, params).await,
+        "sftp_put" => sftp_put(app, params).await,
+        "import_list" => import_list(app).await,
+        "import_hosts" => import_hosts(app, params).await,
         _ => Err((
             protocol::ERR_METHOD_NOT_FOUND,
             format!("Method not found: {method}"),
@@ -1657,4 +1666,341 @@ async fn attach(app: &tauri::AppHandle, params: Value) -> Result<Value, (i32, St
         protocol::ERR_NOT_CONNECTED,
         format!("Session not found: {session_id}"),
     ))
+}
+
+// =============================================================================
+// SFTP commands
+// =============================================================================
+
+/// List directory contents via SFTP.
+async fn sftp_ls(app: &tauri::AppHandle, params: Value) -> Result<Value, (i32, String)> {
+    let session_id = params
+        .get("session_id")
+        .and_then(|v| v.as_str())
+        .ok_or((
+            protocol::ERR_INVALID_PARAMS,
+            "Missing required parameter: session_id".to_string(),
+        ))?;
+
+    let path = params
+        .get("path")
+        .and_then(|v| v.as_str())
+        .unwrap_or(".");
+
+    let router = app
+        .try_state::<Arc<NodeRouter>>()
+        .ok_or((protocol::ERR_INTERNAL, "Router not initialized".to_string()))?;
+
+    // Use session_id as node_id (they are the same in the session tree)
+    let sftp = router
+        .acquire_sftp(session_id)
+        .await
+        .map_err(|e| (protocol::ERR_NOT_CONNECTED, format!("SFTP error: {e}")))?;
+
+    let sftp = sftp.lock().await;
+
+    // Resolve "." to cwd
+    let resolved_path = if path == "." {
+        sftp.cwd().to_string()
+    } else {
+        path.to_string()
+    };
+
+    let entries = sftp
+        .list_dir(&resolved_path, None)
+        .await
+        .map_err(|e| (protocol::ERR_INTERNAL, format!("SFTP list_dir failed: {e}")))?;
+
+    let items: Vec<Value> = entries
+        .iter()
+        .map(|f| {
+            json!({
+                "name": f.name,
+                "path": f.path,
+                "type": format!("{:?}", f.file_type),
+                "size": f.size,
+                "modified": f.modified,
+                "permissions": f.permissions,
+                "owner": f.owner,
+                "is_symlink": f.is_symlink,
+            })
+        })
+        .collect();
+
+    Ok(json!({
+        "path": resolved_path,
+        "entries": items,
+    }))
+}
+
+/// Download a file via SFTP.
+async fn sftp_get(app: &tauri::AppHandle, params: Value) -> Result<Value, (i32, String)> {
+    let session_id = params
+        .get("session_id")
+        .and_then(|v| v.as_str())
+        .ok_or((
+            protocol::ERR_INVALID_PARAMS,
+            "Missing required parameter: session_id".to_string(),
+        ))?;
+
+    let remote_path = params
+        .get("remote_path")
+        .and_then(|v| v.as_str())
+        .ok_or((
+            protocol::ERR_INVALID_PARAMS,
+            "Missing required parameter: remote_path".to_string(),
+        ))?;
+
+    let local_path = params
+        .get("local_path")
+        .and_then(|v| v.as_str())
+        .ok_or((
+            protocol::ERR_INVALID_PARAMS,
+            "Missing required parameter: local_path".to_string(),
+        ))?;
+
+    // Validate local path: parent directory must exist
+    let local = std::path::Path::new(local_path);
+    if let Some(parent) = local.parent() {
+        if !parent.as_os_str().is_empty() && !parent.exists() {
+            return Err((
+                protocol::ERR_INVALID_PARAMS,
+                format!("Local directory does not exist: {}", parent.display()),
+            ));
+        }
+    }
+
+    let router = app
+        .try_state::<Arc<NodeRouter>>()
+        .ok_or((protocol::ERR_INTERNAL, "Router not initialized".to_string()))?;
+
+    // Use transfer SFTP (independent channel, doesn't block browsing)
+    let sftp = router
+        .acquire_transfer_sftp(session_id)
+        .await
+        .map_err(|e| (protocol::ERR_NOT_CONNECTED, format!("SFTP error: {e}")))?;
+
+    let progress_store = Arc::new(DummyProgressStore);
+    let bytes = sftp
+        .download_with_resume(remote_path, local_path, progress_store, None, None, None)
+        .await
+        .map_err(|e| (protocol::ERR_INTERNAL, format!("Download failed: {e}")))?;
+
+    Ok(json!({
+        "status": "ok",
+        "remote_path": remote_path,
+        "local_path": local_path,
+        "bytes": bytes,
+    }))
+}
+
+/// Upload a file via SFTP.
+async fn sftp_put(app: &tauri::AppHandle, params: Value) -> Result<Value, (i32, String)> {
+    let session_id = params
+        .get("session_id")
+        .and_then(|v| v.as_str())
+        .ok_or((
+            protocol::ERR_INVALID_PARAMS,
+            "Missing required parameter: session_id".to_string(),
+        ))?;
+
+    let local_path = params
+        .get("local_path")
+        .and_then(|v| v.as_str())
+        .ok_or((
+            protocol::ERR_INVALID_PARAMS,
+            "Missing required parameter: local_path".to_string(),
+        ))?;
+
+    let remote_path = params
+        .get("remote_path")
+        .and_then(|v| v.as_str())
+        .ok_or((
+            protocol::ERR_INVALID_PARAMS,
+            "Missing required parameter: remote_path".to_string(),
+        ))?;
+
+    // Validate local file exists
+    if !std::path::Path::new(local_path).exists() {
+        return Err((
+            protocol::ERR_INVALID_PARAMS,
+            format!("Local file does not exist: {local_path}"),
+        ));
+    }
+
+    let router = app
+        .try_state::<Arc<NodeRouter>>()
+        .ok_or((protocol::ERR_INTERNAL, "Router not initialized".to_string()))?;
+
+    let sftp = router
+        .acquire_transfer_sftp(session_id)
+        .await
+        .map_err(|e| (protocol::ERR_NOT_CONNECTED, format!("SFTP error: {e}")))?;
+
+    let progress_store = Arc::new(DummyProgressStore);
+    let bytes = sftp
+        .upload_with_resume(local_path, remote_path, progress_store, None, None, None)
+        .await
+        .map_err(|e| (protocol::ERR_INTERNAL, format!("Upload failed: {e}")))?;
+
+    Ok(json!({
+        "status": "ok",
+        "local_path": local_path,
+        "remote_path": remote_path,
+        "bytes": bytes,
+    }))
+}
+
+// =============================================================================
+// SSH config import
+// =============================================================================
+
+/// List importable hosts from ~/.ssh/config.
+async fn import_list(app: &tauri::AppHandle) -> Result<Value, (i32, String)> {
+    let config_state = app
+        .try_state::<Arc<ConfigState>>()
+        .ok_or((protocol::ERR_INTERNAL, "Config not initialized".to_string()))?;
+
+    let hosts = parse_ssh_config(None)
+        .await
+        .map_err(|e| (protocol::ERR_INTERNAL, format!("Failed to parse SSH config: {e}")))?;
+
+    let existing_names: std::collections::HashSet<String> = {
+        let config = config_state.get_config_snapshot();
+        config.connections.iter().map(|c| c.name.clone()).collect()
+    };
+
+    let items: Vec<Value> = hosts
+        .iter()
+        .map(|h| {
+            json!({
+                "alias": h.alias,
+                "hostname": h.effective_hostname(),
+                "user": h.user,
+                "port": h.effective_port(),
+                "identity_file": h.identity_file,
+                "already_imported": existing_names.contains(&h.alias),
+            })
+        })
+        .collect();
+
+    Ok(json!(items))
+}
+
+/// Import SSH config hosts as saved connections.
+async fn import_hosts(app: &tauri::AppHandle, params: Value) -> Result<Value, (i32, String)> {
+    let config_state = app
+        .try_state::<Arc<ConfigState>>()
+        .ok_or((protocol::ERR_INTERNAL, "Config not initialized".to_string()))?;
+
+    let aliases: Vec<String> = params
+        .get("aliases")
+        .and_then(|v| v.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|v| v.as_str().map(String::from))
+                .collect()
+        })
+        .unwrap_or_default();
+
+    if aliases.is_empty() {
+        return Err((
+            protocol::ERR_INVALID_PARAMS,
+            "Missing required parameter: aliases (array of host names)".to_string(),
+        ));
+    }
+
+    // Limit batch size to prevent config bloat
+    const MAX_IMPORT_BATCH: usize = 200;
+    if aliases.len() > MAX_IMPORT_BATCH {
+        return Err((
+            protocol::ERR_INVALID_PARAMS,
+            format!("Too many aliases (max {MAX_IMPORT_BATCH})"),
+        ));
+    }
+
+    let hosts = parse_ssh_config(None)
+        .await
+        .map_err(|e| (protocol::ERR_INTERNAL, format!("Failed to parse SSH config: {e}")))?;
+
+    let existing_names: std::collections::HashSet<String> = {
+        let config = config_state.get_config_snapshot();
+        config.connections.iter().map(|c| c.name.clone()).collect()
+    };
+
+    let mut imported = 0usize;
+    let mut skipped = 0usize;
+    let mut errors = Vec::new();
+
+    for alias in &aliases {
+        let host = match hosts.iter().find(|h| &h.alias == alias) {
+            Some(h) => h,
+            None => {
+                errors.push(format!("Host '{}' not found in SSH config", alias));
+                continue;
+            }
+        };
+
+        if existing_names.contains(alias) {
+            skipped += 1;
+            continue;
+        }
+
+        let auth = if let Some(ref key_path) = host.identity_file {
+            if !std::path::Path::new(key_path).exists() {
+                errors.push(format!("Key file not found for '{}': {}", alias, key_path));
+                continue;
+            }
+            SavedAuth::Key {
+                key_path: key_path.clone(),
+                has_passphrase: false,
+                passphrase_keychain_id: None,
+            }
+        } else {
+            SavedAuth::Agent
+        };
+
+        let username = host.user.clone().unwrap_or_else(whoami::username);
+
+        let conn = SavedConnection {
+            id: uuid::Uuid::new_v4().to_string(),
+            version: CONFIG_VERSION,
+            name: alias.clone(),
+            group: Some("Imported".to_string()),
+            host: host.effective_hostname().to_string(),
+            port: host.effective_port(),
+            username,
+            auth,
+            options: Default::default(),
+            created_at: chrono::Utc::now(),
+            last_used_at: None,
+            color: None,
+            tags: vec!["ssh-config".to_string()],
+            proxy_chain: Vec::new(),
+        };
+
+        config_state
+            .update_config(|config| {
+                config.add_connection(conn);
+                if !config.groups.contains(&"Imported".to_string()) {
+                    config.groups.push("Imported".to_string());
+                }
+            })
+            .map_err(|e| (protocol::ERR_INTERNAL, format!("Failed to update config: {e}")))?;
+
+        imported += 1;
+    }
+
+    if imported > 0 {
+        config_state
+            .save_config()
+            .await
+            .map_err(|e| (protocol::ERR_INTERNAL, format!("Failed to save config: {e}")))?;
+    }
+
+    Ok(json!({
+        "imported": imported,
+        "skipped": skipped,
+        "errors": errors,
+    }))
 }

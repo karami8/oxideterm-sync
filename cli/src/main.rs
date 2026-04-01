@@ -148,6 +148,18 @@ enum Commands {
         target: Option<String>,
     },
 
+    /// SFTP file operations
+    Sftp {
+        #[command(subcommand)]
+        action: SftpAction,
+    },
+
+    /// Import connections from ~/.ssh/config
+    Import {
+        #[command(subcommand)]
+        action: ImportAction,
+    },
+
     /// Ping the GUI (connectivity check)
     Ping,
 
@@ -214,6 +226,61 @@ enum ConfigAction {
     Get {
         /// Connection name or ID
         name: String,
+    },
+}
+
+#[derive(Subcommand)]
+enum SftpAction {
+    /// List remote directory contents
+    Ls {
+        /// Session ID or name
+        #[arg(short, long)]
+        session: String,
+
+        /// Remote path (default: home directory)
+        path: Option<String>,
+    },
+
+    /// Download a file from the remote host
+    Get {
+        /// Session ID or name
+        #[arg(short, long)]
+        session: String,
+
+        /// Remote file path
+        remote: String,
+
+        /// Local destination path (default: current directory)
+        local: Option<String>,
+    },
+
+    /// Upload a file to the remote host
+    Put {
+        /// Session ID or name
+        #[arg(short, long)]
+        session: String,
+
+        /// Local file path
+        local: String,
+
+        /// Remote destination path
+        remote: String,
+    },
+}
+
+#[derive(Subcommand)]
+enum ImportAction {
+    /// List importable hosts from ~/.ssh/config
+    List,
+
+    /// Import specific hosts (or all with --all)
+    Add {
+        /// Host aliases to import
+        aliases: Vec<String>,
+
+        /// Import all available hosts
+        #[arg(long)]
+        all: bool,
     },
 }
 
@@ -467,6 +534,91 @@ fn run(cli: &Cli, out: &output::OutputMode) -> Result<(), String> {
             let resp = conn.call("connect", serde_json::json!({ "target": target }))?;
             out.print_connect_result(&resp);
         }
+        Commands::Sftp { action } => match action {
+            SftpAction::Ls { session, path } => {
+                let session_id = resolve_session_id(&mut conn, session)?;
+                let params = serde_json::json!({
+                    "session_id": session_id,
+                    "path": path.as_deref().unwrap_or("."),
+                });
+                let resp = conn.call("sftp_ls", params)?;
+                out.print_sftp_ls(&resp);
+            }
+            SftpAction::Get {
+                session,
+                remote,
+                local,
+            } => {
+                let session_id = resolve_session_id(&mut conn, session)?;
+                // Default local path: filename in current directory
+                let local_path = local.clone().unwrap_or_else(|| {
+                    std::path::Path::new(remote)
+                        .file_name()
+                        .map(|n| n.to_string_lossy().to_string())
+                        .unwrap_or_else(|| "download".to_string())
+                });
+                let params = serde_json::json!({
+                    "session_id": session_id,
+                    "remote_path": remote,
+                    "local_path": local_path,
+                });
+                let resp = conn.call("sftp_get", params)?;
+                out.print_sftp_transfer(&resp, "Downloaded");
+            }
+            SftpAction::Put {
+                session,
+                local,
+                remote,
+            } => {
+                let session_id = resolve_session_id(&mut conn, session)?;
+                let params = serde_json::json!({
+                    "session_id": session_id,
+                    "local_path": local,
+                    "remote_path": remote,
+                });
+                let resp = conn.call("sftp_put", params)?;
+                out.print_sftp_transfer(&resp, "Uploaded");
+            }
+        },
+        Commands::Import { action } => match action {
+            ImportAction::List => {
+                let resp = conn.call("import_list", serde_json::json!({}))?;
+                out.print_import_list(&resp);
+            }
+            ImportAction::Add { aliases, all } => {
+                // If --all, first fetch available hosts and use all non-imported aliases
+                let aliases_to_import = if *all {
+                    let hosts = conn.call("import_list", serde_json::json!({}))?;
+                    let items = hosts.as_array().ok_or("Invalid import list")?;
+                    items
+                        .iter()
+                        .filter(|h| {
+                            !h.get("already_imported")
+                                .and_then(|v| v.as_bool())
+                                .unwrap_or(false)
+                        })
+                        .filter_map(|h| h.get("alias").and_then(|v| v.as_str()).map(String::from))
+                        .collect::<Vec<_>>()
+                } else {
+                    aliases.clone()
+                };
+
+                if aliases_to_import.is_empty() {
+                    if *all {
+                        eprintln!("All hosts are already imported.");
+                    } else {
+                        return Err("No aliases specified. Usage: oxt import add <alias1> <alias2> ... or --all".to_string());
+                    }
+                    return Ok(());
+                }
+
+                let resp = conn.call(
+                    "import_hosts",
+                    serde_json::json!({ "aliases": aliases_to_import }),
+                )?;
+                out.print_import_result(&resp);
+            }
+        },
         Commands::Open { path } => {
             let dir = path.clone().unwrap_or_else(|| {
                 std::env::current_dir()

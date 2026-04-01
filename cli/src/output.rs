@@ -587,6 +587,188 @@ impl OutputMode {
             }
         }
     }
+
+    /// Print SFTP directory listing.
+    pub fn print_sftp_ls(&self, value: &Value) {
+        match self {
+            Self::Json => {
+                println!("{}", serde_json::to_string(value).unwrap_or_default());
+            }
+            Self::Human => {
+                let path = value
+                    .get("path")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or(".");
+                let entries = value
+                    .get("entries")
+                    .and_then(|v| v.as_array())
+                    .map(|a| a.as_slice())
+                    .unwrap_or(&[]);
+
+                println!("{path}  ({} entries)", entries.len());
+                if entries.is_empty() {
+                    return;
+                }
+
+                println!(
+                    "  {:<10} {:<10} {:<8} {}",
+                    "PERMS", "SIZE", "TYPE", "NAME"
+                );
+                for entry in entries {
+                    let name = entry
+                        .get("name")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("-");
+                    let file_type = entry
+                        .get("type")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("-");
+                    let size = entry
+                        .get("size")
+                        .and_then(|v| v.as_u64())
+                        .unwrap_or(0);
+                    let permissions = entry
+                        .get("permissions")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("---");
+                    let is_symlink = entry
+                        .get("is_symlink")
+                        .and_then(|v| v.as_bool())
+                        .unwrap_or(false);
+
+                    let type_char = match file_type {
+                        "Directory" => "d",
+                        "Symlink" => "l",
+                        "File" => "-",
+                        _ => "?",
+                    };
+                    let size_str = format_file_size(size);
+                    let display_name = if is_symlink {
+                        format!("{} →", sanitize_display(name))
+                    } else {
+                        sanitize_display(name)
+                    };
+
+                    println!(
+                        "  {}{:<9} {:<10} {:<8} {}",
+                        type_char, permissions, size_str, file_type, display_name
+                    );
+                }
+            }
+        }
+    }
+
+    /// Print SFTP transfer result (download or upload).
+    pub fn print_sftp_transfer(&self, value: &Value, verb: &str) {
+        match self {
+            Self::Json => {
+                println!("{}", serde_json::to_string(value).unwrap_or_default());
+            }
+            Self::Human => {
+                let remote = value
+                    .get("remote_path")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("?");
+                let local = value
+                    .get("local_path")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("?");
+                let bytes = value
+                    .get("bytes")
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(0);
+                let size_str = format_file_size(bytes);
+                println!("{verb}: {remote} ↔ {local} ({size_str})");
+            }
+        }
+    }
+
+    /// Print importable SSH config hosts.
+    pub fn print_import_list(&self, value: &Value) {
+        match self {
+            Self::Json => {
+                println!("{}", serde_json::to_string(value).unwrap_or_default());
+            }
+            Self::Human => {
+                let items = value.as_array().map(|a| a.as_slice()).unwrap_or(&[]);
+                if items.is_empty() {
+                    println!("No hosts found in ~/.ssh/config");
+                    return;
+                }
+
+                println!(
+                    "  {:<20} {:<24} {:<10} {:<6} {}",
+                    "ALIAS", "HOSTNAME", "USER", "PORT", "STATUS"
+                );
+                for item in items {
+                    let alias = item
+                        .get("alias")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("-");
+                    let hostname = item
+                        .get("hostname")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("-");
+                    let user = item
+                        .get("user")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("-");
+                    let port = item
+                        .get("port")
+                        .and_then(|v| v.as_u64())
+                        .unwrap_or(22);
+                    let imported = item
+                        .get("already_imported")
+                        .and_then(|v| v.as_bool())
+                        .unwrap_or(false);
+                    let status = if imported { "imported" } else { "available" };
+
+                    println!(
+                        "  {:<20} {:<24} {:<10} {:<6} {}",
+                        sanitize_display(alias),
+                        sanitize_display(hostname),
+                        sanitize_display(user),
+                        port,
+                        status
+                    );
+                }
+            }
+        }
+    }
+
+    /// Print import result summary.
+    pub fn print_import_result(&self, value: &Value) {
+        match self {
+            Self::Json => {
+                println!("{}", serde_json::to_string(value).unwrap_or_default());
+            }
+            Self::Human => {
+                let imported = value
+                    .get("imported")
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(0);
+                let skipped = value
+                    .get("skipped")
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(0);
+                let errors = value
+                    .get("errors")
+                    .and_then(|v| v.as_array())
+                    .map(|a| a.len())
+                    .unwrap_or(0);
+
+                println!("Imported: {imported}, Skipped: {skipped}, Errors: {errors}");
+
+                if let Some(errs) = value.get("errors").and_then(|v| v.as_array()) {
+                    for err in errs {
+                        if let Some(msg) = err.as_str() {
+                            eprintln!("  ✕ {msg}");
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 fn format_duration(secs: u64) -> String {
@@ -629,4 +811,21 @@ fn sanitize_display(s: &str) -> String {
         // Drop other control characters
     }
     result
+}
+
+/// Format a file size in human-readable form.
+fn format_file_size(bytes: u64) -> String {
+    const KB: u64 = 1024;
+    const MB: u64 = 1024 * KB;
+    const GB: u64 = 1024 * MB;
+
+    if bytes >= GB {
+        format!("{:.1}G", bytes as f64 / GB as f64)
+    } else if bytes >= MB {
+        format!("{:.1}M", bytes as f64 / MB as f64)
+    } else if bytes >= KB {
+        format!("{:.1}K", bytes as f64 / KB as f64)
+    } else {
+        format!("{bytes}B")
+    }
 }
