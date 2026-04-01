@@ -179,12 +179,133 @@ jobs:
           releaseBody: ${{ steps.release_notes.outputs.body || 'See the assets below to download the installer for your platform.' }}
           releaseDraft: false
           prerelease: false
-          includeUpdaterJson: true
+          includeUpdaterJson: false
           args: ${{ matrix.args }}
+
+  publish-updater:
+    name: Generate updater manifest
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+    steps:
+      - name: Build and upload latest.json
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const tag = context.ref.replace('refs/tags/', '');
+            const version = tag.replace(/^v/, '');
+
+            const { data: release } = await github.rest.repos.getReleaseByTag({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag,
+            });
+
+            const allAssets = release.assets;
+
+            // Map .sig asset name → platform keys
+            function mapSigToPlatforms(name) {
+              const baseName = name.replace(/\.sig$/, '');
+              const keys = [];
+
+              if (name.endsWith('.app.tar.gz.sig')) {
+                if (name.includes('x64') || name.includes('x86_64'))
+                  keys.push('darwin-x86_64', 'darwin-x86_64-app');
+                else if (name.includes('aarch64') || name.includes('arm64'))
+                  keys.push('darwin-aarch64', 'darwin-aarch64-app');
+              } else if (name.endsWith('.AppImage.sig')) {
+                if (name.includes('amd64') || name.includes('x86_64'))
+                  keys.push('linux-x86_64', 'linux-x86_64-appimage');
+                else if (name.includes('aarch64') || name.includes('arm64'))
+                  keys.push('linux-aarch64', 'linux-aarch64-appimage');
+              } else if (name.endsWith('.deb.sig')) {
+                if (name.includes('amd64') || name.includes('x86_64'))
+                  keys.push('linux-x86_64-deb');
+                else if (name.includes('aarch64') || name.includes('arm64'))
+                  keys.push('linux-aarch64-deb');
+              } else if (name.endsWith('.rpm.sig')) {
+                if (name.includes('x86_64'))
+                  keys.push('linux-x86_64-rpm');
+                else if (name.includes('aarch64'))
+                  keys.push('linux-aarch64-rpm');
+              } else if (name.endsWith('-setup.exe.sig')) {
+                if (name.includes('x64') || name.includes('x86_64'))
+                  keys.push('windows-x86_64', 'windows-x86_64-nsis');
+                else if (name.includes('arm64') || name.includes('aarch64'))
+                  keys.push('windows-aarch64', 'windows-aarch64-nsis');
+              }
+
+              return { keys, baseName };
+            }
+
+            const platforms = {};
+            const sigAssets = allAssets.filter(a => a.name.endsWith('.sig'));
+
+            for (const sigAsset of sigAssets) {
+              const { keys, baseName } = mapSigToPlatforms(sigAsset.name);
+              if (keys.length === 0) continue;
+
+              const binaryAsset = allAssets.find(a => a.name === baseName);
+              if (!binaryAsset) {
+                console.log(`Warning: no binary asset found for ${baseName}`);
+                continue;
+              }
+
+              // Download .sig content
+              const sigResponse = await fetch(sigAsset.browser_download_url);
+              if (!sigResponse.ok) {
+                console.log(`Warning: failed to download ${sigAsset.name}`);
+                continue;
+              }
+              const signature = (await sigResponse.text()).trim();
+              const url = binaryAsset.browser_download_url;
+
+              for (const key of keys) {
+                platforms[key] = { signature, url };
+              }
+            }
+
+            const latestJson = {
+              version,
+              notes: release.body || '',
+              pub_date: release.published_at || new Date().toISOString(),
+              platforms,
+            };
+
+            // Delete existing latest.json if present
+            const existing = allAssets.find(a => a.name === 'latest.json');
+            if (existing) {
+              await github.rest.repos.deleteReleaseAsset({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                asset_id: existing.id,
+              });
+            }
+
+            // Upload latest.json
+            const content = JSON.stringify(latestJson, null, 2);
+            await github.rest.repos.uploadReleaseAsset({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: release.id,
+              name: 'latest.json',
+              data: content,
+              headers: {
+                'content-type': 'application/json',
+                'content-length': Buffer.byteLength(content),
+              },
+            });
+
+            console.log(`Uploaded latest.json with ${Object.keys(platforms).length} platform(s):`);
+            for (const key of Object.keys(platforms).sort()) {
+              console.log(`  ${key}: ${platforms[key].url.split('/').pop()}`);
+            }
 
   cleanup-sigs:
     name: Remove .sig files from release
-    needs: build
+    needs: publish-updater
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
     permissions:
