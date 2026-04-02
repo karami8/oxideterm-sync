@@ -110,11 +110,12 @@ jobs:
         with:
           manifest-path: src-tauri/Cargo.toml
           # advisories = known CVEs, licenses = license policy, bans = duplicate crates
-          command: check advisories licenses bans
+          command: check
+          command-arguments: advisories licenses bans
 
       - name: cargo deny (cli)
         uses: EmbarkStudios/cargo-deny-action@v2
         with:
           manifest-path: cli/Cargo.toml
-          arguments: "--config src-tauri/deny.toml"
-          command: check advisories licenses bans
+          command: check
+          command-arguments: --config src-tauri/deny.toml advisories licenses bans
