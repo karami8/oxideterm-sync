@@ -3,6 +3,18 @@ name: CI
 on:
   push:
     branches: [main]
+    paths:
+      - 'src/**'
+      - 'src-tauri/**'
+      - 'cli/**'
+      - 'index.html'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'vite.config.ts'
+      - 'tsconfig.json'
+      - 'tsconfig.node.json'
+      - 'tailwind.config.js'
+      - '.github/workflows/ci.yml'
   pull_request:
     branches: [main]
 
@@ -100,5 +112,5 @@ jobs:
         uses: EmbarkStudios/cargo-deny-action@v2
         with:
           manifest-path: cli/Cargo.toml
-          config: src-tauri/deny.toml
+          arguments: "--config src-tauri/deny.toml"
           command: check advisories licenses bans
