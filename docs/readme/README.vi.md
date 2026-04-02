@@ -5,6 +5,15 @@
 <h1 align="center">⚡ OxideTerm</h1>
 
 <p align="center">
+  <a href="https://github.com/AnalyseDeCircuit/oxideterm/stargazers">
+    <img src="https://img.shields.io/github/stars/AnalyseDeCircuit/oxideterm?style=social" alt="GitHub stars">
+  </a>
+  <br>
+  <em>Nếu bạn thích OxideTerm, vui lòng cho dự án một sao trên GitHub! ⭐️</em>
+</p>
+
+
+<p align="center">
   <strong>Không Electron. Không OpenSSL. SSH thuần Rust.</strong>
   <br>
   <em>Một tệp nhị phân gốc duy nhất — shell cục bộ, SSH, SFTP, IDE từ xa, AI, chuyển tiếp cổng, plugin, 30+ giao diện, 11 ngôn ngữ.</em>

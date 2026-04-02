@@ -5,6 +5,15 @@
 <h1 align="center">⚡ OxideTerm</h1>
 
 <p align="center">
+  <a href="https://github.com/AnalyseDeCircuit/oxideterm/stargazers">
+    <img src="https://img.shields.io/github/stars/AnalyseDeCircuit/oxideterm?style=social" alt="GitHub stars">
+  </a>
+  <br>
+  <em>如果您喜歡 OxideTerm，請在 GitHub 上點個 Star ⭐️！</em>
+</p>
+
+
+<p align="center">
   <strong>零 Electron。零 OpenSSL。純 Rust SSH。</strong>
   <br>
   <em>一個原生二進位檔——本機 Shell、SSH、SFTP、遠端 IDE、AI、連接埠轉發、外掛、30+ 主題、11 種語言。</em>

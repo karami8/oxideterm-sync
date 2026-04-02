@@ -5,6 +5,15 @@
 <h1 align="center">⚡ OxideTerm</h1>
 
 <p align="center">
+  <a href="https://github.com/AnalyseDeCircuit/oxideterm/stargazers">
+    <img src="https://img.shields.io/github/stars/AnalyseDeCircuit/oxideterm?style=social" alt="GitHub stars">
+  </a>
+  <br>
+  <em>OxideTerm이 마음에 드신다면 GitHub에서 별 ⭐️을 눌러주세요!</em>
+</p>
+
+
+<p align="center">
   <strong>Electron 제로. OpenSSL 제로. 순수 Rust SSH.</strong>
   <br>
   <em>네이티브 바이너리 하나로 — 로컬 셸, SSH, SFTP, 원격 IDE, AI, 포트 포워딩, 플러그인, 30개 이상 테마, 11개 언어.</em>

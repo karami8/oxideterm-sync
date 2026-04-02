@@ -5,6 +5,15 @@
 <h1 align="center">⚡ OxideTerm</h1>
 
 <p align="center">
+  <a href="https://github.com/AnalyseDeCircuit/oxideterm/stargazers">
+    <img src="https://img.shields.io/github/stars/AnalyseDeCircuit/oxideterm?style=social" alt="GitHub stars">
+  </a>
+  <br>
+  <em>If you like OxideTerm, please consider giving it a star on GitHub! ⭐️</em>
+</p>
+
+
+<p align="center">
   <strong>Zero Electron. Zero OpenSSL. Pure Rust SSH.</strong>
   <br>
   <em>One native binary — local shells, SSH, SFTP, remote IDE, AI, port forwarding, plugins, 30+ themes, 11 languages.</em>

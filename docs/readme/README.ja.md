@@ -5,6 +5,15 @@
 <h1 align="center">⚡ OxideTerm</h1>
 
 <p align="center">
+  <a href="https://github.com/AnalyseDeCircuit/oxideterm/stargazers">
+    <img src="https://img.shields.io/github/stars/AnalyseDeCircuit/oxideterm?style=social" alt="GitHub stars">
+  </a>
+  <br>
+  <em>OxideTerm が気に入ったら、GitHub で Star を付けてください ⭐️！</em>
+</p>
+
+
+<p align="center">
   <strong>Electron ゼロ。OpenSSL ゼロ。純粋な Rust SSH。</strong>
   <br>
   <em>ネイティブバイナリひとつで — ローカルシェル、SSH、SFTP、リモート IDE、AI、ポートフォワーディング、プラグイン、30 以上のテーマ、11 言語。</em>
