@@ -92,9 +92,7 @@ pub mod commands {
     }
 
     #[tauri::command]
-    pub async fn wsl_graphics_reconnect(
-        session_id: String,
-    ) -> Result<WslGraphicsSession, String> {
+    pub async fn wsl_graphics_reconnect(session_id: String) -> Result<WslGraphicsSession, String> {
         let _ = session_id;
         Err(
             "WSL Graphics is only available on Windows with the wsl-graphics feature enabled"

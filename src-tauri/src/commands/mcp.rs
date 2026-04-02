@@ -116,7 +116,10 @@ async fn stdout_reader_loop(
         }
 
         // Try Content-Length framing first
-        let body = if let Some(len_str) = trimmed.strip_prefix("Content-Length:").or_else(|| trimmed.strip_prefix("content-length:")) {
+        let body = if let Some(len_str) = trimmed
+            .strip_prefix("Content-Length:")
+            .or_else(|| trimmed.strip_prefix("content-length:"))
+        {
             let content_length: usize = match len_str.trim().parse() {
                 Ok(n) if n > 0 && n <= 10 * 1024 * 1024 => n, // cap at 10 MB
                 Ok(n) => {
@@ -124,7 +127,11 @@ async fn stdout_reader_loop(
                     continue;
                 }
                 Err(_) => {
-                    tracing::debug!("[MCP:{}] Invalid Content-Length value: {}", server_id, len_str.trim());
+                    tracing::debug!(
+                        "[MCP:{}] Invalid Content-Length value: {}",
+                        server_id,
+                        len_str.trim()
+                    );
                     continue;
                 }
             };
@@ -146,7 +153,12 @@ async fn stdout_reader_loop(
             match tokio::io::AsyncReadExt::read_exact(&mut reader, &mut body_buf).await {
                 Ok(_) => String::from_utf8_lossy(&body_buf).into_owned(),
                 Err(e) => {
-                    tracing::warn!("[MCP:{}] Failed to read {} body bytes: {}", server_id, content_length, e);
+                    tracing::warn!(
+                        "[MCP:{}] Failed to read {} body bytes: {}",
+                        server_id,
+                        content_length,
+                        e
+                    );
                     continue;
                 }
             }
@@ -189,7 +201,10 @@ async fn stdout_reader_loop(
                     }
                 } else {
                     // Server-initiated notification (no id) — log and skip
-                    let method = val.get("method").and_then(|m| m.as_str()).unwrap_or("unknown");
+                    let method = val
+                        .get("method")
+                        .and_then(|m| m.as_str())
+                        .unwrap_or("unknown");
                     tracing::debug!("[MCP:{}] Server notification: {}", server_id, method);
                 }
             }
@@ -471,8 +486,15 @@ pub async fn mcp_close_server(
             let id = proc.next_id.fetch_add(1, Ordering::Relaxed);
             let mut stdin = proc.stdin.lock().await;
             // shutdown is a JSON-RPC request (expects response)
-            let shutdown_body = format!("{{\"jsonrpc\":\"2.0\",\"id\":{},\"method\":\"shutdown\"}}", id);
-            let shutdown_msg = format!("Content-Length: {}\r\n\r\n{}", shutdown_body.len(), shutdown_body);
+            let shutdown_body = format!(
+                "{{\"jsonrpc\":\"2.0\",\"id\":{},\"method\":\"shutdown\"}}",
+                id
+            );
+            let shutdown_msg = format!(
+                "Content-Length: {}\r\n\r\n{}",
+                shutdown_body.len(),
+                shutdown_body
+            );
             let _ = stdin.write_all(shutdown_msg.as_bytes()).await;
             let _ = stdin.flush().await;
         }

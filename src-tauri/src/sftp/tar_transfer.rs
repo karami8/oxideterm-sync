@@ -120,12 +120,7 @@ async fn probe_tar_inner(controller: &HandleController) -> Result<bool, SftpErro
 /// Returns the best available compression. Result should be cached per session.
 pub async fn probe_tar_compression(controller: &HandleController) -> TarCompression {
     // Test zstd: tar --zstd -cf /dev/null /dev/null
-    if probe_exec_exit0(
-        controller,
-        "tar --zstd -cf /dev/null /dev/null 2>/dev/null",
-    )
-    .await
-    {
+    if probe_exec_exit0(controller, "tar --zstd -cf /dev/null /dev/null 2>/dev/null").await {
         info!("Remote tar supports zstd compression");
         return TarCompression::Zstd;
     }
@@ -227,7 +222,11 @@ pub async fn tar_upload_directory(
         .map_err(|e| SftpError::ChannelError(format!("Failed to open tar channel: {}", e)))?;
 
     // tar [-z|--zstd] -xf - -C <remote>  :  read tar from stdin, extract into remote_path
-    let cmd = format!("tar{} -xf - -C {}", comp.tar_flag(), shell_escape(remote_path));
+    let cmd = format!(
+        "tar{} -xf - -C {}",
+        comp.tar_flag(),
+        shell_escape(remote_path)
+    );
     debug!("tar upload exec: {}", cmd);
 
     channel
@@ -277,7 +276,8 @@ pub async fn tar_upload_directory(
                 let elapsed = start.elapsed().as_secs_f64();
                 let expected_secs = bytes_sent as f64 / bps as f64;
                 if expected_secs > elapsed {
-                    tokio::time::sleep(std::time::Duration::from_secs_f64(expected_secs - elapsed)).await;
+                    tokio::time::sleep(std::time::Duration::from_secs_f64(expected_secs - elapsed))
+                        .await;
                 }
             }
         }
@@ -293,19 +293,18 @@ pub async fn tar_upload_directory(
                 } else {
                     None
                 };
-                let _ = tx
-                    .try_send(TransferProgress {
-                        id: transfer_id.to_string(),
-                        remote_path: remote_path.to_string(),
-                        local_path: local_path.to_string(),
-                        direction: TransferDirection::Upload,
-                        state: TransferState::InProgress,
-                        total_bytes,
-                        transferred_bytes: bytes_sent,
-                        speed,
-                        eta_seconds: eta,
-                        error: None,
-                    });
+                let _ = tx.try_send(TransferProgress {
+                    id: transfer_id.to_string(),
+                    remote_path: remote_path.to_string(),
+                    local_path: local_path.to_string(),
+                    direction: TransferDirection::Upload,
+                    state: TransferState::InProgress,
+                    total_bytes,
+                    transferred_bytes: bytes_sent,
+                    speed,
+                    eta_seconds: eta,
+                    error: None,
+                });
                 last_progress = Instant::now();
             }
         }
@@ -339,19 +338,18 @@ pub async fn tar_upload_directory(
     // Final progress
     if let Some(ref tx) = progress_tx {
         let elapsed = start.elapsed().as_secs_f64().max(0.001);
-        let _ = tx
-            .try_send(TransferProgress {
-                id: transfer_id.to_string(),
-                remote_path: remote_path.to_string(),
-                local_path: local_path.to_string(),
-                direction: TransferDirection::Upload,
-                state: TransferState::Completed,
-                total_bytes,
-                transferred_bytes: bytes_sent,
-                speed: (bytes_sent as f64 / elapsed) as u64,
-                eta_seconds: Some(0),
-                error: None,
-            });
+        let _ = tx.try_send(TransferProgress {
+            id: transfer_id.to_string(),
+            remote_path: remote_path.to_string(),
+            local_path: local_path.to_string(),
+            direction: TransferDirection::Upload,
+            state: TransferState::Completed,
+            total_bytes,
+            transferred_bytes: bytes_sent,
+            speed: (bytes_sent as f64 / elapsed) as u64,
+            eta_seconds: Some(0),
+            error: None,
+        });
     }
 
     info!(
@@ -458,7 +456,10 @@ pub async fn tar_download_directory(
                         let elapsed = start.elapsed().as_secs_f64();
                         let expected_secs = bytes_received as f64 / bps as f64;
                         if expected_secs > elapsed {
-                            tokio::time::sleep(std::time::Duration::from_secs_f64(expected_secs - elapsed)).await;
+                            tokio::time::sleep(std::time::Duration::from_secs_f64(
+                                expected_secs - elapsed,
+                            ))
+                            .await;
                         }
                     }
                 }
@@ -468,22 +469,21 @@ pub async fn tar_download_directory(
                     if let Some(ref tx) = progress_tx {
                         let elapsed = start.elapsed().as_secs_f64().max(0.001);
                         let speed = (bytes_received as f64 / elapsed) as u64;
-                        let _ = tx
-                            .try_send(TransferProgress {
-                                id: transfer_id.to_string(),
-                                remote_path: remote_path.to_string(),
-                                local_path: local_path.to_string(),
-                                direction: TransferDirection::Download,
-                                state: TransferState::InProgress,
-                                // For tar download we don't know total size upfront;
-                                // set total_bytes = 0 so the frontend shows a
-                                // streaming/indeterminate progress indicator.
-                                total_bytes: 0,
-                                transferred_bytes: bytes_received,
-                                speed,
-                                eta_seconds: None,
-                                error: None,
-                            });
+                        let _ = tx.try_send(TransferProgress {
+                            id: transfer_id.to_string(),
+                            remote_path: remote_path.to_string(),
+                            local_path: local_path.to_string(),
+                            direction: TransferDirection::Download,
+                            state: TransferState::InProgress,
+                            // For tar download we don't know total size upfront;
+                            // set total_bytes = 0 so the frontend shows a
+                            // streaming/indeterminate progress indicator.
+                            total_bytes: 0,
+                            transferred_bytes: bytes_received,
+                            speed,
+                            eta_seconds: None,
+                            error: None,
+                        });
                         last_progress = Instant::now();
                     }
                 }
@@ -526,19 +526,18 @@ pub async fn tar_download_directory(
     // Final progress
     if let Some(ref tx) = progress_tx {
         let elapsed = start.elapsed().as_secs_f64().max(0.001);
-        let _ = tx
-            .try_send(TransferProgress {
-                id: transfer_id.to_string(),
-                remote_path: remote_path.to_string(),
-                local_path: local_path.to_string(),
-                direction: TransferDirection::Download,
-                state: TransferState::Completed,
-                total_bytes: bytes_received,
-                transferred_bytes: bytes_received,
-                speed: (bytes_received as f64 / elapsed) as u64,
-                eta_seconds: Some(0),
-                error: None,
-            });
+        let _ = tx.try_send(TransferProgress {
+            id: transfer_id.to_string(),
+            remote_path: remote_path.to_string(),
+            local_path: local_path.to_string(),
+            direction: TransferDirection::Download,
+            state: TransferState::Completed,
+            total_bytes: bytes_received,
+            transferred_bytes: bytes_received,
+            speed: (bytes_received as f64 / elapsed) as u64,
+            eta_seconds: Some(0),
+            error: None,
+        });
     }
 
     info!(
@@ -622,9 +621,7 @@ fn tar_encode_directory(
         builder
             .append_dir_all(".", base)
             .map_err(|e| SftpError::IoError(e))?;
-        builder
-            .into_inner()
-            .map_err(|e| SftpError::IoError(e))?;
+        builder.into_inner().map_err(|e| SftpError::IoError(e))?;
         Ok(writer)
     }
 
@@ -639,8 +636,7 @@ fn tar_encode_directory(
             gz.finish().map_err(SftpError::IoError)?;
         }
         TarCompression::Zstd => {
-            let zst = zstd::Encoder::new(chunk_writer, 3)
-                .map_err(SftpError::IoError)?;
+            let zst = zstd::Encoder::new(chunk_writer, 3).map_err(SftpError::IoError)?;
             let zst = build_tar(zst, local_path)?;
             zst.finish().map_err(SftpError::IoError)?;
         }
@@ -710,8 +706,7 @@ fn tar_decode_directory(
             unpack_tar(gz, local_path)?;
         }
         TarCompression::Zstd => {
-            let zst = zstd::Decoder::new(raw_reader)
-                .map_err(SftpError::IoError)?;
+            let zst = zstd::Decoder::new(raw_reader).map_err(SftpError::IoError)?;
             unpack_tar(zst, local_path)?;
         }
     }

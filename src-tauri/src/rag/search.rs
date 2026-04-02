@@ -125,16 +125,15 @@ pub fn search(
 
 /// Reciprocal Rank Fusion: merge two ranked lists.
 /// Returns (chunk_id, fused_score, source) sorted by fused score descending.
-fn rrf_fuse(
-    bm25_hits: &[Bm25Hit],
-    vector_hits: &[VectorHit],
-) -> Vec<(String, f64, SearchSource)> {
+fn rrf_fuse(bm25_hits: &[Bm25Hit], vector_hits: &[VectorHit]) -> Vec<(String, f64, SearchSource)> {
     let mut scores: HashMap<String, (f64, bool, bool)> = HashMap::new();
 
     // BM25 contributions
     for (rank, hit) in bm25_hits.iter().enumerate() {
         let rrf_score = 1.0 / (RRF_K + rank as f64 + 1.0);
-        let entry = scores.entry(hit.chunk_id.clone()).or_insert((0.0, false, false));
+        let entry = scores
+            .entry(hit.chunk_id.clone())
+            .or_insert((0.0, false, false));
         entry.0 += rrf_score;
         entry.1 = true; // seen in BM25
     }
@@ -142,7 +141,9 @@ fn rrf_fuse(
     // Vector contributions
     for (rank, hit) in vector_hits.iter().enumerate() {
         let rrf_score = 1.0 / (RRF_K + rank as f64 + 1.0);
-        let entry = scores.entry(hit.chunk_id.clone()).or_insert((0.0, false, false));
+        let entry = scores
+            .entry(hit.chunk_id.clone())
+            .or_insert((0.0, false, false));
         entry.0 += rrf_score;
         entry.2 = true; // seen in vector
     }
@@ -255,7 +256,11 @@ fn cosine_sim(a: &[f32], b: &[f32]) -> f64 {
         nb += yf * yf;
     }
     let denom = na.sqrt() * nb.sqrt();
-    if denom == 0.0 { 0.0 } else { dot / denom }
+    if denom == 0.0 {
+        0.0
+    } else {
+        dot / denom
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -269,14 +274,32 @@ mod tests {
     #[test]
     fn test_rrf_fuse_overlap() {
         let bm25 = vec![
-            Bm25Hit { chunk_id: "a".into(), score: 5.0 },
-            Bm25Hit { chunk_id: "b".into(), score: 3.0 },
-            Bm25Hit { chunk_id: "c".into(), score: 1.0 },
+            Bm25Hit {
+                chunk_id: "a".into(),
+                score: 5.0,
+            },
+            Bm25Hit {
+                chunk_id: "b".into(),
+                score: 3.0,
+            },
+            Bm25Hit {
+                chunk_id: "c".into(),
+                score: 1.0,
+            },
         ];
         let vector = vec![
-            VectorHit { chunk_id: "b".into(), score: 0.95 },
-            VectorHit { chunk_id: "d".into(), score: 0.80 },
-            VectorHit { chunk_id: "a".into(), score: 0.60 },
+            VectorHit {
+                chunk_id: "b".into(),
+                score: 0.95,
+            },
+            VectorHit {
+                chunk_id: "d".into(),
+                score: 0.80,
+            },
+            VectorHit {
+                chunk_id: "a".into(),
+                score: 0.60,
+            },
         ];
 
         let fused = rrf_fuse(&bm25, &vector);
@@ -308,9 +331,10 @@ mod tests {
 
     #[test]
     fn test_rrf_bm25_only() {
-        let bm25 = vec![
-            Bm25Hit { chunk_id: "x".into(), score: 2.0 },
-        ];
+        let bm25 = vec![Bm25Hit {
+            chunk_id: "x".into(),
+            score: 2.0,
+        }];
         let fused = rrf_fuse(&bm25, &[]);
         assert_eq!(fused.len(), 1);
         assert!(matches!(fused[0].2, SearchSource::Bm25Only));

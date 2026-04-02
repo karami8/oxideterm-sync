@@ -268,8 +268,7 @@ pub async fn start_resource_profiler(
         .map(|env| env.os_type)
         .unwrap_or_else(|| "Linux".to_string());
 
-    let profiler =
-        ResourceProfiler::spawn(connection_id.clone(), controller, app_handle, os_type);
+    let profiler = ResourceProfiler::spawn(connection_id.clone(), controller, app_handle, os_type);
     profiler_registry.profilers.insert(connection_id, profiler);
 
     Ok(())

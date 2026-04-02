@@ -309,12 +309,7 @@ fn run(cli: &Cli, out: &output::OutputMode) -> Result<(), String> {
             return Ok(());
         }
         Commands::Completions { shell } => {
-            clap_complete::generate(
-                *shell,
-                &mut Cli::command(),
-                "oxt",
-                &mut std::io::stdout(),
-            );
+            clap_complete::generate(*shell, &mut Cli::command(), "oxt", &mut std::io::stdout());
             return Ok(());
         }
         _ => {}
@@ -636,8 +631,12 @@ fn run(cli: &Cli, out: &output::OutputMode) -> Result<(), String> {
                 }
                 None => {
                     // No target → list all focusable targets
-                    let sessions = conn.call("list_sessions", serde_json::json!({})).unwrap_or(serde_json::json!([]));
-                    let locals = conn.call("list_local_terminals", serde_json::json!({})).unwrap_or(serde_json::json!([]));
+                    let sessions = conn
+                        .call("list_sessions", serde_json::json!({}))
+                        .unwrap_or(serde_json::json!([]));
+                    let locals = conn
+                        .call("list_local_terminals", serde_json::json!({}))
+                        .unwrap_or(serde_json::json!([]));
                     let ssh_items = sessions.as_array().map(|a| a.as_slice()).unwrap_or(&[]);
                     let local_items = locals.as_array().map(|a| a.as_slice()).unwrap_or(&[]);
                     let total = ssh_items.len() + local_items.len();
@@ -662,7 +661,8 @@ fn run(cli: &Cli, out: &output::OutputMode) -> Result<(), String> {
                                 )
                             };
                             eprintln!("Auto-focusing: {label}");
-                            let resp = conn.call("focus_tab", serde_json::json!({ "target": id }))?;
+                            let resp =
+                                conn.call("focus_tab", serde_json::json!({ "target": id }))?;
                             out.print_json(&resp);
                         }
                         _ => {
@@ -699,10 +699,7 @@ fn run(cli: &Cli, out: &output::OutputMode) -> Result<(), String> {
 /// Parse a forward spec like `8080:localhost:80` or `0.0.0.0:8080:localhost:80`
 /// Also supports IPv6 addresses in brackets: `[::1]:8080:localhost:80`
 /// For dynamic forwards, spec is just `[bind_addr:]bind_port`
-fn parse_forward_spec(
-    spec: &str,
-    fwd_type: &str,
-) -> Result<(String, u16, String, u16), String> {
+fn parse_forward_spec(spec: &str, fwd_type: &str) -> Result<(String, u16, String, u16), String> {
     // Tokenize respecting bracketed IPv6 addresses
     let tokens = tokenize_spec(spec)?;
 
@@ -710,11 +707,15 @@ fn parse_forward_spec(
         // Dynamic: [bind_addr:]bind_port
         return match tokens.len() {
             1 => {
-                let port: u16 = tokens[0].parse().map_err(|_| format!("Invalid port: {}", tokens[0]))?;
+                let port: u16 = tokens[0]
+                    .parse()
+                    .map_err(|_| format!("Invalid port: {}", tokens[0]))?;
                 Ok(("127.0.0.1".to_string(), port, String::new(), 0))
             }
             2 => {
-                let port: u16 = tokens[1].parse().map_err(|_| format!("Invalid port: {}", tokens[1]))?;
+                let port: u16 = tokens[1]
+                    .parse()
+                    .map_err(|_| format!("Invalid port: {}", tokens[1]))?;
                 Ok((tokens[0].clone(), port, String::new(), 0))
             }
             _ => Err("Dynamic forward spec: [bind_addr:]bind_port".to_string()),
@@ -724,13 +725,26 @@ fn parse_forward_spec(
     // local/remote: [bind_addr:]bind_port:target_host:target_port
     match tokens.len() {
         3 => {
-            let bind_port: u16 = tokens[0].parse().map_err(|_| format!("Invalid bind port: {}", tokens[0]))?;
-            let target_port: u16 = tokens[2].parse().map_err(|_| format!("Invalid target port: {}", tokens[2]))?;
-            Ok(("127.0.0.1".to_string(), bind_port, tokens[1].clone(), target_port))
+            let bind_port: u16 = tokens[0]
+                .parse()
+                .map_err(|_| format!("Invalid bind port: {}", tokens[0]))?;
+            let target_port: u16 = tokens[2]
+                .parse()
+                .map_err(|_| format!("Invalid target port: {}", tokens[2]))?;
+            Ok((
+                "127.0.0.1".to_string(),
+                bind_port,
+                tokens[1].clone(),
+                target_port,
+            ))
         }
         4 => {
-            let bind_port: u16 = tokens[1].parse().map_err(|_| format!("Invalid bind port: {}", tokens[1]))?;
-            let target_port: u16 = tokens[3].parse().map_err(|_| format!("Invalid target port: {}", tokens[3]))?;
+            let bind_port: u16 = tokens[1]
+                .parse()
+                .map_err(|_| format!("Invalid bind port: {}", tokens[1]))?;
+            let target_port: u16 = tokens[3]
+                .parse()
+                .map_err(|_| format!("Invalid target port: {}", tokens[3]))?;
             Ok((tokens[0].clone(), bind_port, tokens[2].clone(), target_port))
         }
         _ => Err("Forward spec: [bind_addr:]bind_port:target_host:target_port".to_string()),
@@ -784,16 +798,25 @@ fn resolve_session_id(conn: &mut connect::IpcConnection, target: &str) -> Result
     let items = sessions.as_array().ok_or("Invalid session list")?;
 
     // Try exact ID match
-    if let Some(s) = items.iter().find(|s| s.get("id").and_then(|v| v.as_str()) == Some(target)) {
+    if let Some(s) = items
+        .iter()
+        .find(|s| s.get("id").and_then(|v| v.as_str()) == Some(target))
+    {
         return Ok(s["id"].as_str().unwrap().to_string());
     }
     // Try name match
-    if let Some(s) = items.iter().find(|s| s.get("name").and_then(|v| v.as_str()) == Some(target)) {
+    if let Some(s) = items
+        .iter()
+        .find(|s| s.get("name").and_then(|v| v.as_str()) == Some(target))
+    {
         return Ok(s["id"].as_str().unwrap().to_string());
     }
     // Try partial ID match
     if let Some(s) = items.iter().find(|s| {
-        s.get("id").and_then(|v| v.as_str()).map(|id| id.starts_with(target)).unwrap_or(false)
+        s.get("id")
+            .and_then(|v| v.as_str())
+            .map(|id| id.starts_with(target))
+            .unwrap_or(false)
     }) {
         return Ok(s["id"].as_str().unwrap().to_string());
     }
@@ -854,7 +877,10 @@ fn resolve_any_session_id(
         .unwrap_or(serde_json::json!([]));
     if let Some(items) = locals.as_array() {
         // Exact ID match
-        if let Some(s) = items.iter().find(|s| s.get("id").and_then(|v| v.as_str()) == Some(target)) {
+        if let Some(s) = items
+            .iter()
+            .find(|s| s.get("id").and_then(|v| v.as_str()) == Some(target))
+        {
             return Ok(s["id"].as_str().unwrap().to_string());
         }
         // Shell name match
@@ -960,9 +986,8 @@ fn run_attach(
     let tcp_stream = std::net::TcpStream::connect(host_port)
         .map_err(|e| format!("TCP connection failed: {e}"))?;
     // Handshake needs enough time; set timeout after handshake.
-    let (mut ws, _response) =
-        tungstenite::client(format!("ws://{host_port}/"), &tcp_stream)
-            .map_err(|e| format!("WebSocket handshake failed: {e}"))?;
+    let (mut ws, _response) = tungstenite::client(format!("ws://{host_port}/"), &tcp_stream)
+        .map_err(|e| format!("WebSocket handshake failed: {e}"))?;
 
     // Authenticate: send token as first text message
     ws.send(tungstenite::Message::Text(ws_token.to_string()))
@@ -1034,9 +1059,21 @@ fn run_attach(
             }
 
             let mut pollfds = [
-                libc::pollfd { fd: stdin_fd, events: libc::POLLIN, revents: 0 },
-                libc::pollfd { fd: sigwinch_read_fd, events: libc::POLLIN, revents: 0 },
-                libc::pollfd { fd: ws_fd, events: libc::POLLIN, revents: 0 },
+                libc::pollfd {
+                    fd: stdin_fd,
+                    events: libc::POLLIN,
+                    revents: 0,
+                },
+                libc::pollfd {
+                    fd: sigwinch_read_fd,
+                    events: libc::POLLIN,
+                    revents: 0,
+                },
+                libc::pollfd {
+                    fd: ws_fd,
+                    events: libc::POLLIN,
+                    revents: 0,
+                },
             ];
 
             let ret = unsafe { libc::poll(pollfds.as_mut_ptr(), 3, 100) };
@@ -1146,8 +1183,8 @@ fn run_attach(
                             return Ok(());
                         }
                         escape::EscapeAction::ShowHelp => {
-                            let _ = stdout
-                                .write_all(escape::EscapeDetector::help_text().as_bytes());
+                            let _ =
+                                stdout.write_all(escape::EscapeDetector::help_text().as_bytes());
                             let _ = stdout.flush();
                         }
                         escape::EscapeAction::Consumed => {}
@@ -1240,9 +1277,8 @@ fn run_attach(
                                 return Ok(());
                             }
                             escape::EscapeAction::ShowHelp => {
-                                let _ = stdout.write_all(
-                                    escape::EscapeDetector::help_text().as_bytes(),
-                                );
+                                let _ = stdout
+                                    .write_all(escape::EscapeDetector::help_text().as_bytes());
                                 let _ = stdout.flush();
                             }
                             escape::EscapeAction::Consumed => {}

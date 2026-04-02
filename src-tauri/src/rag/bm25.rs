@@ -21,21 +21,144 @@ const B: f64 = 0.75;
 /// CJK tokens are not affected (bigram tokenizer has no equivalent concept).
 static ENGLISH_STOP_WORDS: LazyLock<HashSet<&'static str>> = LazyLock::new(|| {
     HashSet::from([
-        "a", "about", "above", "after", "again", "against", "all", "also", "am",
-        "an", "and", "any", "are", "as", "at", "be", "because", "been", "before",
-        "being", "below", "between", "both", "but", "by", "can", "cannot", "could",
-        "did", "do", "does", "doing", "down", "during", "each", "few", "for", "from",
-        "further", "get", "got", "had", "has", "have", "having", "he", "her", "here",
-        "hers", "herself", "him", "himself", "his", "how", "if", "in", "into", "is",
-        "it", "its", "itself", "just", "let", "ll", "me", "might", "more", "most",
-        "must", "my", "myself", "no", "nor", "not", "now", "of", "off", "on", "once",
-        "only", "or", "other", "our", "ours", "ourselves", "out", "over", "own", "re",
-        "same", "shall", "she", "should", "so", "some", "such", "than", "that", "the",
-        "their", "theirs", "them", "themselves", "then", "there", "these", "they",
-        "this", "those", "through", "to", "too", "under", "until", "up", "upon", "ve",
-        "very", "was", "we", "were", "what", "when", "where", "which", "while", "who",
-        "whom", "why", "will", "with", "won", "would", "you", "your", "yours",
-        "yourself", "yourselves",
+        "a",
+        "about",
+        "above",
+        "after",
+        "again",
+        "against",
+        "all",
+        "also",
+        "am",
+        "an",
+        "and",
+        "any",
+        "are",
+        "as",
+        "at",
+        "be",
+        "because",
+        "been",
+        "before",
+        "being",
+        "below",
+        "between",
+        "both",
+        "but",
+        "by",
+        "can",
+        "cannot",
+        "could",
+        "did",
+        "do",
+        "does",
+        "doing",
+        "down",
+        "during",
+        "each",
+        "few",
+        "for",
+        "from",
+        "further",
+        "get",
+        "got",
+        "had",
+        "has",
+        "have",
+        "having",
+        "he",
+        "her",
+        "here",
+        "hers",
+        "herself",
+        "him",
+        "himself",
+        "his",
+        "how",
+        "if",
+        "in",
+        "into",
+        "is",
+        "it",
+        "its",
+        "itself",
+        "just",
+        "let",
+        "ll",
+        "me",
+        "might",
+        "more",
+        "most",
+        "must",
+        "my",
+        "myself",
+        "no",
+        "nor",
+        "not",
+        "now",
+        "of",
+        "off",
+        "on",
+        "once",
+        "only",
+        "or",
+        "other",
+        "our",
+        "ours",
+        "ourselves",
+        "out",
+        "over",
+        "own",
+        "re",
+        "same",
+        "shall",
+        "she",
+        "should",
+        "so",
+        "some",
+        "such",
+        "than",
+        "that",
+        "the",
+        "their",
+        "theirs",
+        "them",
+        "themselves",
+        "then",
+        "there",
+        "these",
+        "they",
+        "this",
+        "those",
+        "through",
+        "to",
+        "too",
+        "under",
+        "until",
+        "up",
+        "upon",
+        "ve",
+        "very",
+        "was",
+        "we",
+        "were",
+        "what",
+        "when",
+        "where",
+        "which",
+        "while",
+        "who",
+        "whom",
+        "why",
+        "will",
+        "with",
+        "won",
+        "would",
+        "you",
+        "your",
+        "yours",
+        "yourself",
+        "yourselves",
     ])
 });
 
@@ -140,10 +263,7 @@ pub fn index_chunk(
 
 /// Re-index BM25 from scratch. The `_collection_id` parameter is retained
 /// for API compatibility but the index is always rebuilt globally.
-pub fn reindex_collection(
-    store: &RagStore,
-    _collection_id: &str,
-) -> Result<usize, RagError> {
+pub fn reindex_collection(store: &RagStore, _collection_id: &str) -> Result<usize, RagError> {
     reindex_all(store, None, None)
 }
 
@@ -306,7 +426,11 @@ pub fn search_bm25(
         .into_iter()
         .map(|(chunk_id, score)| Bm25Hit { chunk_id, score })
         .collect();
-    hits.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
+    hits.sort_by(|a, b| {
+        b.score
+            .partial_cmp(&a.score)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
     hits.truncate(top_k);
 
     Ok(hits)
@@ -344,8 +468,8 @@ mod tests {
         assert!(tokens.contains(&"quick".to_string()));
         assert!(tokens.contains(&"brown".to_string()));
         assert!(tokens.contains(&"fox".to_string()));
-        assert!(tokens.contains(&"jump".to_string()));  // "jumps" → "jump"
-        assert!(tokens.contains(&"lazi".to_string()));   // "lazy" → "lazi"
+        assert!(tokens.contains(&"jump".to_string())); // "jumps" → "jump"
+        assert!(tokens.contains(&"lazi".to_string())); // "lazy" → "lazi"
         assert!(tokens.contains(&"dog".to_string()));
     }
 
@@ -353,10 +477,10 @@ mod tests {
     fn test_stemming() {
         // Snowball English stemmer should normalize inflected forms
         let tokens = tokenize("deployments deploying deployed containers running");
-        assert!(tokens.contains(&"deploy".to_string()));  // all three → "deploy"
+        assert!(tokens.contains(&"deploy".to_string())); // all three → "deploy"
         assert_eq!(tokens.iter().filter(|t| *t == "deploy").count(), 3);
         assert!(tokens.contains(&"contain".to_string())); // "containers" → "contain"
-        assert!(tokens.contains(&"run".to_string()));      // "running" → "run"
+        assert!(tokens.contains(&"run".to_string())); // "running" → "run"
     }
 
     #[test]
@@ -376,7 +500,7 @@ mod tests {
         assert!(tokens.contains(&"署指".to_string()));
         assert!(tokens.contains(&"指南".to_string()));
         assert!(tokens.contains(&"version".to_string())); // "version" stem = "version"
-        // "2" and "0" are single-char non-stop tokens — kept
+                                                          // "2" and "0" are single-char non-stop tokens — kept
         assert!(tokens.contains(&"2".to_string()));
         assert!(tokens.contains(&"0".to_string()));
     }

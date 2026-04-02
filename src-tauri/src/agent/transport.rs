@@ -58,7 +58,8 @@ pub enum TransportError {
 }
 
 /// Pending RPC handlers (request id → oneshot sender).
-type PendingMap = Arc<Mutex<HashMap<u64, oneshot::Sender<Result<serde_json::Value, AgentRpcError>>>>>;
+type PendingMap =
+    Arc<Mutex<HashMap<u64, oneshot::Sender<Result<serde_json::Value, AgentRpcError>>>>>;
 
 /// Agent transport — manages JSON-RPC communication over an SSH exec channel.
 pub struct AgentTransport {
@@ -273,12 +274,7 @@ impl AgentTransport {
             .map_err(|_| TransportError::ChannelClosed)?;
 
         // Wait for response with timeout
-        match tokio::time::timeout(
-            tokio::time::Duration::from_secs(timeout_secs),
-            rx,
-        )
-        .await
-        {
+        match tokio::time::timeout(tokio::time::Duration::from_secs(timeout_secs), rx).await {
             Ok(Ok(Ok(result))) => Ok(result),
             Ok(Ok(Err(rpc_err))) => Err(TransportError::RpcError(rpc_err)),
             Ok(Err(_)) => Err(TransportError::ChannelClosed),
@@ -292,7 +288,11 @@ impl AgentTransport {
     }
 
     /// Send a fire-and-forget request (no response expected, but still gets one).
-    pub async fn notify(&self, method: &str, params: serde_json::Value) -> Result<(), TransportError> {
+    pub async fn notify(
+        &self,
+        method: &str,
+        params: serde_json::Value,
+    ) -> Result<(), TransportError> {
         // Agent always sends responses since everything has an `id`,
         // but we can just ignore the response.
         let _ = self.call(method, params).await?;
@@ -304,7 +304,10 @@ impl AgentTransport {
     /// Only one consumer should call this. Subsequent calls return None.
     pub async fn take_watch_rx(&self) -> Option<mpsc::Receiver<WatchEvent>> {
         let mut rx = self.watch_rx.lock().await;
-        if self.watch_taken.swap(true, std::sync::atomic::Ordering::AcqRel) {
+        if self
+            .watch_taken
+            .swap(true, std::sync::atomic::Ordering::AcqRel)
+        {
             // Already consumed by a previous caller
             return None;
         }

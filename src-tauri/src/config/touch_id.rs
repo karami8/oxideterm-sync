@@ -63,8 +63,7 @@ pub fn is_biometric_available() -> bool {
         }
 
         // BOOL canEval = [ctx canEvaluatePolicy:LAPolicyDeviceOwnerAuthenticationWithBiometrics error:nil];
-        let can_eval: Bool =
-            msg_send![ctx, canEvaluatePolicy: LA_POLICY_BIOMETRICS, error: std::ptr::null_mut::<*mut NSError>()];
+        let can_eval: Bool = msg_send![ctx, canEvaluatePolicy: LA_POLICY_BIOMETRICS, error: std::ptr::null_mut::<*mut NSError>()];
 
         can_eval.as_bool()
     }
@@ -131,10 +130,9 @@ pub fn authenticate(reason: &str) -> Result<(), String> {
                     match code {
                         -2 => "Authentication canceled by user".to_string(), // LAErrorUserCancel
                         -4 => "Authentication canceled by system".to_string(), // LAErrorSystemCancel
-                        -8 => "Authentication canceled by app".to_string(), // LAErrorAppCancel
+                        -8 => "Authentication canceled by app".to_string(),    // LAErrorAppCancel
                         _ => {
-                            let desc: Retained<NSString> =
-                                msg_send![err, localizedDescription];
+                            let desc: Retained<NSString> = msg_send![err, localizedDescription];
                             desc.to_string()
                         }
                     }
@@ -157,5 +155,6 @@ pub fn authenticate(reason: &str) -> Result<(), String> {
     }
 
     // Block until the completion handler fires
-    rx.recv().unwrap_or(Err("Authentication channel closed".into()))
+    rx.recv()
+        .unwrap_or(Err("Authentication channel closed".into()))
 }

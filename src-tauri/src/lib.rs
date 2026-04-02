@@ -17,17 +17,17 @@ pub mod commands;
 pub mod config;
 pub mod forwarding;
 pub mod graphics;
+pub mod launcher;
 #[cfg(feature = "local-terminal")]
 pub mod local;
-pub mod launcher;
 pub mod oxide_file;
 pub mod rag;
-pub mod terminal_bg;
 pub mod router;
 pub mod session;
 pub mod sftp;
 pub mod ssh;
 pub mod state;
+pub mod terminal_bg;
 pub mod update_manager;
 
 // Windows: 高精度系统定时器
@@ -235,7 +235,10 @@ pub fn run() {
     let agent_history_store = if !agent_history_db_path.as_os_str().is_empty() {
         match AgentHistoryStore::new(agent_history_db_path.clone()) {
             Ok(store) => {
-                tracing::info!("Agent history store initialized at {:?}", agent_history_db_path);
+                tracing::info!(
+                    "Agent history store initialized at {:?}",
+                    agent_history_db_path
+                );
                 write_startup_log(&format!(
                     "Agent history store initialized at {:?}",
                     agent_history_db_path
@@ -265,7 +268,10 @@ pub fn run() {
                 Some(Arc::new(store))
             }
             Err(e) => {
-                tracing::warn!("Failed to initialize RAG store: {}. RAG features disabled.", e);
+                tracing::warn!(
+                    "Failed to initialize RAG store: {}. RAG features disabled.",
+                    e
+                );
                 write_startup_log(&format!("WARNING: RAG store init failed: {}", e));
                 None
             }
@@ -1251,9 +1257,7 @@ pub fn run() {
                     }
 
                     // Clean up CLI IPC server
-                    if let Some(server) =
-                        app_handle.try_state::<Arc<cli_server::CliServer>>()
-                    {
+                    if let Some(server) = app_handle.try_state::<Arc<cli_server::CliServer>>() {
                         tracing::info!("Shutting down CLI IPC server...");
                         server.shutdown();
                     }

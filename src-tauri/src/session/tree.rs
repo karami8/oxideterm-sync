@@ -312,9 +312,11 @@ impl SessionTree {
             return Err(TreeError::ParentNotConnected(parent_id.to_string()));
         }
 
-        let depth = parent.depth + 1;        if depth > MAX_CHAIN_DEPTH {
+        let depth = parent.depth + 1;
+        if depth > MAX_CHAIN_DEPTH {
             return Err(TreeError::MaxDepthExceeded(MAX_CHAIN_DEPTH));
-        }        let id = Uuid::new_v4().to_string();
+        }
+        let id = Uuid::new_v4().to_string();
 
         let node = SessionNode {
             id: id.clone(),

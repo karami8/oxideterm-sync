@@ -287,7 +287,10 @@ impl PtyHandle {
                     })
                     .unwrap_or_else(|| "en_US.UTF-8".to_string());
 
-                tracing::info!("LANG not set (Finder launch), using detected locale: {}", detected);
+                tracing::info!(
+                    "LANG not set (Finder launch), using detected locale: {}",
+                    detected
+                );
                 cmd.env("LANG", &detected);
                 // Also set LC_ALL to ensure consistent locale across all categories
                 cmd.env("LC_ALL", &detected);

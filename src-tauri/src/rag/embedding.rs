@@ -72,7 +72,6 @@ fn search_vector_bruteforce(
     chunk_ids: &[String],
     top_k: usize,
 ) -> Result<Vec<VectorHit>, RagError> {
-
     // Fetch embeddings for these chunks
     let embeddings = store.get_embeddings_for_chunks(chunk_ids)?;
     if embeddings.is_empty() {

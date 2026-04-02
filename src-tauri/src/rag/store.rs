@@ -14,24 +14,15 @@ use tracing::{debug, info, warn};
 // Table Definitions
 // ═══════════════════════════════════════════════════════════════════════════
 
-const COLLECTIONS_TABLE: TableDefinition<&str, &[u8]> =
-    TableDefinition::new("doc_collections");
-const COLLECTION_DOCS_TABLE: TableDefinition<&str, &[u8]> =
-    TableDefinition::new("collection_docs");
-const DOC_METADATA_TABLE: TableDefinition<&str, &[u8]> =
-    TableDefinition::new("doc_metadata");
-const DOC_CHUNKS_TABLE: TableDefinition<&str, &[u8]> =
-    TableDefinition::new("doc_chunks");
-const DOC_CHUNK_INDEX_TABLE: TableDefinition<&str, &[u8]> =
-    TableDefinition::new("doc_chunk_index");
-const BM25_POSTINGS_TABLE: TableDefinition<&str, &[u8]> =
-    TableDefinition::new("bm25_postings");
-const BM25_META_TABLE: TableDefinition<&str, &[u8]> =
-    TableDefinition::new("bm25_meta");
-const EMBEDDINGS_TABLE: TableDefinition<&str, &[u8]> =
-    TableDefinition::new("embeddings");
-const DOC_RAW_CONTENT_TABLE: TableDefinition<&str, &[u8]> =
-    TableDefinition::new("doc_raw_content");
+const COLLECTIONS_TABLE: TableDefinition<&str, &[u8]> = TableDefinition::new("doc_collections");
+const COLLECTION_DOCS_TABLE: TableDefinition<&str, &[u8]> = TableDefinition::new("collection_docs");
+const DOC_METADATA_TABLE: TableDefinition<&str, &[u8]> = TableDefinition::new("doc_metadata");
+const DOC_CHUNKS_TABLE: TableDefinition<&str, &[u8]> = TableDefinition::new("doc_chunks");
+const DOC_CHUNK_INDEX_TABLE: TableDefinition<&str, &[u8]> = TableDefinition::new("doc_chunk_index");
+const BM25_POSTINGS_TABLE: TableDefinition<&str, &[u8]> = TableDefinition::new("bm25_postings");
+const BM25_META_TABLE: TableDefinition<&str, &[u8]> = TableDefinition::new("bm25_meta");
+const EMBEDDINGS_TABLE: TableDefinition<&str, &[u8]> = TableDefinition::new("embeddings");
+const DOC_RAW_CONTENT_TABLE: TableDefinition<&str, &[u8]> = TableDefinition::new("doc_raw_content");
 
 /// Compression threshold: compress chunks larger than 4 KB.
 const COMPRESSION_THRESHOLD: usize = 4096;
@@ -105,7 +96,10 @@ impl RagStore {
             // Initialise empty doc list
             let mut cd = txn.open_table(COLLECTION_DOCS_TABLE)?;
             let empty: Vec<String> = Vec::new();
-            cd.insert(collection.id.as_str(), rmp_serde::to_vec(&empty)?.as_slice())?;
+            cd.insert(
+                collection.id.as_str(),
+                rmp_serde::to_vec(&empty)?.as_slice(),
+            )?;
         }
         txn.commit()?;
         debug!("Created collection: {}", collection.id);
@@ -165,8 +159,7 @@ impl RagStore {
 
             for doc_id in &doc_ids {
                 // Get chunk ids for this doc
-                let chunk_ids_data = idx_t.get(doc_id.as_str())?
-                    .map(|g| g.value().to_vec());
+                let chunk_ids_data = idx_t.get(doc_id.as_str())?.map(|g| g.value().to_vec());
                 if let Some(data) = chunk_ids_data {
                     let chunk_ids: Vec<String> = rmp_serde::from_slice(&data)?;
                     for cid in &chunk_ids {
@@ -188,7 +181,11 @@ impl RagStore {
         txn.commit()?;
 
         // BM25 postings will be cleaned up via reindex
-        info!("Deleted collection {} ({} docs)", collection_id, doc_ids.len());
+        info!(
+            "Deleted collection {} ({} docs)",
+            collection_id,
+            doc_ids.len()
+        );
 
         // Invalidate HNSW index since embeddings were removed
         self.invalidate_hnsw_index();
@@ -196,10 +193,7 @@ impl RagStore {
         Ok(())
     }
 
-    pub fn get_collection_stats(
-        &self,
-        collection_id: &str,
-    ) -> Result<CollectionStats, RagError> {
+    pub fn get_collection_stats(&self, collection_id: &str) -> Result<CollectionStats, RagError> {
         let col = self.get_collection(collection_id)?;
         let doc_ids = self.get_collection_doc_ids(collection_id)?;
         let mut chunk_count = 0usize;
@@ -303,7 +297,8 @@ impl RagStore {
 
             // Append doc_id to collection's doc list
             let mut cd_t = txn.open_table(COLLECTION_DOCS_TABLE)?;
-            let cd_data = cd_t.get(metadata.collection_id.as_str())?
+            let cd_data = cd_t
+                .get(metadata.collection_id.as_str())?
                 .map(|g| g.value().to_vec());
             let mut doc_ids: Vec<String> = match cd_data {
                 Some(data) => rmp_serde::from_slice(&data)?,
@@ -319,7 +314,8 @@ impl RagStore {
 
             // Update collection timestamp
             let mut col_t = txn.open_table(COLLECTIONS_TABLE)?;
-            let col_data = col_t.get(metadata.collection_id.as_str())?
+            let col_data = col_t
+                .get(metadata.collection_id.as_str())?
                 .map(|g| g.value().to_vec());
             if let Some(bytes) = col_data {
                 let mut col: DocCollection = rmp_serde::from_slice(&bytes)?;
@@ -342,7 +338,8 @@ impl RagStore {
 
     pub fn remove_document(&self, doc_id: &str) -> Result<(), RagError> {
         // Read metadata to get collection_id
-        let meta = self.get_doc_metadata(doc_id)?
+        let meta = self
+            .get_doc_metadata(doc_id)?
             .ok_or_else(|| RagError::DocumentNotFound(doc_id.to_string()))?;
         let chunk_ids = self.get_chunk_ids_for_doc(doc_id)?;
 
@@ -366,12 +363,16 @@ impl RagStore {
 
             // Remove from collection doc list
             let mut cd_t = txn.open_table(COLLECTION_DOCS_TABLE)?;
-            let cd_data = cd_t.get(meta.collection_id.as_str())?
+            let cd_data = cd_t
+                .get(meta.collection_id.as_str())?
                 .map(|g| g.value().to_vec());
             if let Some(bytes) = cd_data {
                 let mut ids: Vec<String> = rmp_serde::from_slice(&bytes)?;
                 ids.retain(|id| id != doc_id);
-                cd_t.insert(meta.collection_id.as_str(), rmp_serde::to_vec(&ids)?.as_slice())?;
+                cd_t.insert(
+                    meta.collection_id.as_str(),
+                    rmp_serde::to_vec(&ids)?.as_slice(),
+                )?;
             }
         }
         txn.commit()?;
@@ -609,9 +610,10 @@ impl RagStore {
         }
 
         // Swap into memory
-        let mut guard = self.hnsw_index.write().map_err(|e| {
-            RagError::HnswIndex(format!("lock poisoned: {e}"))
-        })?;
+        let mut guard = self
+            .hnsw_index
+            .write()
+            .map_err(|e| RagError::HnswIndex(format!("lock poisoned: {e}")))?;
         *guard = new_index;
 
         Ok(())
@@ -823,9 +825,9 @@ impl RagStore {
         match t.get(doc_id)? {
             Some(guard) => {
                 let bytes = Self::decompress_bytes(guard.value())?;
-                Ok(Some(String::from_utf8(bytes).map_err(|e| {
-                    RagError::Serialization(e.to_string())
-                })?))
+                Ok(Some(
+                    String::from_utf8(bytes).map_err(|e| RagError::Serialization(e.to_string()))?,
+                ))
             }
             None => Ok(None),
         }
@@ -843,7 +845,8 @@ impl RagStore {
         now: i64,
         expected_version: Option<u64>,
     ) -> Result<DocMetadata, RagError> {
-        let meta = self.get_doc_metadata(doc_id)?
+        let meta = self
+            .get_doc_metadata(doc_id)?
             .ok_or_else(|| RagError::DocumentNotFound(doc_id.to_string()))?;
 
         // Optimistic locking check
@@ -901,7 +904,8 @@ impl RagStore {
 
             // Update collection timestamp
             let mut col_t = txn.open_table(COLLECTIONS_TABLE)?;
-            let col_data = col_t.get(updated_meta.collection_id.as_str())?
+            let col_data = col_t
+                .get(updated_meta.collection_id.as_str())?
                 .map(|g| g.value().to_vec());
             if let Some(bytes) = col_data {
                 let mut col: DocCollection = rmp_serde::from_slice(&bytes)?;

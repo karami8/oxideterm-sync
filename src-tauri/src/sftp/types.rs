@@ -324,11 +324,11 @@ impl AdaptiveChunkSizer {
     #[inline]
     fn throughput_to_chunk(bytes_per_sec: u64) -> usize {
         match bytes_per_sec {
-            0..=262_144 => Self::MIN_CHUNK,            // < 256 KB/s
-            262_145..=1_048_576 => 128 * 1024,         // 256 KB/s – 1 MB/s
-            1_048_577..=10_485_760 => 256 * 1024,      // 1 – 10 MB/s
-            10_485_761..=52_428_800 => 1_048_576,       // 10 – 50 MB/s
-            _ => Self::MAX_CHUNK,                       // > 50 MB/s
+            0..=262_144 => Self::MIN_CHUNK,       // < 256 KB/s
+            262_145..=1_048_576 => 128 * 1024,    // 256 KB/s – 1 MB/s
+            1_048_577..=10_485_760 => 256 * 1024, // 1 – 10 MB/s
+            10_485_761..=52_428_800 => 1_048_576, // 10 – 50 MB/s
+            _ => Self::MAX_CHUNK,                 // > 50 MB/s
         }
     }
 }

@@ -18,11 +18,7 @@ const OVERLAP_CHARS: usize = 200;
 // ═══════════════════════════════════════════════════════════════════════════
 
 /// Split a document into chunks suitable for indexing.
-pub fn chunk_document(
-    doc_id: &str,
-    content: &str,
-    format: &DocFormat,
-) -> Vec<DocChunk> {
+pub fn chunk_document(doc_id: &str, content: &str, format: &DocFormat) -> Vec<DocChunk> {
     match format {
         DocFormat::Markdown => chunk_markdown(doc_id, content),
         DocFormat::PlainText => chunk_plaintext(doc_id, content),
@@ -120,12 +116,7 @@ fn emit_chunks(
 
     let est = estimate_tokens(trimmed);
     if est <= MAX_CHUNK_TOKENS {
-        out.push(make_chunk(
-            doc_id,
-            trimmed,
-            section_path,
-            base_offset,
-        ));
+        out.push(make_chunk(doc_id, trimmed, section_path, base_offset));
         return;
     }
 
@@ -196,12 +187,7 @@ fn split_large_paragraph(
 // Helpers
 // ═══════════════════════════════════════════════════════════════════════════
 
-fn make_chunk(
-    doc_id: &str,
-    content: &str,
-    section_path: Option<&str>,
-    offset: usize,
-) -> DocChunk {
+fn make_chunk(doc_id: &str, content: &str, section_path: Option<&str>, offset: usize) -> DocChunk {
     DocChunk {
         id: Uuid::new_v4().to_string(),
         doc_id: doc_id.to_string(),
@@ -326,11 +312,7 @@ fn tail_chars(s: &str, n: usize) -> &str {
         return s;
     }
     let skip = char_count - n;
-    let byte_offset = s
-        .char_indices()
-        .nth(skip)
-        .map(|(i, _)| i)
-        .unwrap_or(0);
+    let byte_offset = s.char_indices().nth(skip).map(|(i, _)| i).unwrap_or(0);
     &s[byte_offset..]
 }
 
@@ -367,7 +349,8 @@ mod tests {
     #[test]
     fn test_estimate_tokens_cjk() {
         // ~40 CJK chars → ~69 tokens (40*1.5*1.15)
-        let cjk = "运维文档检索增强生成系统的设计与实现需要考虑多个方面包括分块策略索引构建和检索算法";
+        let cjk =
+            "运维文档检索增强生成系统的设计与实现需要考虑多个方面包括分块策略索引构建和检索算法";
         let est = estimate_tokens(cjk);
         assert!(est > 50);
         assert!(est < 120);
@@ -384,10 +367,7 @@ mod tests {
 
     #[test]
     fn test_parse_heading() {
-        assert_eq!(
-            parse_heading("# Hello"),
-            Some((1, "Hello".to_string()))
-        );
+        assert_eq!(parse_heading("# Hello"), Some((1, "Hello".to_string())));
         assert_eq!(
             parse_heading("### Deep Section"),
             Some((3, "Deep Section".to_string()))

@@ -80,20 +80,16 @@ pub async fn wsl_graphics_start(
     // 3. Start WebSocket ↔ TCP proxy bridge
     let vnc_addr = format!("127.0.0.1:{}", vnc_port);
     let session_id = uuid::Uuid::new_v4().to_string();
-    let (ws_port, ws_token, bridge_handle) = match bridge::start_proxy(
-        vnc_addr,
-        session_id.clone(),
-    )
-    .await
-    {
-        Ok(result) => result,
-        Err(e) => {
-            // vnc_child + desktop_child are dropped here → kill_on_drop fires.
-            // We still need WSL-level cleanup (PID files, temp dirs).
-            wsl::cleanup_wsl_session(&distro).await;
-            return Err(e.to_string());
-        }
-    };
+    let (ws_port, ws_token, bridge_handle) =
+        match bridge::start_proxy(vnc_addr, session_id.clone()).await {
+            Ok(result) => result,
+            Err(e) => {
+                // vnc_child + desktop_child are dropped here → kill_on_drop fires.
+                // We still need WSL-level cleanup (PID files, temp dirs).
+                wsl::cleanup_wsl_session(&distro).await;
+                return Err(e.to_string());
+            }
+        };
     tracing::info!("WSL Graphics: WebSocket proxy on port {}", ws_port);
 
     // 4. Register session
@@ -200,15 +196,11 @@ pub async fn wsl_graphics_reconnect(
 
     // Start new bridge
     let vnc_addr = format!("127.0.0.1:{}", vnc_port);
-    let (ws_port, ws_token, bridge_handle) =
-        bridge::start_proxy(vnc_addr, session_id.clone())
-            .await
-            .map_err(|e| e.to_string())?;
+    let (ws_port, ws_token, bridge_handle) = bridge::start_proxy(vnc_addr, session_id.clone())
+        .await
+        .map_err(|e| e.to_string())?;
 
-    tracing::info!(
-        "WSL Graphics: reconnected — new bridge on port {}",
-        ws_port
-    );
+    tracing::info!("WSL Graphics: reconnected — new bridge on port {}", ws_port);
 
     // Update handle with new bridge info
     let session = {
@@ -294,9 +286,7 @@ fn validate_argv(argv: &[String]) -> Result<(), String> {
         return Err("Program name must not contain '..' (path traversal)".into());
     }
     if program.starts_with("./") || program.starts_with("../") {
-        return Err(
-            "Program name must be a bare command or absolute path, not relative".into(),
-        );
+        return Err("Program name must be a bare command or absolute path, not relative".into());
     }
 
     // Rule 4: total length limit (prevent huge payloads)
@@ -358,7 +348,8 @@ pub async fn wsl_graphics_start_app(
         if distro_count >= limits::MAX_APP_SESSIONS_PER_DISTRO {
             return Err(format!(
                 "App session limit reached for '{}' (max {}). Stop an existing session first.",
-                distro, limits::MAX_APP_SESSIONS_PER_DISTRO
+                distro,
+                limits::MAX_APP_SESSIONS_PER_DISTRO
             ));
         }
     }
@@ -405,9 +396,7 @@ pub async fn wsl_graphics_start_app(
     tracing::info!("WSL Graphics App: WebSocket proxy on port {}", ws_port);
 
     // ── 6. Register session ──
-    let app_title = title
-        .clone()
-        .unwrap_or_else(|| argv[0].clone());
+    let app_title = title.clone().unwrap_or_else(|| argv[0].clone());
 
     let session = WslGraphicsSession {
         id: session_id.clone(),
@@ -415,10 +404,7 @@ pub async fn wsl_graphics_start_app(
         ws_token: ws_token.clone(),
         distro: distro.clone(),
         desktop_name: app_title.clone(),
-        mode: GraphicsSessionMode::App {
-            argv,
-            title,
-        },
+        mode: GraphicsSessionMode::App { argv, title },
     };
 
     // Create stop signal channel for the app-exit watcher

@@ -103,13 +103,19 @@ impl AgentHistoryStore {
                 db
             }
             Err(e) => {
-                warn!("Failed to open agent history database: {:?}, attempting recovery", e);
+                warn!(
+                    "Failed to open agent history database: {:?}, attempting recovery",
+                    e
+                );
 
                 let backup_path = path.with_extension("redb.backup");
                 if let Err(e) = std::fs::rename(&path, &backup_path) {
                     error!("Failed to backup corrupted agent history database: {:?}", e);
                 } else {
-                    info!("Backed up corrupted agent history database to {:?}", backup_path);
+                    info!(
+                        "Backed up corrupted agent history database to {:?}",
+                        backup_path
+                    );
                 }
 
                 Database::create(&path)?
@@ -120,7 +126,8 @@ impl AgentHistoryStore {
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;
-            if let Err(e) = std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600)) {
+            if let Err(e) = std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600))
+            {
                 warn!("Failed to set agent history database permissions: {:?}", e);
             }
         }
@@ -203,17 +210,13 @@ impl AgentHistoryStore {
         let mut results = Vec::new();
         for task_id in index.into_iter().take(limit) {
             match tasks_table.get(task_id.as_str())? {
-                Some(entry) => {
-                    match zstd::decode_all(entry.value()) {
-                        Ok(decompressed) => {
-                            match String::from_utf8(decompressed) {
-                                Ok(json) => results.push(json),
-                                Err(e) => warn!("Skipping task {} (UTF-8 error): {}", task_id, e),
-                            }
-                        }
-                        Err(e) => warn!("Skipping task {} (decompression error): {}", task_id, e),
-                    }
-                }
+                Some(entry) => match zstd::decode_all(entry.value()) {
+                    Ok(decompressed) => match String::from_utf8(decompressed) {
+                        Ok(json) => results.push(json),
+                        Err(e) => warn!("Skipping task {} (UTF-8 error): {}", task_id, e),
+                    },
+                    Err(e) => warn!("Skipping task {} (decompression error): {}", task_id, e),
+                },
                 None => warn!("Task {} in index but not in tasks table", task_id),
             }
         }

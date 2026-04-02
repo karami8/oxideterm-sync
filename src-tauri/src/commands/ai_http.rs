@@ -107,7 +107,12 @@ pub async fn ai_fetch(
 ) -> Result<AiFetchResponse, String> {
     validate_url(&url)?;
 
-    tracing::debug!("[ai_fetch] {} {} (timeout: {:?}ms)", method, url, timeout_ms);
+    tracing::debug!(
+        "[ai_fetch] {} {} (timeout: {:?}ms)",
+        method,
+        url,
+        timeout_ms
+    );
 
     let client = reqwest::Client::new();
     let mut builder = build_request(&client, &url, &method, &headers, body)?;

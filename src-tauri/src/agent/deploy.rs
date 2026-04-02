@@ -63,10 +63,7 @@ impl AgentDeployer {
         match local_binary_result {
             Ok(local_binary) => {
                 // Supported architecture — proceed with auto-deploy
-                info!(
-                    "[agent-deploy] Using binary: {}",
-                    local_binary.display()
-                );
+                info!("[agent-deploy] Using binary: {}", local_binary.display());
 
                 // Step 4: Check if agent is already deployed (check version)
                 let needs_upload = Self::needs_upload(controller, &remote_path).await;
@@ -83,10 +80,7 @@ impl AgentDeployer {
                         .await
                         .map_err(|e| DeployError::LocalIo(e.to_string()))?;
 
-                    info!(
-                        "[agent-deploy] Binary size: {} bytes",
-                        binary_data.len()
-                    );
+                    info!("[agent-deploy] Binary size: {} bytes", binary_data.len());
 
                     // Upload via SFTP
                     sftp.write_content(&remote_path, &binary_data)
@@ -184,10 +178,7 @@ impl AgentDeployer {
             .path()
             .resolve(&binary_name, tauri::path::BaseDirectory::Resource)
             .map_err(|e| {
-                DeployError::BinaryNotFound(format!(
-                    "Resource '{}' not found: {}",
-                    binary_name, e
-                ))
+                DeployError::BinaryNotFound(format!("Resource '{}' not found: {}", binary_name, e))
             })?;
 
         if !resource_path.exists() {
@@ -277,7 +268,10 @@ impl AgentDeployer {
     }
 
     /// Execute a simple command and return stdout.
-    async fn exec_simple(controller: &HandleController, command: &str) -> Result<String, DeployError> {
+    async fn exec_simple(
+        controller: &HandleController,
+        command: &str,
+    ) -> Result<String, DeployError> {
         let result = crate::commands::ide::exec_command_inner(
             controller.clone(),
             command.to_string(),

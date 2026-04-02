@@ -29,7 +29,10 @@ pub async fn agent_history_save(
             }
         }
     } else {
-        eprintln!("[agent_history_save] Warning: received non-JSON task data for id '{}'", task_id);
+        eprintln!(
+            "[agent_history_save] Warning: received non-JSON task data for id '{}'",
+            task_id
+        );
     }
     store
         .save_task(&task_id, &task_json)
@@ -60,9 +63,7 @@ pub async fn agent_history_delete(
 
 /// Clear all agent task history.
 #[tauri::command]
-pub async fn agent_history_clear(
-    store: State<'_, Arc<AgentHistoryStore>>,
-) -> Result<(), String> {
+pub async fn agent_history_clear(store: State<'_, Arc<AgentHistoryStore>>) -> Result<(), String> {
     store
         .clear()
         .map_err(|e| format!("Failed to clear agent history: {}", e))

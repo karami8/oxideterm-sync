@@ -64,8 +64,7 @@ pub fn get_terminal_size() -> (u16, u16) {
     {
         use std::mem::MaybeUninit;
         let mut ws = MaybeUninit::<libc::winsize>::uninit();
-        let ret =
-            unsafe { libc::ioctl(libc::STDOUT_FILENO, libc::TIOCGWINSZ, ws.as_mut_ptr()) };
+        let ret = unsafe { libc::ioctl(libc::STDOUT_FILENO, libc::TIOCGWINSZ, ws.as_mut_ptr()) };
         if ret == 0 {
             let ws = unsafe { ws.assume_init() };
             (ws.ws_col, ws.ws_row)
@@ -100,9 +99,8 @@ pub fn try_resize_terminal(cols: u16, rows: u16) -> (u16, u16) {
 pub fn disable_mouse_tracking() {
     use std::io::Write;
     // Disable: X10, normal, button-event, any-event, SGR extended, urxvt
-    let _ = std::io::stdout().write_all(
-        b"\x1b[?9l\x1b[?1000l\x1b[?1002l\x1b[?1003l\x1b[?1006l\x1b[?1015l",
-    );
+    let _ = std::io::stdout()
+        .write_all(b"\x1b[?9l\x1b[?1000l\x1b[?1002l\x1b[?1003l\x1b[?1006l\x1b[?1015l");
     let _ = std::io::stdout().flush();
 }
 

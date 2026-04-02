@@ -201,9 +201,7 @@ impl HealthTracker {
     /// Record a keepalive response received with latency
     pub async fn record_response(&self, latency_ms: u64) {
         self.packets_received.fetch_add(1, Ordering::Relaxed);
-        let offset = Instant::now()
-            .duration_since(self.connected_at)
-            .as_millis() as u64;
+        let offset = Instant::now().duration_since(self.connected_at).as_millis() as u64;
         self.last_response_offset_ms
             .store(offset, Ordering::Release);
 

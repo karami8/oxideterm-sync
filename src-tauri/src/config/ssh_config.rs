@@ -320,8 +320,7 @@ pub fn parse_ssh_config_content(content: &str) -> Result<Vec<SshConfigHost>, Ssh
                         warn!(
                             "ProxyCommand is not supported by OxideTerm, use ProxyJump instead. \
                              Host '{}' has ProxyCommand: {}",
-                            host.alias,
-                            value
+                            host.alias, value
                         );
                     }
                 }

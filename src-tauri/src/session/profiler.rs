@@ -78,7 +78,8 @@ const PORT_CMD_MACOS: &str = "echo '===PORTS==='; ((lsof -iTCP -sTCP:LISTEN -nP 
 const PORT_CMD_WINDOWS: &str = "echo '===PORTS==='; powershell -NoProfile -Command \"Get-NetTCPConnection -State Listen 2>$null | Select-Object LocalAddress,LocalPort,OwningProcess | Format-Table -HideTableHeaders\" 2>/dev/null; echo '===PORTS_END==='";
 
 /// FreeBSD: Use `sockstat` to list listening TCP sockets.
-const PORT_CMD_FREEBSD: &str = "echo '===PORTS==='; sockstat -4 -6 -l -P tcp 2>/dev/null | tail -n +2; echo '===PORTS_END==='";
+const PORT_CMD_FREEBSD: &str =
+    "echo '===PORTS==='; sockstat -4 -6 -l -P tcp 2>/dev/null | tail -n +2; echo '===PORTS_END==='";
 
 /// Build the complete sampling command including port scan for the given OS.
 /// Returns a String with a trailing newline, ready to send to the shell channel.
@@ -567,7 +568,10 @@ async fn shell_sample(channel: &mut Channel<Msg>, command: &str) -> Result<Strin
                     }
                     // Safety cap: prevent unbounded memory growth
                     if stdout.len() > MAX_OUTPUT_SIZE {
-                        warn!("Profiler output exceeded {}KB, truncating", MAX_OUTPUT_SIZE / 1024);
+                        warn!(
+                            "Profiler output exceeded {}KB, truncating",
+                            MAX_OUTPUT_SIZE / 1024
+                        );
                         stdout.truncate(MAX_OUTPUT_SIZE);
                         break;
                     }

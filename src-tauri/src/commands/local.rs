@@ -449,7 +449,8 @@ pub fn local_get_drives() -> Vec<DriveInfo> {
     #[cfg(unix)]
     let mut seen_dev_ids: std::collections::HashMap<u64, usize> = std::collections::HashMap::new(); // dev_id → index in `drives`
     #[cfg(not(unix))]
-    let mut seen_mount_points: std::collections::HashSet<std::path::PathBuf> = std::collections::HashSet::new();
+    let mut seen_mount_points: std::collections::HashSet<std::path::PathBuf> =
+        std::collections::HashSet::new();
 
     for disk in disks.list() {
         let mount_point = disk.mount_point().to_path_buf();
@@ -474,7 +475,11 @@ pub fn local_get_drives() -> Vec<DriveInfo> {
                                     .file_name()
                                     .map(|n| n.to_string_lossy().to_string())
                                     .unwrap_or_else(|| {
-                                        if mount_point.to_string_lossy() == "/" { "System".to_string() } else { mount_point.to_string_lossy().to_string() }
+                                        if mount_point.to_string_lossy() == "/" {
+                                            "System".to_string()
+                                        } else {
+                                            mount_point.to_string_lossy().to_string()
+                                        }
                                     })
                             } else {
                                 raw
@@ -490,7 +495,9 @@ pub fn local_get_drives() -> Vec<DriveInfo> {
         }
         #[cfg(not(unix))]
         {
-            let canonical = mount_point.canonicalize().unwrap_or_else(|_| mount_point.clone());
+            let canonical = mount_point
+                .canonicalize()
+                .unwrap_or_else(|_| mount_point.clone());
             if seen_mount_points.contains(&canonical) {
                 continue;
             }
@@ -537,7 +544,11 @@ pub fn local_get_drives() -> Vec<DriveInfo> {
                 .file_name()
                 .map(|n| n.to_string_lossy().to_string())
                 .unwrap_or_else(|| {
-                    if mount_str == "/" { "System".to_string() } else { mount_str.to_string() }
+                    if mount_str == "/" {
+                        "System".to_string()
+                    } else {
+                        mount_str.to_string()
+                    }
                 })
         } else {
             raw_name
@@ -621,8 +632,13 @@ fn classify_disk(disk: &sysinfo::Disk) -> String {
 
     // Network filesystems
     let fs_type = disk.file_system().to_string_lossy().to_lowercase();
-    if fs_type == "nfs" || fs_type == "cifs" || fs_type == "smb" || fs_type == "smbfs"
-        || fs_type == "afpfs" || fs_type == "9p" || fs_type == "fuse.sshfs"
+    if fs_type == "nfs"
+        || fs_type == "cifs"
+        || fs_type == "smb"
+        || fs_type == "smbfs"
+        || fs_type == "afpfs"
+        || fs_type == "9p"
+        || fs_type == "fuse.sshfs"
     {
         return "network".to_string();
     }
@@ -874,8 +890,7 @@ pub async fn local_calculate_checksum(path: String) -> Result<ChecksumResult, St
     use sha2::{Digest, Sha256};
     use std::io::Read;
 
-    let mut file =
-        std::fs::File::open(&path).map_err(|e| format!("Failed to open file: {}", e))?;
+    let mut file = std::fs::File::open(&path).map_err(|e| format!("Failed to open file: {}", e))?;
 
     let mut md5_hasher = Md5::new();
     let mut sha256_hasher = Sha256::new();
@@ -1012,8 +1027,8 @@ pub struct AudioMetadata {
 #[tauri::command]
 pub fn get_audio_metadata(path: String) -> Result<AudioMetadata, String> {
     use lofty::file::{AudioFile, TaggedFileExt};
-    use lofty::tag::{Accessor, ItemKey};
     use lofty::probe::Probe;
+    use lofty::tag::{Accessor, ItemKey};
 
     let tagged_file = Probe::open(&path)
         .map_err(|e| format!("Cannot open '{}': {}", path, e))?
@@ -1021,7 +1036,9 @@ pub fn get_audio_metadata(path: String) -> Result<AudioMetadata, String> {
         .map_err(|e| format!("Cannot read tags from '{}': {}", path, e))?;
 
     let properties = tagged_file.properties();
-    let tag = tagged_file.primary_tag().or_else(|| tagged_file.first_tag());
+    let tag = tagged_file
+        .primary_tag()
+        .or_else(|| tagged_file.first_tag());
 
     let (title, artist, album, year, genre, track_number, comment, lyrics, has_cover) =
         if let Some(t) = tag {
@@ -1044,7 +1061,11 @@ pub fn get_audio_metadata(path: String) -> Result<AudioMetadata, String> {
         duration_secs: {
             let d = properties.duration();
             let secs = d.as_secs_f64();
-            if secs > 0.0 { Some(secs) } else { None }
+            if secs > 0.0 {
+                Some(secs)
+            } else {
+                None
+            }
         },
         bitrate_kbps: properties.audio_bitrate(),
         sample_rate: properties.sample_rate(),
@@ -1078,47 +1099,48 @@ pub struct LocalExecResult {
 }
 
 /// Commands that are denied for security reasons (regex patterns)
-static EXEC_DENY_PATTERNS: std::sync::LazyLock<Vec<regex::Regex>> = std::sync::LazyLock::new(|| {
-    [
-        // Destructive filesystem
-        r"\brm\s+.*\s+/(\s|$|\*)",
-        r"\brm\s+(-[a-zA-Z]*)*\s*--no-preserve-root",
-        r"\bmkfs\b",
-        r"\bdd\s+if=",
-        r"\bfdisk\b",
-        r"\bchmod\s+777\s+/",
-        r"\bchown\s+-R\s+.*\s+/",
-        // Privilege escalation
-        r"\bsudo\b",
-        r"\bdoas\b",
-        r"\bpkexec\b",
-        r"\brunuser\b",
-        r"\brun0\b",
-        r"\bsu\s+-?c\b",
-        // System control
-        r"\bshutdown\b",
-        r"\breboot\b",
-        r"\bhalt\b",
-        r"\bpoweroff\b",
-        r"\bsystemctl\s+(disable|mask)\b",
-        // Resource exhaustion (fork bomb)
-        r":\(\)\s*\{\s*:\s*\|\s*:\s*&\s*\}\s*;?\s*:",
-        // Network
-        r"\biptables\s+-F\b",
-        // Remote code execution via pipe
-        r"\b(curl|wget)\b[^\n]*\|\s*(sh|bash|zsh)\b",
-        r"\bbase64\b[^\n]*\|\s*(sh|bash|zsh)\b",
-        r"\bprintf\b[^\n]*\|\s*(sh|bash|zsh)\b",
-        r"\becho\b[^\n]*\|\s*(sh|bash|zsh)\b",
-        // Dangerous builtins
-        r"\beval\b",
-        r"(^|[;&|]\s*)exec\s",
-        r"\bsource\s",
-    ]
-    .iter()
-    .filter_map(|p| regex::Regex::new(p).ok())
-    .collect()
-});
+static EXEC_DENY_PATTERNS: std::sync::LazyLock<Vec<regex::Regex>> =
+    std::sync::LazyLock::new(|| {
+        [
+            // Destructive filesystem
+            r"\brm\s+.*\s+/(\s|$|\*)",
+            r"\brm\s+(-[a-zA-Z]*)*\s*--no-preserve-root",
+            r"\bmkfs\b",
+            r"\bdd\s+if=",
+            r"\bfdisk\b",
+            r"\bchmod\s+777\s+/",
+            r"\bchown\s+-R\s+.*\s+/",
+            // Privilege escalation
+            r"\bsudo\b",
+            r"\bdoas\b",
+            r"\bpkexec\b",
+            r"\brunuser\b",
+            r"\brun0\b",
+            r"\bsu\s+-?c\b",
+            // System control
+            r"\bshutdown\b",
+            r"\breboot\b",
+            r"\bhalt\b",
+            r"\bpoweroff\b",
+            r"\bsystemctl\s+(disable|mask)\b",
+            // Resource exhaustion (fork bomb)
+            r":\(\)\s*\{\s*:\s*\|\s*:\s*&\s*\}\s*;?\s*:",
+            // Network
+            r"\biptables\s+-F\b",
+            // Remote code execution via pipe
+            r"\b(curl|wget)\b[^\n]*\|\s*(sh|bash|zsh)\b",
+            r"\bbase64\b[^\n]*\|\s*(sh|bash|zsh)\b",
+            r"\bprintf\b[^\n]*\|\s*(sh|bash|zsh)\b",
+            r"\becho\b[^\n]*\|\s*(sh|bash|zsh)\b",
+            // Dangerous builtins
+            r"\beval\b",
+            r"(^|[;&|]\s*)exec\s",
+            r"\bsource\s",
+        ]
+        .iter()
+        .filter_map(|p| regex::Regex::new(p).ok())
+        .collect()
+    });
 
 fn is_exec_denied(command: &str) -> bool {
     EXEC_DENY_PATTERNS.iter().any(|re| re.is_match(command))
@@ -1176,7 +1198,9 @@ pub async fn local_exec_command(
     cmd.stdout(std::process::Stdio::piped());
     cmd.stderr(std::process::Stdio::piped());
 
-    let child = cmd.spawn().map_err(|e| format!("Failed to spawn command: {}", e))?;
+    let child = cmd
+        .spawn()
+        .map_err(|e| format!("Failed to spawn command: {}", e))?;
 
     match tokio::time::timeout(
         std::time::Duration::from_secs(timeout),

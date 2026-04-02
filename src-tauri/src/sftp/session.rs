@@ -291,7 +291,11 @@ impl SftpSession {
     ///
     /// # Returns
     /// `WriteContentResult` indicating whether atomic write was used.
-    pub async fn write_content(&self, path: &str, content: &[u8]) -> Result<WriteContentResult, SftpError> {
+    pub async fn write_content(
+        &self,
+        path: &str,
+        content: &[u8],
+    ) -> Result<WriteContentResult, SftpError> {
         // resolve_path uses canonicalize which requires the file to exist.
         // For new file creation (e.g. IDE "New File"), fall back to resolving
         // the parent directory and appending the filename.
@@ -309,7 +313,10 @@ impl SftpSession {
         let swap_path = Self::swap_path(&canonical_path);
 
         // Try atomic write first: write to swap file, then rename
-        match self.write_to_swap_and_rename(&canonical_path, &swap_path, content).await {
+        match self
+            .write_to_swap_and_rename(&canonical_path, &swap_path, content)
+            .await
+        {
             Ok(()) => {
                 info!(
                     "Successfully wrote {} bytes to {} (atomic via swap)",
@@ -341,7 +348,9 @@ impl SftpSession {
                         content.len(),
                         canonical_path
                     );
-                    Ok(WriteContentResult { atomic_write: false })
+                    Ok(WriteContentResult {
+                        atomic_write: false,
+                    })
                 } else {
                     // Non-recoverable error (network disconnect, etc.) — propagate
                     Err(e)
@@ -399,10 +408,16 @@ impl SftpSession {
             Ok(_) => Ok(()),
             Err(e) => {
                 let err_msg = e.to_string();
-                warn!("Rename failed ({}), cleaning up swap file {}", err_msg, swap_path);
+                warn!(
+                    "Rename failed ({}), cleaning up swap file {}",
+                    err_msg, swap_path
+                );
                 // Best-effort cleanup of the swap file
                 let _ = self.sftp.remove_file(swap_path).await;
-                Err(SftpError::WriteError(format!("Atomic rename failed: {}", err_msg)))
+                Err(SftpError::WriteError(format!(
+                    "Atomic rename failed: {}",
+                    err_msg
+                )))
             }
         }
     }
@@ -476,7 +491,9 @@ impl SftpSession {
         // Priority 1.5: Dotfiles without extension are usually text configs
         // e.g., .gitignore, .env, .htaccess (these have no extension when parsed)
         if file_name.starts_with('.') && extension.is_empty() {
-            return self.preview_text(&canonical_path, "conf", &mime_type, file_size).await;
+            return self
+                .preview_text(&canonical_path, "conf", &mime_type, file_size)
+                .await;
         }
         // Priority 2: PDF files
         if is_pdf_extension(&extension) || mime_type == "application/pdf" {
@@ -639,7 +656,10 @@ impl SftpSession {
         // Stream in 256 KB chunks — never hold more than this in memory
         let mut buf = vec![0u8; 256 * 1024];
         loop {
-            let n = remote_file.read(&mut buf).await.map_err(SftpError::IoError)?;
+            let n = remote_file
+                .read(&mut buf)
+                .await
+                .map_err(SftpError::IoError)?;
             if n == 0 {
                 break;
             }
@@ -652,8 +672,7 @@ impl SftpSession {
         drop(local_file);
 
         // Return canonical path for the asset protocol
-        let canonical = std::fs::canonicalize(&temp_path)
-            .map_err(|e| SftpError::IoError(e))?;
+        let canonical = std::fs::canonicalize(&temp_path).map_err(|e| SftpError::IoError(e))?;
 
         Ok(canonical)
     }
@@ -910,8 +929,17 @@ impl SftpSession {
         cancel_flag: &Option<std::sync::Arc<std::sync::atomic::AtomicBool>>,
         speed_limit_bps: &Option<std::sync::Arc<AtomicUsize>>,
     ) -> Result<u64, SftpError> {
-        self.download_dir_inner_depth(remote_path, local_path, transfer_id, progress_tx, start_time, 0, cancel_flag, speed_limit_bps)
-            .await
+        self.download_dir_inner_depth(
+            remote_path,
+            local_path,
+            transfer_id,
+            progress_tx,
+            start_time,
+            0,
+            cancel_flag,
+            speed_limit_bps,
+        )
+        .await
     }
 
     /// Internal recursive directory download with depth guard
@@ -929,7 +957,10 @@ impl SftpSession {
         // Guard against symlink cycles
         const MAX_DEPTH: u32 = 64;
         if depth >= MAX_DEPTH {
-            warn!("download_dir_inner: max recursion depth {} reached at {}, likely symlink cycle", MAX_DEPTH, remote_path);
+            warn!(
+                "download_dir_inner: max recursion depth {} reached at {}, likely symlink cycle",
+                MAX_DEPTH, remote_path
+            );
             return Ok(0);
         }
 
@@ -1007,15 +1038,25 @@ impl SftpSession {
                 // For symlinks, entry.size is the symlink size, not the target's.
                 // Pre-fetch the real file size for accurate progress reporting.
                 let real_size = if entry.file_type == FileType::Symlink {
-                    self.stat(&entry.path).await.map(|info| info.size).unwrap_or(entry.size)
+                    self.stat(&entry.path)
+                        .await
+                        .map(|info| info.size)
+                        .unwrap_or(entry.size)
                 } else {
                     entry.size
                 };
                 loop {
-                    let n = remote_file.read(&mut buf[..chunk_sizer.chunk_size()]).await
+                    let n = remote_file
+                        .read(&mut buf[..chunk_sizer.chunk_size()])
+                        .await
                         .map_err(|e| SftpError::ProtocolError(e.to_string()))?;
-                    if n == 0 { break; }
-                    local_file.write_all(&buf[..n]).await.map_err(SftpError::IoError)?;
+                    if n == 0 {
+                        break;
+                    }
+                    local_file
+                        .write_all(&buf[..n])
+                        .await
+                        .map_err(SftpError::IoError)?;
                     file_transferred += n as u64;
                     chunk_sizer.record(n);
 
@@ -1026,7 +1067,10 @@ impl SftpSession {
                             let elapsed = file_start.elapsed().as_secs_f64();
                             let expected_secs = file_transferred as f64 / bps as f64;
                             if expected_secs > elapsed {
-                                tokio::time::sleep(std::time::Duration::from_secs_f64(expected_secs - elapsed)).await;
+                                tokio::time::sleep(std::time::Duration::from_secs_f64(
+                                    expected_secs - elapsed,
+                                ))
+                                .await;
                             }
                         }
                     }
@@ -1181,8 +1225,17 @@ impl SftpSession {
         cancel_flag: &Option<std::sync::Arc<std::sync::atomic::AtomicBool>>,
         speed_limit_bps: &Option<std::sync::Arc<AtomicUsize>>,
     ) -> Result<u64, SftpError> {
-        self.upload_dir_inner_depth(local_path, remote_path, transfer_id, progress_tx, start_time, 0, cancel_flag, speed_limit_bps)
-            .await
+        self.upload_dir_inner_depth(
+            local_path,
+            remote_path,
+            transfer_id,
+            progress_tx,
+            start_time,
+            0,
+            cancel_flag,
+            speed_limit_bps,
+        )
+        .await
     }
 
     /// Internal recursive directory upload with depth guard
@@ -1200,7 +1253,10 @@ impl SftpSession {
         // Guard against symlink cycles
         const MAX_DEPTH: u32 = 64;
         if depth >= MAX_DEPTH {
-            warn!("upload_dir_inner: max recursion depth {} reached at {:?}, likely symlink cycle", MAX_DEPTH, local_path);
+            warn!(
+                "upload_dir_inner: max recursion depth {} reached at {:?}, likely symlink cycle",
+                MAX_DEPTH, local_path
+            );
             return Ok(0);
         }
 
@@ -1249,7 +1305,10 @@ impl SftpSession {
                 .await?;
             } else if !metadata.is_file() {
                 // Skip special files (named pipes, sockets, devices)
-                warn!("Skipping special file {:?} (not regular file or directory)", local_entry_path);
+                warn!(
+                    "Skipping special file {:?} (not regular file or directory)",
+                    local_entry_path
+                );
                 continue;
             } else {
                 // Upload file using streaming chunks instead of full-file buffering
@@ -1257,7 +1316,11 @@ impl SftpSession {
                 let mut local_file = tokio::fs::File::open(&local_entry_path)
                     .await
                     .map_err(SftpError::IoError)?;
-                let file_size = local_file.metadata().await.map_err(SftpError::IoError)?.len();
+                let file_size = local_file
+                    .metadata()
+                    .await
+                    .map_err(SftpError::IoError)?
+                    .len();
                 let mut remote_file = self
                     .sftp
                     .create(&remote_entry_path)
@@ -1269,8 +1332,13 @@ impl SftpSession {
                 let file_start = std::time::Instant::now();
                 let mut last_file_progress = std::time::Instant::now();
                 loop {
-                    let n = local_file.read(&mut buf[..chunk_sizer.chunk_size()]).await.map_err(SftpError::IoError)?;
-                    if n == 0 { break; }
+                    let n = local_file
+                        .read(&mut buf[..chunk_sizer.chunk_size()])
+                        .await
+                        .map_err(SftpError::IoError)?;
+                    if n == 0 {
+                        break;
+                    }
                     tokio::io::AsyncWriteExt::write_all(&mut remote_file, &buf[..n])
                         .await
                         .map_err(|e| SftpError::ProtocolError(e.to_string()))?;
@@ -1284,7 +1352,10 @@ impl SftpSession {
                             let elapsed = file_start.elapsed().as_secs_f64();
                             let expected_secs = file_transferred as f64 / bps as f64;
                             if expected_secs > elapsed {
-                                tokio::time::sleep(std::time::Duration::from_secs_f64(expected_secs - elapsed)).await;
+                                tokio::time::sleep(std::time::Duration::from_secs_f64(
+                                    expected_secs - elapsed,
+                                ))
+                                .await;
                             }
                         }
                     }
@@ -1512,10 +1583,8 @@ impl SftpSession {
         let control: Option<std::sync::Arc<super::transfer::TransferControl>> = transfer_manager
             .as_ref()
             .map(|tm| tm.register(&transfer_id));
-        let _guard = super::transfer::TransferGuard::new(
-            transfer_manager.as_ref(),
-            transfer_id.clone(),
-        );
+        let _guard =
+            super::transfer::TransferGuard::new(transfer_manager.as_ref(), transfer_id.clone());
 
         // Check if this is a resume (local file exists)
         let resume_context = if Path::new(local_path).exists() {
@@ -1736,21 +1805,25 @@ impl SftpSession {
             }
 
             // Read with timeout to prevent zombie transfers on SSH disconnect
-            let bytes_read =
-                match tokio::time::timeout(SFTP_IO_TIMEOUT, remote_file.read(&mut buffer[..chunk_sizer.chunk_size()])).await {
-                    Ok(Ok(n)) => n,
-                    Ok(Err(e)) => return Err(SftpError::ProtocolError(e.to_string())),
-                    Err(_) => {
-                        warn!(
-                            "SFTP download read timeout after {:?} at {} bytes",
-                            SFTP_IO_TIMEOUT, transferred
-                        );
-                        return Err(SftpError::TransferError(format!(
-                            "Read timeout after {:?} - SSH connection may be dead",
-                            SFTP_IO_TIMEOUT
-                        )));
-                    }
-                };
+            let bytes_read = match tokio::time::timeout(
+                SFTP_IO_TIMEOUT,
+                remote_file.read(&mut buffer[..chunk_sizer.chunk_size()]),
+            )
+            .await
+            {
+                Ok(Ok(n)) => n,
+                Ok(Err(e)) => return Err(SftpError::ProtocolError(e.to_string())),
+                Err(_) => {
+                    warn!(
+                        "SFTP download read timeout after {:?} at {} bytes",
+                        SFTP_IO_TIMEOUT, transferred
+                    );
+                    return Err(SftpError::TransferError(format!(
+                        "Read timeout after {:?} - SSH connection may be dead",
+                        SFTP_IO_TIMEOUT
+                    )));
+                }
+            };
 
             if bytes_read == 0 {
                 break; // EOF
@@ -1791,7 +1864,10 @@ impl SftpSession {
                     let bytes_since_start = (transferred - ctx.offset) as f64;
                     let expected_secs = bytes_since_start / bps as f64;
                     if expected_secs > elapsed {
-                        tokio::time::sleep(std::time::Duration::from_secs_f64(expected_secs - elapsed)).await;
+                        tokio::time::sleep(std::time::Duration::from_secs_f64(
+                            expected_secs - elapsed,
+                        ))
+                        .await;
                     }
                 }
             }
@@ -1804,7 +1880,11 @@ impl SftpSession {
                         current_speed
                     } else {
                         let elapsed = transfer_start.elapsed().as_secs_f64();
-                        if elapsed > 0.0 { ((transferred - ctx.offset) as f64 / elapsed) as u64 } else { 0 }
+                        if elapsed > 0.0 {
+                            ((transferred - ctx.offset) as f64 / elapsed) as u64
+                        } else {
+                            0
+                        }
                     };
                     let eta = if effective_speed > 0 && total_bytes > transferred {
                         Some(((total_bytes - transferred) as f64 / effective_speed as f64) as u64)
@@ -1899,10 +1979,8 @@ impl SftpSession {
         let control: Option<std::sync::Arc<super::transfer::TransferControl>> = transfer_manager
             .as_ref()
             .map(|tm| tm.register(&transfer_id));
-        let _guard = super::transfer::TransferGuard::new(
-            transfer_manager.as_ref(),
-            transfer_id.clone(),
-        );
+        let _guard =
+            super::transfer::TransferGuard::new(transfer_manager.as_ref(), transfer_id.clone());
 
         // Get local file size
         let metadata = tokio::fs::metadata(local_path)
@@ -2237,7 +2315,10 @@ impl SftpSession {
                     let bytes_since_start = (transferred - ctx.offset) as f64;
                     let expected_secs = bytes_since_start / bps as f64;
                     if expected_secs > elapsed {
-                        tokio::time::sleep(std::time::Duration::from_secs_f64(expected_secs - elapsed)).await;
+                        tokio::time::sleep(std::time::Duration::from_secs_f64(
+                            expected_secs - elapsed,
+                        ))
+                        .await;
                     }
                 }
             }
@@ -2250,7 +2331,11 @@ impl SftpSession {
                         current_speed
                     } else {
                         let elapsed = transfer_start.elapsed().as_secs_f64();
-                        if elapsed > 0.0 { ((transferred - ctx.offset) as f64 / elapsed) as u64 } else { 0 }
+                        if elapsed > 0.0 {
+                            ((transferred - ctx.offset) as f64 / elapsed) as u64
+                        } else {
+                            0
+                        }
                     };
                     let eta = if effective_speed > 0 && total_bytes > transferred {
                         Some(((total_bytes - transferred) as f64 / effective_speed as f64) as u64)
@@ -2383,16 +2468,9 @@ impl SftpSession {
             let name = &full_path[slash_pos + 1..];
 
             // Canonicalize the parent directory (must exist)
-            let canonical_parent = self
-                .sftp
-                .canonicalize(&parent)
-                .await
-                .map_err(|e| {
-                    SftpError::FileNotFound(format!(
-                        "Parent directory not found ({}): {}",
-                        parent, e
-                    ))
-                })?;
+            let canonical_parent = self.sftp.canonicalize(&parent).await.map_err(|e| {
+                SftpError::FileNotFound(format!("Parent directory not found ({}): {}", parent, e))
+            })?;
 
             Ok(join_remote_path(&canonical_parent, name))
         } else {

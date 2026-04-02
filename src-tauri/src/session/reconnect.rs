@@ -176,7 +176,8 @@ impl SessionReconnector {
     pub fn reset(&self) {
         self.attempt_count.store(0, Ordering::Relaxed);
         self.cancelled.store(false, Ordering::Release);
-        self.state.store(ReconnectState::Idle as u8, Ordering::Release);
+        self.state
+            .store(ReconnectState::Idle as u8, Ordering::Release);
     }
 
     /// Calculate delay for current attempt using exponential backoff
@@ -214,7 +215,8 @@ impl SessionReconnector {
         // Reset state — Relaxed stores must precede Release stores
         // so the Release fence publishes all preceding writes
         self.attempt_count.store(0, Ordering::Relaxed);
-        self.state.store(ReconnectState::Idle as u8, Ordering::Release);
+        self.state
+            .store(ReconnectState::Idle as u8, Ordering::Release);
         self.cancelled.store(false, Ordering::Release);
 
         self.emit_event(ReconnectEvent::Starting {
@@ -227,7 +229,8 @@ impl SessionReconnector {
         for attempt in 1..=max_attempts {
             // Check if cancelled
             if self.is_cancelled() {
-                self.state.store(ReconnectState::Cancelled as u8, Ordering::Release);
+                self.state
+                    .store(ReconnectState::Cancelled as u8, Ordering::Release);
                 self.emit_event(ReconnectEvent::Cancelled {
                     session_id: self.session_id.clone(),
                 })
@@ -238,7 +241,8 @@ impl SessionReconnector {
             // Calculate and apply delay (except for first attempt)
             if attempt > 1 {
                 let delay_ms = self.calculate_delay(attempt);
-                self.state.store(ReconnectState::Waiting as u8, Ordering::Release);
+                self.state
+                    .store(ReconnectState::Waiting as u8, Ordering::Release);
 
                 self.emit_event(ReconnectEvent::Waiting {
                     session_id: self.session_id.clone(),
@@ -259,7 +263,8 @@ impl SessionReconnector {
 
                 while elapsed < delay_duration {
                     if self.is_cancelled() {
-                        self.state.store(ReconnectState::Cancelled as u8, Ordering::Release);
+                        self.state
+                            .store(ReconnectState::Cancelled as u8, Ordering::Release);
                         return Err(ReconnectError::Cancelled);
                     }
                     sleep(check_interval.min(delay_duration - elapsed)).await;
@@ -269,7 +274,8 @@ impl SessionReconnector {
 
             // Attempt connection
             self.attempt_count.store(attempt, Ordering::Relaxed);
-            self.state.store(ReconnectState::Attempting as u8, Ordering::Release);
+            self.state
+                .store(ReconnectState::Attempting as u8, Ordering::Release);
 
             self.emit_event(ReconnectEvent::Attempting {
                 session_id: self.session_id.clone(),
@@ -285,7 +291,8 @@ impl SessionReconnector {
 
             match connect_fn(&self.config).await {
                 Ok(()) => {
-                    self.state.store(ReconnectState::Reconnected as u8, Ordering::Release);
+                    self.state
+                        .store(ReconnectState::Reconnected as u8, Ordering::Release);
 
                     self.emit_event(ReconnectEvent::Success {
                         session_id: self.session_id.clone(),
@@ -317,7 +324,8 @@ impl SessionReconnector {
         }
 
         // All attempts exhausted
-        self.state.store(ReconnectState::Failed as u8, Ordering::Release);
+        self.state
+            .store(ReconnectState::Failed as u8, Ordering::Release);
 
         self.emit_event(ReconnectEvent::Failed {
             session_id: self.session_id.clone(),

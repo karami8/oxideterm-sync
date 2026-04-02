@@ -107,7 +107,11 @@ pub async fn ide_open_project(
     };
 
     // Extract project name from path
-    let name = canonical_path.rsplit('/').next().unwrap_or("project").to_string();
+    let name = canonical_path
+        .rsplit('/')
+        .next()
+        .unwrap_or("project")
+        .to_string();
 
     Ok(ProjectInfo {
         root_path: canonical_path,

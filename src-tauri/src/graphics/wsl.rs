@@ -127,7 +127,8 @@ const DESKTOP_CANDIDATES: &[DesktopCandidate] = &[
     DesktopCandidate {
         detect_bin: "startplasma-x11",
         launch_cmd: "startplasma-x11",
-        extra_env: "export QT_QPA_PLATFORM=xcb\nexport DESKTOP_SESSION=plasma\nexport KWIN_COMPOSE=N",
+        extra_env:
+            "export QT_QPA_PLATFORM=xcb\nexport DESKTOP_SESSION=plasma\nexport KWIN_COMPOSE=N",
         display_name: "KDE Plasma",
     },
     DesktopCandidate {
@@ -240,20 +241,28 @@ pub async fn check_prerequisites(
     let candidate = matched.ok_or_else(|| GraphicsError::NoDesktop(distro.to_string()))?;
 
     // 3. Check for D-Bus
-    let dbus_cmd =
-        detect_dbus(distro)
-            .await
-            .ok_or_else(|| GraphicsError::NoDbus(distro.to_string()))?;
+    let dbus_cmd = detect_dbus(distro)
+        .await
+        .ok_or_else(|| GraphicsError::NoDbus(distro.to_string()))?;
 
     tracing::info!(
         "WSL Graphics prerequisites OK: desktop='{}' ({}), dbus='{}', extra_env={}",
         candidate.launch_cmd,
         candidate.display_name,
         dbus_cmd,
-        if candidate.extra_env.is_empty() { "(none)" } else { "yes" }
+        if candidate.extra_env.is_empty() {
+            "(none)"
+        } else {
+            "yes"
+        }
     );
 
-    Ok((candidate.launch_cmd, dbus_cmd, candidate.extra_env, candidate.display_name))
+    Ok((
+        candidate.launch_cmd,
+        dbus_cmd,
+        candidate.extra_env,
+        candidate.display_name,
+    ))
 }
 
 /// Find a free X display number by checking `/tmp/.X11-unix/X{n}` inside WSL.
@@ -763,7 +772,9 @@ mod tests {
         let mut distros = Vec::new();
         for line in decoded.lines().skip(1) {
             let line = line.trim();
-            if line.is_empty() { continue; }
+            if line.is_empty() {
+                continue;
+            }
             let is_default = line.starts_with('*');
             let line = line.trim_start_matches('*').trim();
             let parts: Vec<&str> = line.split_whitespace().collect();
@@ -833,10 +844,18 @@ mod tests {
         for c in DESKTOP_CANDIDATES {
             match c.detect_bin {
                 "gnome-session" | "startplasma-x11" => {
-                    assert!(!c.extra_env.is_empty(), "{} should have extra_env", c.display_name);
+                    assert!(
+                        !c.extra_env.is_empty(),
+                        "{} should have extra_env",
+                        c.display_name
+                    );
                 }
                 _ => {
-                    assert!(c.extra_env.is_empty(), "{} should NOT have extra_env", c.display_name);
+                    assert!(
+                        c.extra_env.is_empty(),
+                        "{} should NOT have extra_env",
+                        c.display_name
+                    );
                 }
             }
         }

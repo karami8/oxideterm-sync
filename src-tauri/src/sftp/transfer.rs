@@ -84,11 +84,9 @@ pub struct TransferPermit {
 
 impl Drop for TransferPermit {
     fn drop(&mut self) {
-        let result = self.active_count.fetch_update(
-            Ordering::AcqRel,
-            Ordering::Acquire,
-            |n| n.checked_sub(1),
-        );
+        let result = self
+            .active_count
+            .fetch_update(Ordering::AcqRel, Ordering::Acquire, |n| n.checked_sub(1));
         match result {
             Ok(prev) => debug!("TransferPermit dropped, active count: {}", prev - 1),
             Err(_) => warn!("TransferPermit dropped with active_count already 0"),
@@ -312,11 +310,9 @@ impl TransferManager {
 
     /// Decrement active count (called when transfer completes)
     pub fn on_transfer_complete(&self) {
-        let result = self.active_count.fetch_update(
-            Ordering::AcqRel,
-            Ordering::Acquire,
-            |n| n.checked_sub(1),
-        );
+        let result = self
+            .active_count
+            .fetch_update(Ordering::AcqRel, Ordering::Acquire, |n| n.checked_sub(1));
         match result {
             Ok(prev) => debug!("Transfer complete, active count: {}", prev - 1),
             Err(_) => warn!("on_transfer_complete called with active_count already 0"),

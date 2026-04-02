@@ -105,7 +105,11 @@ pub fn search_lines(lines: &[TerminalLine], options: SearchOptions) -> SearchRes
     };
 
     // Effective limit: 0 means unlimited
-    let limit = if options.max_matches == 0 { usize::MAX } else { options.max_matches };
+    let limit = if options.max_matches == 0 {
+        usize::MAX
+    } else {
+        options.max_matches
+    };
     let mut total_matches: usize = 0;
     let capped = limit < usize::MAX;
 
@@ -171,7 +175,8 @@ mod tests {
             query: "Hello".to_string(),
             case_sensitive: true,
             regex: false,
-            whole_word: false, max_matches: 0,
+            whole_word: false,
+            max_matches: 0,
         };
 
         let result = search_lines(&lines, options);
@@ -192,7 +197,8 @@ mod tests {
             query: "hello".to_string(),
             case_sensitive: false,
             regex: false,
-            whole_word: false, max_matches: 0,
+            whole_word: false,
+            max_matches: 0,
         };
 
         let result = search_lines(&lines, options);
@@ -211,7 +217,8 @@ mod tests {
             query: "hello".to_string(),
             case_sensitive: false,
             regex: false,
-            whole_word: true, max_matches: 0,
+            whole_word: true,
+            max_matches: 0,
         };
 
         let result = search_lines(&lines, options);
@@ -233,7 +240,8 @@ mod tests {
             query: r"^Error:".to_string(),
             case_sensitive: true,
             regex: true,
-            whole_word: false, max_matches: 0,
+            whole_word: false,
+            max_matches: 0,
         };
 
         let result = search_lines(&lines, options);
@@ -250,7 +258,8 @@ mod tests {
             query: "test".to_string(),
             case_sensitive: true,
             regex: false,
-            whole_word: false, max_matches: 0,
+            whole_word: false,
+            max_matches: 0,
         };
 
         let result = search_lines(&lines, options);
@@ -265,7 +274,8 @@ mod tests {
             query: "Rust".to_string(),
             case_sensitive: true,
             regex: false,
-            whole_word: false, max_matches: 0,
+            whole_word: false,
+            max_matches: 0,
         };
 
         let result = search_lines(&lines, options);
@@ -281,7 +291,8 @@ mod tests {
             query: "[invalid(".to_string(),
             case_sensitive: true,
             regex: true,
-            whole_word: false, max_matches: 0,
+            whole_word: false,
+            max_matches: 0,
         };
 
         let result = search_lines(&lines, options);
@@ -298,7 +309,8 @@ mod tests {
             query: "file.txt".to_string(),
             case_sensitive: true,
             regex: false, // Literal search, dot should be escaped
-            whole_word: false, max_matches: 0,
+            whole_word: false,
+            max_matches: 0,
         };
 
         let result = search_lines(&lines, options);

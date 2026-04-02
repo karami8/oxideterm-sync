@@ -13,8 +13,8 @@ use dashmap::DashMap;
 use tracing::info;
 
 use super::protocol::{
-    AgentStatus, FileEntry, GitStatusResult, GrepMatch, ListTreeResult, ReadFileResult,
-    StatResult, SymbolIndexResult, SymbolInfo, SysInfoResult, WatchEvent, WriteFileResult,
+    AgentStatus, FileEntry, GitStatusResult, GrepMatch, ListTreeResult, ReadFileResult, StatResult,
+    SymbolIndexResult, SymbolInfo, SysInfoResult, WatchEvent, WriteFileResult,
 };
 use super::transport::{AgentTransport, TransportError};
 
@@ -66,10 +66,7 @@ impl AgentSession {
     pub async fn read_file(&self, path: &str) -> Result<ReadFileResult, TransportError> {
         let result = self
             .transport
-            .call(
-                "fs/readFile",
-                serde_json::json!({ "path": path }),
-            )
+            .call("fs/readFile", serde_json::json!({ "path": path }))
             .await?;
 
         let mut file_result: ReadFileResult = serde_json::from_value(result)
@@ -80,9 +77,12 @@ impl AgentSession {
             use base64::Engine;
             let compressed = base64::engine::general_purpose::STANDARD
                 .decode(&file_result.content)
-                .map_err(|e| TransportError::DeserializeError(format!("Base64 decode error: {}", e)))?;
-            let decompressed = zstd::stream::decode_all(compressed.as_slice())
-                .map_err(|e| TransportError::DeserializeError(format!("Zstd decompress error: {}", e)))?;
+                .map_err(|e| {
+                    TransportError::DeserializeError(format!("Base64 decode error: {}", e))
+                })?;
+            let decompressed = zstd::stream::decode_all(compressed.as_slice()).map_err(|e| {
+                TransportError::DeserializeError(format!("Zstd decompress error: {}", e))
+            })?;
             file_result.content = String::from_utf8_lossy(&decompressed).into_owned();
             file_result.encoding = "plain".to_string();
         }
@@ -125,8 +125,7 @@ impl AgentSession {
 
         let result = self.transport.call("fs/writeFile", params).await?;
 
-        serde_json::from_value(result)
-            .map_err(|e| TransportError::DeserializeError(e.to_string()))
+        serde_json::from_value(result).map_err(|e| TransportError::DeserializeError(e.to_string()))
     }
 
     /// Get file/directory metadata.
@@ -136,8 +135,7 @@ impl AgentSession {
             .call("fs/stat", serde_json::json!({ "path": path }))
             .await?;
 
-        serde_json::from_value(result)
-            .map_err(|e| TransportError::DeserializeError(e.to_string()))
+        serde_json::from_value(result).map_err(|e| TransportError::DeserializeError(e.to_string()))
     }
 
     /// List directory contents (single level).
@@ -147,8 +145,7 @@ impl AgentSession {
             .call("fs/listDir", serde_json::json!({ "path": path }))
             .await?;
 
-        serde_json::from_value(result)
-            .map_err(|e| TransportError::DeserializeError(e.to_string()))
+        serde_json::from_value(result).map_err(|e| TransportError::DeserializeError(e.to_string()))
     }
 
     /// List directory tree (recursive) — returns entries + truncation metadata.
@@ -168,8 +165,7 @@ impl AgentSession {
 
         let result = self.transport.call("fs/listTree", params).await?;
 
-        serde_json::from_value(result)
-            .map_err(|e| TransportError::DeserializeError(e.to_string()))
+        serde_json::from_value(result).map_err(|e| TransportError::DeserializeError(e.to_string()))
     }
 
     /// Create a directory.
@@ -239,8 +235,7 @@ impl AgentSession {
 
         let result = self.transport.call("search/grep", params).await?;
 
-        serde_json::from_value(result)
-            .map_err(|e| TransportError::DeserializeError(e.to_string()))
+        serde_json::from_value(result).map_err(|e| TransportError::DeserializeError(e.to_string()))
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -254,8 +249,7 @@ impl AgentSession {
             .call("git/status", serde_json::json!({ "path": path }))
             .await?;
 
-        serde_json::from_value(result)
-            .map_err(|e| TransportError::DeserializeError(e.to_string()))
+        serde_json::from_value(result).map_err(|e| TransportError::DeserializeError(e.to_string()))
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -263,11 +257,7 @@ impl AgentSession {
     // ═══════════════════════════════════════════════════════════════════
 
     /// Start watching a directory for changes.
-    pub async fn watch_start(
-        &self,
-        path: &str,
-        ignore: Vec<String>,
-    ) -> Result<(), TransportError> {
+    pub async fn watch_start(&self, path: &str, ignore: Vec<String>) -> Result<(), TransportError> {
         self.transport
             .call(
                 "watch/start",
@@ -286,9 +276,7 @@ impl AgentSession {
     }
 
     /// Take the watch event receiver (can only be called once).
-    pub async fn take_watch_rx(
-        &self,
-    ) -> Option<tokio::sync::mpsc::Receiver<WatchEvent>> {
+    pub async fn take_watch_rx(&self) -> Option<tokio::sync::mpsc::Receiver<WatchEvent>> {
         self.transport.take_watch_rx().await
     }
 
@@ -307,8 +295,7 @@ impl AgentSession {
             params["max_files"] = serde_json::json!(mf);
         }
         let result = self.transport.call("symbols/index", params).await?;
-        serde_json::from_value(result)
-            .map_err(|e| TransportError::DeserializeError(e.to_string()))
+        serde_json::from_value(result).map_err(|e| TransportError::DeserializeError(e.to_string()))
     }
 
     /// Autocomplete a symbol prefix.
@@ -323,8 +310,7 @@ impl AgentSession {
             params["limit"] = serde_json::json!(l);
         }
         let result = self.transport.call("symbols/complete", params).await?;
-        serde_json::from_value(result)
-            .map_err(|e| TransportError::DeserializeError(e.to_string()))
+        serde_json::from_value(result).map_err(|e| TransportError::DeserializeError(e.to_string()))
     }
 
     /// Find all definitions of a symbol by name.
@@ -340,8 +326,7 @@ impl AgentSession {
                 serde_json::json!({ "path": path, "name": name }),
             )
             .await?;
-        serde_json::from_value(result)
-            .map_err(|e| TransportError::DeserializeError(e.to_string()))
+        serde_json::from_value(result).map_err(|e| TransportError::DeserializeError(e.to_string()))
     }
 
     // ═══════════════════════════════════════════════════════════════════

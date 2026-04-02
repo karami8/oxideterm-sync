@@ -286,11 +286,7 @@ pub async fn update_get_resumable_status(
         }
 
         if task_id.is_none() {
-            if let Some(status) = runtime
-                .statuses
-                .values()
-                .max_by_key(|s| s.timestamp)
-            {
+            if let Some(status) = runtime.statuses.values().max_by_key(|s| s.timestamp) {
                 return Ok(Some(status.clone()));
             }
         }
@@ -315,10 +311,7 @@ pub async fn update_cancel_resumable_install(
         let target_task_id = task_id
             .or_else(|| runtime.active_task_id.clone())
             .ok_or_else(|| UpdateError::General("no active update task".to_string()))?;
-        let current_stage = runtime
-            .statuses
-            .get(&target_task_id)
-            .map(|s| s.stage);
+        let current_stage = runtime.statuses.get(&target_task_id).map(|s| s.stage);
         if let Some(stage) = current_stage {
             if !can_cancel_from_stage(stage) {
                 return Err(cancel_not_allowed_error(stage));
@@ -378,9 +371,7 @@ pub async fn update_clear_resumable_cache(
                 .map_err(|err| UpdateError::State(format!("remove cache dir failed: {err}")))?;
         }
         let mut runtime = manager_state.inner.lock().await;
-        runtime
-            .statuses
-            .retain(|_, s| s.version != version);
+        runtime.statuses.retain(|_, s| s.version != version);
         if let Some(active) = runtime.active_task_id.clone() {
             if runtime
                 .statuses
@@ -573,9 +564,7 @@ async fn download_with_retries(
         }
     }
 
-    Err(UpdateError::Network(
-        "download retry exhausted".to_string(),
-    ))
+    Err(UpdateError::Network("download retry exhausted".to_string()))
 }
 
 async fn download_once(
@@ -739,9 +728,8 @@ async fn download_once(
             return Err(UpdateError::General("update cancelled".to_string()));
         }
 
-        let chunk = chunk.map_err(|err| {
-            UpdateError::Network(format!("error decoding response body: {err}"))
-        })?;
+        let chunk = chunk
+            .map_err(|err| UpdateError::Network(format!("error decoding response body: {err}")))?;
         file.write_all(&chunk)
             .await
             .map_err(|err| UpdateError::State(format!("write update chunk failed: {err}")))?;
@@ -875,10 +863,7 @@ async fn ensure_task_not_cancelled(
     Ok(())
 }
 
-async fn is_task_cancelled(
-    runtime_state: Arc<Mutex<UpdateManagerRuntime>>,
-    task_id: &str,
-) -> bool {
+async fn is_task_cancelled(runtime_state: Arc<Mutex<UpdateManagerRuntime>>, task_id: &str) -> bool {
     let runtime = runtime_state.lock().await;
     runtime.cancelled_tasks.contains(task_id)
 }
@@ -1056,8 +1041,9 @@ async fn load_latest_persisted_status(
 // ── Crypto helpers ──────────────────────────────────────────
 
 fn updater_pubkey() -> Result<String, UpdateError> {
-    let config_json: serde_json::Value = serde_json::from_str(include_str!("../tauri.conf.json"))
-        .map_err(|err| UpdateError::Integrity(format!("parse tauri config failed: {err}")))?;
+    let config_json: serde_json::Value =
+        serde_json::from_str(include_str!("../tauri.conf.json"))
+            .map_err(|err| UpdateError::Integrity(format!("parse tauri config failed: {err}")))?;
     let pub_key = config_json
         .get("plugins")
         .and_then(|p| p.get("updater"))
@@ -1069,7 +1055,11 @@ fn updater_pubkey() -> Result<String, UpdateError> {
     Ok(pub_key.to_string())
 }
 
-fn verify_signature(data: &[u8], release_signature: &str, pub_key: &str) -> Result<(), UpdateError> {
+fn verify_signature(
+    data: &[u8],
+    release_signature: &str,
+    pub_key: &str,
+) -> Result<(), UpdateError> {
     let pub_key_decoded = base64_to_string(pub_key)?;
     let public_key = PublicKey::decode(&pub_key_decoded)
         .map_err(|err| UpdateError::Integrity(format!("decode public key failed: {err}")))?;

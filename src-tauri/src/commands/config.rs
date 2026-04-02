@@ -1138,7 +1138,10 @@ pub async fn sync_ai_providers(
 ) -> Result<(), String> {
     let mut lock = state.ai_providers.write();
     *lock = (providers, active_provider_id);
-    tracing::debug!("AI providers synced from frontend ({} providers)", lock.0.len());
+    tracing::debug!(
+        "AI providers synced from frontend ({} providers)",
+        lock.0.len()
+    );
     Ok(())
 }
 
@@ -1162,7 +1165,10 @@ pub async fn set_ai_provider_api_key(
             .store(&provider_id, &api_key)
             .map_err(|e| format!("Failed to save provider key to keychain: {}", e))?;
         // Update session cache so next read doesn't re-trigger Touch ID
-        state.api_key_cache.write().insert(provider_id.clone(), api_key);
+        state
+            .api_key_cache
+            .write()
+            .insert(provider_id.clone(), api_key);
     }
     tracing::info!(
         "AI provider key for {} saved to system keychain",
@@ -1184,7 +1190,10 @@ pub async fn get_ai_provider_api_key(
     {
         let cache = state.api_key_cache.read();
         if let Some(cached_key) = cache.get(&provider_id) {
-            tracing::debug!("AI provider key for {} served from session cache", provider_id);
+            tracing::debug!(
+                "AI provider key for {} served from session cache",
+                provider_id
+            );
             return Ok(Some(cached_key.clone()));
         }
     }
@@ -1353,7 +1362,10 @@ pub async fn set_data_directory(new_path: String) -> Result<bool, String> {
     }
 
     // Reject paths containing ".." to prevent traversal
-    if path.components().any(|c| matches!(c, std::path::Component::ParentDir)) {
+    if path
+        .components()
+        .any(|c| matches!(c, std::path::Component::ParentDir))
+    {
         return Err("Data directory path must not contain '..'".to_string());
     }
 
@@ -1368,20 +1380,17 @@ pub async fn set_data_directory(new_path: String) -> Result<bool, String> {
     // Check directory is writable using a unique temp file
     let test_filename = format!(".oxideterm_test_{}", std::process::id());
     let test_file = canonical.join(&test_filename);
-    std::fs::write(&test_file, b"test")
-        .map_err(|e| format!("Directory is not writable: {}", e))?;
+    std::fs::write(&test_file, b"test").map_err(|e| format!("Directory is not writable: {}", e))?;
     if let Err(e) = std::fs::remove_file(&test_file) {
         tracing::warn!("Failed to remove write test file {:?}: {}", test_file, e);
     }
 
     let canonical_str = canonical.to_string_lossy().to_string();
     let bootstrap = crate::config::storage::BootstrapConfig::new_with_data_dir(canonical_str);
-    tokio::task::spawn_blocking(move || {
-        crate::config::storage::save_bootstrap_config(&bootstrap)
-    })
-    .await
-    .map_err(|e| format!("Task failed: {}", e))?
-    .map_err(|e| e.to_string())?;
+    tokio::task::spawn_blocking(move || crate::config::storage::save_bootstrap_config(&bootstrap))
+        .await
+        .map_err(|e| format!("Task failed: {}", e))?
+        .map_err(|e| e.to_string())?;
 
     Ok(true)
 }
@@ -1390,12 +1399,10 @@ pub async fn set_data_directory(new_path: String) -> Result<bool, String> {
 #[tauri::command]
 pub async fn reset_data_directory() -> Result<bool, String> {
     let bootstrap = crate::config::storage::BootstrapConfig::default();
-    tokio::task::spawn_blocking(move || {
-        crate::config::storage::save_bootstrap_config(&bootstrap)
-    })
-    .await
-    .map_err(|e| format!("Task failed: {}", e))?
-    .map_err(|e| e.to_string())?;
+    tokio::task::spawn_blocking(move || crate::config::storage::save_bootstrap_config(&bootstrap))
+        .await
+        .map_err(|e| format!("Task failed: {}", e))?
+        .map_err(|e| e.to_string())?;
     Ok(true)
 }
 

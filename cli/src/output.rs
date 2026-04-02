@@ -57,10 +57,7 @@ impl OutputMode {
                     .get("version")
                     .and_then(|v| v.as_str())
                     .unwrap_or("unknown");
-                let sessions = value
-                    .get("sessions")
-                    .and_then(|v| v.as_u64())
-                    .unwrap_or(0);
+                let sessions = value.get("sessions").and_then(|v| v.as_u64()).unwrap_or(0);
                 let ssh = value
                     .pointer("/connections/ssh")
                     .and_then(|v| v.as_u64())
@@ -95,27 +92,22 @@ impl OutputMode {
                     "NAME", "HOST", "PORT", "USER", "TYPE"
                 );
                 for item in items {
-                    let name = item
-                        .get("name")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("-");
-                    let host = item
-                        .get("host")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("-");
-                    let port = item
-                        .get("port")
-                        .and_then(|v| v.as_u64())
-                        .unwrap_or(22);
-                    let user = item
-                        .get("username")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("-");
+                    let name = item.get("name").and_then(|v| v.as_str()).unwrap_or("-");
+                    let host = item.get("host").and_then(|v| v.as_str()).unwrap_or("-");
+                    let port = item.get("port").and_then(|v| v.as_u64()).unwrap_or(22);
+                    let user = item.get("username").and_then(|v| v.as_str()).unwrap_or("-");
                     let auth = item
                         .get("auth_type")
                         .and_then(|v| v.as_str())
                         .unwrap_or("-");
-                    println!("  {:<16} {:<24} {:<6} {:<10} {}", sanitize_display(name), sanitize_display(host), port, sanitize_display(user), auth);
+                    println!(
+                        "  {:<16} {:<24} {:<6} {:<10} {}",
+                        sanitize_display(name),
+                        sanitize_display(host),
+                        port,
+                        sanitize_display(user),
+                        auth
+                    );
                 }
             }
         }
@@ -139,23 +131,11 @@ impl OutputMode {
                     "ID", "NAME", "HOST", "STATE", "UPTIME"
                 );
                 for item in items {
-                    let id = item
-                        .get("id")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("-");
+                    let id = item.get("id").and_then(|v| v.as_str()).unwrap_or("-");
                     let short_id = if id.len() > 12 { &id[..12] } else { id };
-                    let name = item
-                        .get("name")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("-");
-                    let host = item
-                        .get("host")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("-");
-                    let state = item
-                        .get("state")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("-");
+                    let name = item.get("name").and_then(|v| v.as_str()).unwrap_or("-");
+                    let host = item.get("host").and_then(|v| v.as_str()).unwrap_or("-");
+                    let state = item.get("state").and_then(|v| v.as_str()).unwrap_or("-");
                     let uptime = item
                         .get("uptime_secs")
                         .and_then(|v| v.as_u64())
@@ -163,7 +143,11 @@ impl OutputMode {
                     let uptime_str = format_duration(uptime);
                     println!(
                         "  {:<14} {:<16} {:<24} {:<10} {}",
-                        short_id, sanitize_display(name), sanitize_display(host), state, uptime_str
+                        short_id,
+                        sanitize_display(name),
+                        sanitize_display(host),
+                        state,
+                        uptime_str
                     );
                 }
             }
@@ -204,7 +188,8 @@ impl OutputMode {
                         .unwrap_or(false);
                     println!(
                         "  {:<14} {:<16} {:<10} {}",
-                        short_id, sanitize_display(shell),
+                        short_id,
+                        sanitize_display(shell),
                         if running { "yes" } else { "no" },
                         if detached { "yes" } else { "no" },
                     );
@@ -235,7 +220,11 @@ impl OutputMode {
                         .get("session_id")
                         .and_then(|v| v.as_str())
                         .unwrap_or("-");
-                    let short_session = if session.len() > 8 { &session[..8] } else { session };
+                    let short_session = if session.len() > 8 {
+                        &session[..8]
+                    } else {
+                        session
+                    };
                     let fwd_type = item
                         .get("forward_type")
                         .and_then(|v| v.as_str())
@@ -244,10 +233,7 @@ impl OutputMode {
                         .get("bind_address")
                         .and_then(|v| v.as_str())
                         .unwrap_or("0.0.0.0");
-                    let bind_port = item
-                        .get("bind_port")
-                        .and_then(|v| v.as_u64())
-                        .unwrap_or(0);
+                    let bind_port = item.get("bind_port").and_then(|v| v.as_u64()).unwrap_or(0);
                     let target_host = item
                         .get("target_host")
                         .and_then(|v| v.as_str())
@@ -256,10 +242,7 @@ impl OutputMode {
                         .get("target_port")
                         .and_then(|v| v.as_u64())
                         .unwrap_or(0);
-                    let status = item
-                        .get("status")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("-");
+                    let status = item.get("status").and_then(|v| v.as_str()).unwrap_or("-");
                     let desc = item
                         .get("description")
                         .and_then(|v| v.as_str())
@@ -274,7 +257,12 @@ impl OutputMode {
 
                     println!(
                         "  {:<10} {:<8} {:<24} {:<24} {:<10} {}",
-                        short_session, fwd_type, bind_str, target_str, status, sanitize_display(desc)
+                        short_session,
+                        fwd_type,
+                        bind_str,
+                        target_str,
+                        status,
+                        sanitize_display(desc)
                     );
                 }
             }
@@ -294,13 +282,8 @@ impl OutputMode {
                         .get("status")
                         .and_then(|v| v.as_str())
                         .unwrap_or("unknown");
-                    let latency = value
-                        .get("latency_ms")
-                        .and_then(|v| v.as_u64());
-                    let message = value
-                        .get("message")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("");
+                    let latency = value.get("latency_ms").and_then(|v| v.as_u64());
+                    let message = value.get("message").and_then(|v| v.as_str()).unwrap_or("");
                     let session_id = value
                         .get("session_id")
                         .and_then(|v| v.as_str())
@@ -350,10 +333,8 @@ impl OutputMode {
                                 .and_then(|v| v.as_u64())
                                 .map(|l| format!("{l}ms"))
                                 .unwrap_or_else(|| "-".to_string());
-                            let message = check
-                                .get("message")
-                                .and_then(|v| v.as_str())
-                                .unwrap_or("");
+                            let message =
+                                check.get("message").and_then(|v| v.as_str()).unwrap_or("");
                             println!(
                                 "  {:<14} {:<14} {:<10} {}",
                                 short_id, status, latency, message
@@ -436,14 +417,8 @@ impl OutputMode {
                 println!();
                 println!("  {:<24} {}", "GROUP", "COUNT");
                 for group in groups {
-                    let name = group
-                        .get("name")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("-");
-                    let count = group
-                        .get("count")
-                        .and_then(|v| v.as_u64())
-                        .unwrap_or(0);
+                    let name = group.get("name").and_then(|v| v.as_str()).unwrap_or("-");
+                    let count = group.get("count").and_then(|v| v.as_u64()).unwrap_or(0);
                     println!("  {:<24} {}", sanitize_display(name), count);
                 }
             }
@@ -460,9 +435,18 @@ impl OutputMode {
                 let name = value.get("name").and_then(|v| v.as_str()).unwrap_or("-");
                 let host = value.get("host").and_then(|v| v.as_str()).unwrap_or("-");
                 let port = value.get("port").and_then(|v| v.as_u64()).unwrap_or(22);
-                let user = value.get("username").and_then(|v| v.as_str()).unwrap_or("-");
-                let auth = value.get("auth_type").and_then(|v| v.as_str()).unwrap_or("-");
-                let group = value.get("group").and_then(|v| v.as_str()).unwrap_or("(none)");
+                let user = value
+                    .get("username")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("-");
+                let auth = value
+                    .get("auth_type")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("-");
+                let group = value
+                    .get("group")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("(none)");
                 let key_path = value.get("key_path").and_then(|v| v.as_str());
 
                 println!("{}", sanitize_display(name));
@@ -489,8 +473,14 @@ impl OutputMode {
 
                 // Options
                 if let Some(opts) = value.get("options") {
-                    let ka = opts.get("keep_alive_interval").and_then(|v| v.as_u64()).unwrap_or(0);
-                    let comp = opts.get("compression").and_then(|v| v.as_bool()).unwrap_or(false);
+                    let ka = opts
+                        .get("keep_alive_interval")
+                        .and_then(|v| v.as_u64())
+                        .unwrap_or(0);
+                    let comp = opts
+                        .get("compression")
+                        .and_then(|v| v.as_bool())
+                        .unwrap_or(false);
                     if ka > 0 || comp {
                         println!("  Options:");
                         if ka > 0 {
@@ -519,10 +509,15 @@ impl OutputMode {
 
                 if success {
                     if let Some(fwd) = value.get("forward") {
-                        let ftype = fwd.get("forward_type").and_then(|v| v.as_str()).unwrap_or("-");
+                        let ftype = fwd
+                            .get("forward_type")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("-");
                         let bind = format!(
                             "{}:{}",
-                            fwd.get("bind_address").and_then(|v| v.as_str()).unwrap_or("127.0.0.1"),
+                            fwd.get("bind_address")
+                                .and_then(|v| v.as_str())
+                                .unwrap_or("127.0.0.1"),
                             fwd.get("bind_port").and_then(|v| v.as_u64()).unwrap_or(0)
                         );
                         let target = if ftype == "dynamic" {
@@ -530,7 +525,9 @@ impl OutputMode {
                         } else {
                             format!(
                                 "{}:{}",
-                                fwd.get("target_host").and_then(|v| v.as_str()).unwrap_or("-"),
+                                fwd.get("target_host")
+                                    .and_then(|v| v.as_str())
+                                    .unwrap_or("-"),
                                 fwd.get("target_port").and_then(|v| v.as_u64()).unwrap_or(0)
                             )
                         };
@@ -576,12 +573,18 @@ impl OutputMode {
                 println!("{}", serde_json::to_string(value).unwrap_or_default());
             }
             Self::Human => {
-                let success = value.get("success").and_then(|v| v.as_bool()).unwrap_or(false);
+                let success = value
+                    .get("success")
+                    .and_then(|v| v.as_bool())
+                    .unwrap_or(false);
                 if success {
                     let name = value.get("name").and_then(|v| v.as_str()).unwrap_or("-");
                     println!("Connecting to {}...", sanitize_display(name));
                 } else {
-                    let error = value.get("error").and_then(|v| v.as_str()).unwrap_or("Unknown error");
+                    let error = value
+                        .get("error")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("Unknown error");
                     eprintln!("Failed: {error}");
                 }
             }
@@ -595,10 +598,7 @@ impl OutputMode {
                 println!("{}", serde_json::to_string(value).unwrap_or_default());
             }
             Self::Human => {
-                let path = value
-                    .get("path")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or(".");
+                let path = value.get("path").and_then(|v| v.as_str()).unwrap_or(".");
                 let entries = value
                     .get("entries")
                     .and_then(|v| v.as_array())
@@ -610,23 +610,11 @@ impl OutputMode {
                     return;
                 }
 
-                println!(
-                    "  {:<10} {:<10} {:<8} {}",
-                    "PERMS", "SIZE", "TYPE", "NAME"
-                );
+                println!("  {:<10} {:<10} {:<8} {}", "PERMS", "SIZE", "TYPE", "NAME");
                 for entry in entries {
-                    let name = entry
-                        .get("name")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("-");
-                    let file_type = entry
-                        .get("type")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("-");
-                    let size = entry
-                        .get("size")
-                        .and_then(|v| v.as_u64())
-                        .unwrap_or(0);
+                    let name = entry.get("name").and_then(|v| v.as_str()).unwrap_or("-");
+                    let file_type = entry.get("type").and_then(|v| v.as_str()).unwrap_or("-");
+                    let size = entry.get("size").and_then(|v| v.as_u64()).unwrap_or(0);
                     let permissions = entry
                         .get("permissions")
                         .and_then(|v| v.as_str())
@@ -673,10 +661,7 @@ impl OutputMode {
                     .get("local_path")
                     .and_then(|v| v.as_str())
                     .unwrap_or("?");
-                let bytes = value
-                    .get("bytes")
-                    .and_then(|v| v.as_u64())
-                    .unwrap_or(0);
+                let bytes = value.get("bytes").and_then(|v| v.as_u64()).unwrap_or(0);
                 let size_str = format_file_size(bytes);
                 println!("{verb}: {remote} ↔ {local} ({size_str})");
             }
@@ -701,22 +686,10 @@ impl OutputMode {
                     "ALIAS", "HOSTNAME", "USER", "PORT", "STATUS"
                 );
                 for item in items {
-                    let alias = item
-                        .get("alias")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("-");
-                    let hostname = item
-                        .get("hostname")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("-");
-                    let user = item
-                        .get("user")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("-");
-                    let port = item
-                        .get("port")
-                        .and_then(|v| v.as_u64())
-                        .unwrap_or(22);
+                    let alias = item.get("alias").and_then(|v| v.as_str()).unwrap_or("-");
+                    let hostname = item.get("hostname").and_then(|v| v.as_str()).unwrap_or("-");
+                    let user = item.get("user").and_then(|v| v.as_str()).unwrap_or("-");
+                    let port = item.get("port").and_then(|v| v.as_u64()).unwrap_or(22);
                     let imported = item
                         .get("already_imported")
                         .and_then(|v| v.as_bool())
@@ -743,14 +716,8 @@ impl OutputMode {
                 println!("{}", serde_json::to_string(value).unwrap_or_default());
             }
             Self::Human => {
-                let imported = value
-                    .get("imported")
-                    .and_then(|v| v.as_u64())
-                    .unwrap_or(0);
-                let skipped = value
-                    .get("skipped")
-                    .and_then(|v| v.as_u64())
-                    .unwrap_or(0);
+                let imported = value.get("imported").and_then(|v| v.as_u64()).unwrap_or(0);
+                let skipped = value.get("skipped").and_then(|v| v.as_u64()).unwrap_or(0);
                 let errors = value
                     .get("errors")
                     .and_then(|v| v.as_array())
@@ -798,7 +765,7 @@ fn sanitize_display(s: &str) -> String {
             // Skip ESC sequence: ESC [ ... final_byte
             if chars.peek() == Some(&'[') {
                 chars.next(); // consume '['
-                // Consume until we hit a letter (final byte of CSI sequence)
+                              // Consume until we hit a letter (final byte of CSI sequence)
                 for c2 in chars.by_ref() {
                     if c2.is_ascii_alphabetic() {
                         break;

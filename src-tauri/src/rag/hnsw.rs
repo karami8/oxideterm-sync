@@ -308,7 +308,10 @@ mod tests {
     fn test_cosine_point_identical() {
         let a = CosinePoint::new(vec![1.0, 0.0, 1.0]);
         let dist = a.distance(&a);
-        assert!(dist.abs() < 1e-5, "distance to self should be ~0, got {dist}");
+        assert!(
+            dist.abs() < 1e-5,
+            "distance to self should be ~0, got {dist}"
+        );
     }
 
     #[test]
@@ -406,10 +409,7 @@ mod tests {
 
         let index = PersistedHnswIndex::build(&embeddings).unwrap();
 
-        let dir = std::env::temp_dir().join(format!(
-            "oxideterm_hnsw_test_{}",
-            std::process::id()
-        ));
+        let dir = std::env::temp_dir().join(format!("oxideterm_hnsw_test_{}", std::process::id()));
         let _ = std::fs::create_dir_all(&dir);
         let path = dir.join("test_hnsw.bin");
 

@@ -13,5 +13,7 @@ pub mod shell;
 
 pub use pty::{PtyConfig, PtyError, PtyHandle};
 pub use registry::LocalTerminalRegistry;
-pub use session::{BackgroundSessionInfo, LocalTerminalInfo, LocalTerminalSession, SessionError, SessionEvent};
+pub use session::{
+    BackgroundSessionInfo, LocalTerminalInfo, LocalTerminalSession, SessionError, SessionEvent,
+};
 pub use shell::{default_shell, get_shell_args, scan_shells, ShellInfo};

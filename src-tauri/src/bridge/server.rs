@@ -618,10 +618,7 @@ impl WsBridge {
                     "Sending history replay to reconnected client for session {}",
                     session_handle.id
                 );
-                if let Err(e) = ws_sender
-                    .send(Message::Binary(replay_frame))
-                    .await
-                {
+                if let Err(e) = ws_sender.send(Message::Binary(replay_frame)).await {
                     warn!("Failed to send history data: {}", e);
                 }
             }

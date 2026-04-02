@@ -189,10 +189,7 @@ impl NodeRouter {
     /// 每次调用创建新的 SSH channel + SftpSession，调用方独占。
     /// 多个并发传输各自持有独立 session，不与浏览操作互斥。
     /// session 在传输完成后 drop，自动关闭底层 SSH channel。
-    pub async fn acquire_transfer_sftp(
-        &self,
-        node_id: &str,
-    ) -> Result<SftpSession, RouteError> {
+    pub async fn acquire_transfer_sftp(&self, node_id: &str) -> Result<SftpSession, RouteError> {
         let resolved = self.resolve_connection(node_id).await?;
 
         let entry = self

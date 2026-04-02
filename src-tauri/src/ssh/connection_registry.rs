@@ -812,11 +812,8 @@ impl SshConnectionRegistry {
         let mut total_ref_count: u32 = 0;
 
         // Collect entries first to release DashMap shard locks before awaiting
-        let entries: Vec<Arc<ConnectionEntry>> = self
-            .connections
-            .iter()
-            .map(|e| e.value().clone())
-            .collect();
+        let entries: Vec<Arc<ConnectionEntry>> =
+            self.connections.iter().map(|e| e.value().clone()).collect();
 
         for conn in &entries {
             let state = conn.state().await;
@@ -957,7 +954,7 @@ impl SshConnectionRegistry {
             reconnect_attempts: AtomicU32::new(0),
             current_attempt_id: AtomicU64::new(0),
             last_emitted_status: parking_lot::Mutex::new(None),
-            parent_connection_id: None,    // 直连，无父连接
+            parent_connection_id: None,             // 直连，无父连接
             remote_env: std::sync::OnceLock::new(), // 待异步检测
         });
 
@@ -1233,7 +1230,7 @@ impl SshConnectionRegistry {
             current_attempt_id: AtomicU64::new(0),
             last_emitted_status: parking_lot::Mutex::new(None),
             parent_connection_id: Some(parent_connection_id.to_string()), // 隧道连接，记录父连接
-            remote_env: std::sync::OnceLock::new(),                                // 待异步检测
+            remote_env: std::sync::OnceLock::new(),                       // 待异步检测
         });
 
         self.connections.insert(connection_id.clone(), entry);
@@ -1615,9 +1612,15 @@ impl SshConnectionRegistry {
                     };
 
                     if let Err(e) = handle.emit("connection_status_changed", event) {
-                        error!("Failed to emit connection_status_changed for idle timeout: {}", e);
+                        error!(
+                            "Failed to emit connection_status_changed for idle timeout: {}",
+                            e
+                        );
                     } else {
-                        info!("Emitted connection_status_changed: {} -> disconnected (idle timeout)", connection_id);
+                        info!(
+                            "Emitted connection_status_changed: {} -> disconnected (idle timeout)",
+                            connection_id
+                        );
                     }
                 }
 
@@ -1912,7 +1915,7 @@ impl SshConnectionRegistry {
             reconnect_attempts: AtomicU32::new(0),
             current_attempt_id: AtomicU64::new(0),
             last_emitted_status: parking_lot::Mutex::new(None),
-            parent_connection_id: None,    // 从旧连接注册，无父连接
+            parent_connection_id: None, // 从旧连接注册，无父连接
             remote_env: std::sync::OnceLock::new(), // 待异步检测
         });
 
@@ -2543,10 +2546,7 @@ impl SshConnectionRegistry {
     /// - `"dead"`  — 连接已死
     /// - `"not_found"` — 连接不存在
     /// - `"not_applicable"` — 连接状态不适用于探测
-    pub async fn probe_single_connection(
-        self: &Arc<Self>,
-        connection_id: &str,
-    ) -> String {
+    pub async fn probe_single_connection(self: &Arc<Self>, connection_id: &str) -> String {
         let entry = match self.connections.get(connection_id) {
             Some(e) => e.value().clone(),
             None => return "not_found".to_string(),
@@ -2604,11 +2604,8 @@ impl SshConnectionRegistry {
                                 entry.set_state(ConnectionState::Active).await;
                                 entry.reset_heartbeat_failures();
                                 entry.update_activity();
-                                self.emit_connection_status_changed(
-                                    connection_id,
-                                    "connected",
-                                )
-                                .await;
+                                self.emit_connection_status_changed(connection_id, "connected")
+                                    .await;
                                 self.start_heartbeat(connection_id);
                                 "alive".to_string()
                             }
@@ -2670,9 +2667,13 @@ impl SshConnectionRegistry {
 
             // 快速检查 handle 是否还活着
             if !entry.handle_controller.is_connected() {
-                info!("Probe: connection {} handle already dead, marking link_down", connection_id);
+                info!(
+                    "Probe: connection {} handle already dead, marking link_down",
+                    connection_id
+                );
                 entry.set_state(ConnectionState::LinkDown).await;
-                self.emit_connection_status_changed(&connection_id, "link_down").await;
+                self.emit_connection_status_changed(&connection_id, "link_down")
+                    .await;
                 dead_connections.push(connection_id);
                 continue;
             }
@@ -2686,9 +2687,13 @@ impl SshConnectionRegistry {
                     entry.update_activity();
                 }
                 super::handle_owner::PingResult::IoError => {
-                    info!("Probe: connection {} dead (IoError), marking link_down", connection_id);
+                    info!(
+                        "Probe: connection {} dead (IoError), marking link_down",
+                        connection_id
+                    );
                     entry.set_state(ConnectionState::LinkDown).await;
-                    self.emit_connection_status_changed(&connection_id, "link_down").await;
+                    self.emit_connection_status_changed(&connection_id, "link_down")
+                        .await;
                     dead_connections.push(connection_id);
                 }
                 super::handle_owner::PingResult::Timeout => {
@@ -2702,9 +2707,13 @@ impl SshConnectionRegistry {
                             entry.reset_heartbeat_failures();
                         }
                         _ => {
-                            info!("Probe: connection {} dead after retry, marking link_down", connection_id);
+                            info!(
+                                "Probe: connection {} dead after retry, marking link_down",
+                                connection_id
+                            );
                             entry.set_state(ConnectionState::LinkDown).await;
-                            self.emit_connection_status_changed(&connection_id, "link_down").await;
+                            self.emit_connection_status_changed(&connection_id, "link_down")
+                                .await;
                             dead_connections.push(connection_id);
                         }
                     }
@@ -2713,7 +2722,10 @@ impl SshConnectionRegistry {
         }
 
         if !dead_connections.is_empty() {
-            info!("Probe completed: {} dead connection(s) out of total", dead_connections.len());
+            info!(
+                "Probe completed: {} dead connection(s) out of total",
+                dead_connections.len()
+            );
         } else {
             debug!("Probe completed: all connections alive");
         }

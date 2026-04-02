@@ -20,12 +20,12 @@ use tauri::{AppHandle, State};
 use tracing::{info, warn};
 
 use super::{ForwardingRegistry, HealthRegistry, ProfilerRegistry};
+use crate::agent::AgentRegistry;
 use crate::bridge::{BridgeManager, WsBridge};
 use crate::forwarding::ForwardingManager;
 use crate::session::{
     parse_terminal_output, AuthMethod, SessionConfig, SessionInfo, SessionRegistry,
 };
-use crate::agent::AgentRegistry;
 use crate::sftp::session::SftpRegistry;
 use crate::ssh::{
     accept_host_key, check_host_key, get_host_key_cache, ConnectionInfo, ConnectionPoolConfig,

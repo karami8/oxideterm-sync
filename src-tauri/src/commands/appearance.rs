@@ -15,10 +15,7 @@
 /// We dispatch via `run_on_main_thread` and bridge the result back through a
 /// oneshot channel so the async Tauri command can await it.
 #[tauri::command]
-pub async fn set_window_vibrancy(
-    window: tauri::Window,
-    mode: String,
-) -> Result<(), String> {
+pub async fn set_window_vibrancy(window: tauri::Window, mode: String) -> Result<(), String> {
     let enabled = mode == "native";
 
     let (tx, rx) = tokio::sync::oneshot::channel::<Result<(), String>>();
@@ -60,5 +57,6 @@ pub async fn set_window_vibrancy(
         })
         .map_err(|e| e.to_string())?;
 
-    rx.await.map_err(|_| "Vibrancy task was cancelled".to_string())?
+    rx.await
+        .map_err(|_| "Vibrancy task was cancelled".to_string())?
 }

@@ -77,7 +77,9 @@ async fn proxy_connection(
     // 1. WebSocket handshake with token validation + subprotocol negotiation
     let ws_stream = tokio_tungstenite::accept_hdr_async(
         tcp_stream,
-        |req: &tokio_tungstenite::tungstenite::http::Request<()>, resp: Response<()>| -> Result<Response<()>, Response<Option<String>>> {
+        |req: &tokio_tungstenite::tungstenite::http::Request<()>,
+         resp: Response<()>|
+         -> Result<Response<()>, Response<Option<String>>> {
             let mut resp = resp;
             // Validate token from query string
             let uri = req.uri().to_string();

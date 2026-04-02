@@ -142,7 +142,9 @@ pub async fn node_sftp_preview(
     // If the preview produced a temp file, allow it on the asset scope
     if let Ok(PreviewContent::AssetFile { ref path, .. }) = result {
         use tauri::Manager;
-        let _ = app.asset_protocol_scope().allow_file(std::path::Path::new(path));
+        let _ = app
+            .asset_protocol_scope()
+            .allow_file(std::path::Path::new(path));
     }
     result
 }
@@ -157,8 +159,7 @@ pub async fn cleanup_sftp_preview_temp(path: Option<String>) -> Result<(), Strin
     if let Some(p) = path {
         let target = std::path::Path::new(&p);
         // Safety: only allow deleting files inside our temp dir
-        if let (Ok(canonical), Ok(canonical_dir)) =
-            (target.canonicalize(), temp_dir.canonicalize())
+        if let (Ok(canonical), Ok(canonical_dir)) = (target.canonicalize(), temp_dir.canonicalize())
         {
             if canonical.starts_with(&canonical_dir) {
                 let _ = tokio::fs::remove_file(&canonical).await;
@@ -193,7 +194,8 @@ pub async fn node_sftp_write(
     let encoded_bytes = crate::sftp::types::encode_to_encoding(&content, target_encoding);
 
     // 写入
-    let write_result = sftp.write_content(&path, &encoded_bytes)
+    let write_result = sftp
+        .write_content(&path, &encoded_bytes)
         .await
         .map_err(RouteError::from)?;
 
@@ -424,7 +426,14 @@ pub async fn node_sftp_download_dir(
         }
     });
 
-    let result = sftp.download_dir(&remote_path, &local_path, Some(tx), Some(cancel_flag), Some(transfer_manager.speed_limit_bps_ref()))
+    let result = sftp
+        .download_dir(
+            &remote_path,
+            &local_path,
+            Some(tx),
+            Some(cancel_flag),
+            Some(transfer_manager.speed_limit_bps_ref()),
+        )
         .await
         .map_err(RouteError::from);
     transfer_manager.unregister(&tid);
@@ -470,7 +479,14 @@ pub async fn node_sftp_upload_dir(
         }
     });
 
-    let result = sftp.upload_dir(&local_path, &remote_path, Some(tx), Some(cancel_flag), Some(transfer_manager.speed_limit_bps_ref()))
+    let result = sftp
+        .upload_dir(
+            &local_path,
+            &remote_path,
+            Some(tx),
+            Some(cancel_flag),
+            Some(transfer_manager.speed_limit_bps_ref()),
+        )
         .await
         .map_err(RouteError::from);
     transfer_manager.unregister(&tid);
@@ -648,7 +664,11 @@ pub async fn node_ide_open_project(
         None
     };
 
-    let name = canonical_path.rsplit('/').next().unwrap_or("project").to_string();
+    let name = canonical_path
+        .rsplit('/')
+        .next()
+        .unwrap_or("project")
+        .to_string();
 
     Ok(crate::commands::ide::ProjectInfo {
         root_path: canonical_path,

@@ -56,8 +56,8 @@ impl IpcConnection {
             #[cfg(unix)]
             {
                 use std::os::unix::fs::MetadataExt;
-                let metadata = std::fs::metadata(&path)
-                    .map_err(|e| format!("Cannot stat socket: {e}"))?;
+                let metadata =
+                    std::fs::metadata(&path).map_err(|e| format!("Cannot stat socket: {e}"))?;
                 let socket_uid = metadata.uid();
                 let current_uid = unsafe { libc::getuid() };
                 if socket_uid != current_uid {
@@ -155,9 +155,7 @@ impl IpcConnection {
     fn flush(&mut self) -> Result<(), String> {
         #[cfg(unix)]
         {
-            self.stream
-                .flush()
-                .map_err(|e| format!("Flush error: {e}"))
+            self.stream.flush().map_err(|e| format!("Flush error: {e}"))
         }
         #[cfg(windows)]
         {

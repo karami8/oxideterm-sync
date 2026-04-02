@@ -194,7 +194,9 @@ pub async fn rag_create_collection(
         updated_at: now,
     };
 
-    store.create_collection(&collection).map_err(|e| e.to_string())?;
+    store
+        .create_collection(&collection)
+        .map_err(|e| e.to_string())?;
     info!("Created RAG collection: {}", id);
 
     Ok(CollectionResponse {
@@ -232,7 +234,9 @@ pub async fn rag_delete_collection(
     store: State<'_, Arc<RagStore>>,
     collection_id: String,
 ) -> Result<(), String> {
-    store.delete_collection(&collection_id).map_err(|e| e.to_string())?;
+    store
+        .delete_collection(&collection_id)
+        .map_err(|e| e.to_string())?;
     // Rebuild global BM25 index to remove stale postings
     bm25::reindex_all(&store, None, None).map_err(|e| e.to_string())?;
     info!("Deleted RAG collection: {}", collection_id);
@@ -314,12 +318,19 @@ pub async fn rag_add_document(
     };
 
     // Store document + chunks + raw content
-    store.add_document(&metadata, &chunks, Some(&request.content)).map_err(|e| e.to_string())?;
+    store
+        .add_document(&metadata, &chunks, Some(&request.content))
+        .map_err(|e| e.to_string())?;
 
     // Index chunks for BM25 (context-aware: includes context_prefix)
     for chunk in &chunks {
-        bm25::index_chunk(&store, &chunk.id, &chunk.content, chunk.context_prefix.as_deref())
-            .map_err(|e| e.to_string())?;
+        bm25::index_chunk(
+            &store,
+            &chunk.id,
+            &chunk.content,
+            chunk.context_prefix.as_deref(),
+        )
+        .map_err(|e| e.to_string())?;
     }
 
     let format_str = match format {
@@ -399,7 +410,10 @@ pub async fn rag_list_documents(
             });
         }
     }
-    Ok(PaginatedDocuments { documents: docs, total })
+    Ok(PaginatedDocuments {
+        documents: docs,
+        total,
+    })
 }
 
 #[tauri::command]
@@ -536,7 +550,10 @@ pub async fn rag_reindex_collection(
     let mut on_progress = |current: usize, total: usize| {
         // Emit at most every 10 chunks to avoid flooding
         if current == total || current - last_emitted >= 10 {
-            let _ = app_clone.emit("rag_reindex_progress", RagReindexProgress { current, total });
+            let _ = app_clone.emit(
+                "rag_reindex_progress",
+                RagReindexProgress { current, total },
+            );
             last_emitted = current;
         }
     };
@@ -545,7 +562,10 @@ pub async fn rag_reindex_collection(
     REINDEX_RUNNING.store(false, Ordering::SeqCst);
 
     let count = result.map_err(|e| e.to_string())?;
-    info!("Re-indexed BM25 (triggered by collection {}): {} chunks", collection_id, count);
+    info!(
+        "Re-indexed BM25 (triggered by collection {}): {} chunks",
+        collection_id, count
+    );
     Ok(count)
 }
 
@@ -604,8 +624,7 @@ pub async fn rag_update_document(
         .map_err(|e| e.to_string())?;
 
     // Rebuild global BM25 index to purge stale postings from old chunks
-    bm25::reindex_all(&store, None, None)
-        .map_err(|e| e.to_string())?;
+    bm25::reindex_all(&store, None, None).map_err(|e| e.to_string())?;
 
     let format_str = match updated.format {
         DocFormat::Markdown => "markdown",
@@ -677,7 +696,10 @@ pub async fn rag_create_blank_document(
         DocFormat::PlainText => "plaintext",
     };
 
-    info!("Created blank document '{}' in {}", request.title, request.collection_id);
+    info!(
+        "Created blank document '{}' in {}",
+        request.title, request.collection_id
+    );
 
     Ok(DocumentResponse {
         id: doc_id,
@@ -746,14 +768,15 @@ pub async fn rag_open_document_external(
         .open_path(&path_str, None::<&str>)
         .map_err(|e| e.to_string())?;
 
-    info!("Opened document '{}' externally at {:?}", meta.title, file_path);
+    info!(
+        "Opened document '{}' externally at {:?}",
+        meta.title, file_path
+    );
     Ok(path_str)
 }
 
 #[tauri::command]
-pub async fn rag_rebuild_hnsw_index(
-    store: State<'_, Arc<RagStore>>,
-) -> Result<String, String> {
+pub async fn rag_rebuild_hnsw_index(store: State<'_, Arc<RagStore>>) -> Result<String, String> {
     let store_clone = store.inner().clone();
     tokio::task::spawn_blocking(move || store_clone.rebuild_hnsw_index())
         .await
@@ -762,7 +785,10 @@ pub async fn rag_rebuild_hnsw_index(
 
     let msg = if let Ok(guard) = store.hnsw_index().read() {
         match &*guard {
-            Some(idx) => format!("HNSW index rebuilt: {} points, {} dimensions", idx.meta.point_count, idx.meta.dimensions),
+            Some(idx) => format!(
+                "HNSW index rebuilt: {} points, {} dimensions",
+                idx.meta.point_count, idx.meta.dimensions
+            ),
             None => "HNSW index cleared (no embeddings)".to_string(),
         }
     } else {

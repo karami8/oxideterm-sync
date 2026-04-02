@@ -175,13 +175,18 @@ impl LocalTerminalRegistry {
     /// Detach a session (send to background).
     /// PTY stays alive; output continues to be buffered in ScrollBuffer.
     /// A TTL timer starts — idle sessions expire after 30 min, active after 4 h.
-    pub async fn detach_session(&self, session_id: &str) -> Result<BackgroundSessionInfo, SessionError> {
+    pub async fn detach_session(
+        &self,
+        session_id: &str,
+    ) -> Result<BackgroundSessionInfo, SessionError> {
         let sessions = self.sessions.read().await;
 
         // Check background limit
         let bg_count = sessions.values().filter(|s| s.is_detached()).count();
         if bg_count >= MAX_BACKGROUND_SESSIONS {
-            return Err(SessionError::BackgroundLimitReached(MAX_BACKGROUND_SESSIONS));
+            return Err(SessionError::BackgroundLimitReached(
+                MAX_BACKGROUND_SESSIONS,
+            ));
         }
 
         let session = sessions
@@ -390,7 +395,10 @@ impl LocalTerminalRegistry {
                         }
                     }
                     SessionCommand::Resize(_c, _r) => {
-                        tracing::debug!("CLI attach adapter: resize ignored for mirror local {}", sid);
+                        tracing::debug!(
+                            "CLI attach adapter: resize ignored for mirror local {}",
+                            sid
+                        );
                     }
                     SessionCommand::Close => {
                         tracing::debug!("CLI adapter: close command for {} (ignored)", sid);

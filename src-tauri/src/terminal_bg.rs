@@ -61,8 +61,8 @@ pub async fn upload_terminal_background(
     }
 
     // Check file size before reading
-    let metadata = std::fs::metadata(source)
-        .map_err(|e| format!("Cannot read file metadata: {}", e))?;
+    let metadata =
+        std::fs::metadata(source).map_err(|e| format!("Cannot read file metadata: {}", e))?;
     let original_size = metadata.len();
     if original_size > MAX_INPUT_SIZE {
         return Err(format!(
@@ -83,7 +83,12 @@ pub async fn upload_terminal_background(
     // Validate MIME type
     match mime {
         "image/png" | "image/jpeg" | "image/webp" | "image/gif" => {}
-        _ => return Err(format!("Unsupported image type: {}. Use PNG, JPEG, WebP, or GIF.", mime)),
+        _ => {
+            return Err(format!(
+                "Unsupported image type: {}. Use PNG, JPEG, WebP, or GIF.",
+                mime
+            ))
+        }
     }
 
     // Ensure backgrounds directory exists
@@ -103,8 +108,7 @@ pub async fn upload_terminal_background(
 
     let dest_path = if is_animated {
         let dest = bg_dir.join(format!("bg_{}.gif", ts));
-        std::fs::copy(source, &dest)
-            .map_err(|e| format!("Failed to copy GIF: {}", e))?;
+        std::fs::copy(source, &dest).map_err(|e| format!("Failed to copy GIF: {}", e))?;
         dest
     } else {
         // Process in blocking context to avoid starving the async runtime
@@ -122,9 +126,7 @@ pub async fn upload_terminal_background(
         .allow_directory(&bg_dir, false)
         .map_err(|e| format!("Failed to grant backgrounds dir: {}", e))?;
 
-    let stored_size = std::fs::metadata(&dest_path)
-        .map(|m| m.len())
-        .unwrap_or(0);
+    let stored_size = std::fs::metadata(&dest_path).map(|m| m.len()).unwrap_or(0);
 
     let path_str = dest_path.to_string_lossy().to_string();
 
@@ -156,12 +158,14 @@ pub async fn upload_terminal_background(
 ///
 /// Uses a timestamp-based filename (`bg_{unix_secs}.{ext}`) so that WebView's
 /// HTTP cache is naturally busted every time the user changes their wallpaper.
-fn process_static_image(source: &std::path::Path, bg_dir: &std::path::Path) -> Result<PathBuf, String> {
+fn process_static_image(
+    source: &std::path::Path,
+    bg_dir: &std::path::Path,
+) -> Result<PathBuf, String> {
     use image::GenericImageView;
     use std::io::Cursor;
 
-    let img = image::open(source)
-        .map_err(|e| format!("Failed to decode image: {}", e))?;
+    let img = image::open(source).map_err(|e| format!("Failed to decode image: {}", e))?;
 
     let (w, h) = img.dimensions();
 
@@ -169,9 +173,15 @@ fn process_static_image(source: &std::path::Path, bg_dir: &std::path::Path) -> R
     let img = if w > MAX_DIMENSION || h > MAX_DIMENSION {
         tracing::info!(
             "Resizing background image from {}x{} to fit within {}px",
-            w, h, MAX_DIMENSION
+            w,
+            h,
+            MAX_DIMENSION
         );
-        img.resize(MAX_DIMENSION, MAX_DIMENSION, image::imageops::FilterType::Lanczos3)
+        img.resize(
+            MAX_DIMENSION,
+            MAX_DIMENSION,
+            image::imageops::FilterType::Lanczos3,
+        )
     } else {
         img
     };
@@ -208,8 +218,7 @@ fn process_static_image(source: &std::path::Path, bg_dir: &std::path::Path) -> R
     };
 
     let dest = bg_dir.join(format!("bg_{}.{}", ts, ext));
-    std::fs::write(&dest, &buf)
-        .map_err(|e| format!("Failed to write output file: {}", e))?;
+    std::fs::write(&dest, &buf).map_err(|e| format!("Failed to write output file: {}", e))?;
 
     Ok(dest)
 }
@@ -248,21 +257,23 @@ pub async fn list_terminal_backgrounds(app: tauri::AppHandle) -> Result<Vec<Stri
     // Sort newest first
     files.sort_by(|a, b| b.1.cmp(&a.1));
 
-    Ok(files.into_iter().map(|(p, _)| p.to_string_lossy().to_string()).collect())
+    Ok(files
+        .into_iter()
+        .map(|(p, _)| p.to_string_lossy().to_string())
+        .collect())
 }
 
 /// Delete a specific background image from the gallery.
 #[tauri::command]
-pub async fn delete_terminal_background(
-    app: tauri::AppHandle,
-    path: String,
-) -> Result<(), String> {
+pub async fn delete_terminal_background(app: tauri::AppHandle, path: String) -> Result<(), String> {
     // Canonicalize both paths to prevent directory-traversal attacks
     let bg_dir = get_backgrounds_dir(&app)?;
-    let canonical_dir = bg_dir.canonicalize()
+    let canonical_dir = bg_dir
+        .canonicalize()
         .map_err(|e| format!("Cannot resolve backgrounds dir: {}", e))?;
     let file = std::path::Path::new(&path);
-    let canonical_file = file.canonicalize()
+    let canonical_file = file
+        .canonicalize()
         .map_err(|e| format!("Cannot resolve target path: {}", e))?;
 
     if !canonical_file.starts_with(&canonical_dir) {
@@ -295,7 +306,11 @@ pub async fn clear_terminal_background(app: tauri::AppHandle) -> Result<(), Stri
             }
         }
         if !failures.is_empty() {
-            return Err(format!("Failed to remove {} file(s): {}", failures.len(), failures.join("; ")));
+            return Err(format!(
+                "Failed to remove {} file(s): {}",
+                failures.len(),
+                failures.join("; ")
+            ));
         }
     }
 
@@ -345,5 +360,8 @@ pub async fn init_terminal_background(app: tauri::AppHandle) -> Result<Vec<Strin
     }
 
     files.sort_by(|a, b| b.1.cmp(&a.1));
-    Ok(files.into_iter().map(|(p, _)| p.to_string_lossy().to_string()).collect())
+    Ok(files
+        .into_iter()
+        .map(|(p, _)| p.to_string_lossy().to_string())
+        .collect())
 }

@@ -178,8 +178,7 @@ pub async fn compress_files(files: Vec<String>, archive_path: String) -> Result<
                 .map_err(|e| format!("Failed to add file: {}", e))?;
 
             let mut f = File::open(path).map_err(|e| format!("Failed to open file: {}", e))?;
-            std::io::copy(&mut f, &mut zip)
-                .map_err(|e| format!("Failed to write file: {}", e))?;
+            std::io::copy(&mut f, &mut zip).map_err(|e| format!("Failed to write file: {}", e))?;
         }
     }
 

@@ -79,11 +79,12 @@ async fn status(app: &tauri::AppHandle) -> Result<Value, (i32, String)> {
     };
 
     #[cfg(feature = "local-terminal")]
-    let local_count = if let Some(s) = app.try_state::<Arc<crate::commands::local::LocalTerminalState>>() {
-        s.registry.list_sessions().await.len()
-    } else {
-        0
-    };
+    let local_count =
+        if let Some(s) = app.try_state::<Arc<crate::commands::local::LocalTerminalState>>() {
+            s.registry.list_sessions().await.len()
+        } else {
+            0
+        };
     #[cfg(not(feature = "local-terminal"))]
     let local_count = 0usize;
 
@@ -111,9 +112,7 @@ async fn list_saved_connections(app: &tauri::AppHandle) -> Result<Value, (i32, S
         .map(|conn| {
             let (auth_type, key_path) = match &conn.auth {
                 crate::config::SavedAuth::Password { .. } => ("password", None),
-                crate::config::SavedAuth::Key { key_path, .. } => {
-                    ("key", Some(key_path.as_str()))
-                }
+                crate::config::SavedAuth::Key { key_path, .. } => ("key", Some(key_path.as_str())),
                 crate::config::SavedAuth::Certificate { key_path, .. } => {
                     ("certificate", Some(key_path.as_str()))
                 }
@@ -137,12 +136,10 @@ async fn list_saved_connections(app: &tauri::AppHandle) -> Result<Value, (i32, S
 
 /// List active SSH sessions.
 async fn list_sessions(app: &tauri::AppHandle) -> Result<Value, (i32, String)> {
-    let registry = app
-        .try_state::<Arc<SessionRegistry>>()
-        .ok_or((
-            protocol::ERR_INTERNAL,
-            "Session registry not initialized".to_string(),
-        ))?;
+    let registry = app.try_state::<Arc<SessionRegistry>>().ok_or((
+        protocol::ERR_INTERNAL,
+        "Session registry not initialized".to_string(),
+    ))?;
 
     let sessions: Vec<Value> = registry
         .list()
@@ -201,12 +198,10 @@ async fn list_local_terminals(app: &tauri::AppHandle) -> Result<Value, (i32, Str
 
 /// List active SSH connections in the pool.
 async fn list_active_connections(app: &tauri::AppHandle) -> Result<Value, (i32, String)> {
-    let registry = app
-        .try_state::<Arc<SshConnectionRegistry>>()
-        .ok_or((
-            protocol::ERR_INTERNAL,
-            "SSH connection registry not initialized".to_string(),
-        ))?;
+    let registry = app.try_state::<Arc<SshConnectionRegistry>>().ok_or((
+        protocol::ERR_INTERNAL,
+        "SSH connection registry not initialized".to_string(),
+    ))?;
 
     let connections = registry.inner().list_connections().await;
     let result: Vec<Value> = connections
@@ -219,19 +214,15 @@ async fn list_active_connections(app: &tauri::AppHandle) -> Result<Value, (i32, 
 
 /// List port forwards, optionally filtered by session_id.
 async fn list_forwards(app: &tauri::AppHandle, params: Value) -> Result<Value, (i32, String)> {
-    let forwarding_registry = app
-        .try_state::<Arc<ForwardingRegistry>>()
-        .ok_or((
-            protocol::ERR_INTERNAL,
-            "Forwarding registry not initialized".to_string(),
-        ))?;
+    let forwarding_registry = app.try_state::<Arc<ForwardingRegistry>>().ok_or((
+        protocol::ERR_INTERNAL,
+        "Forwarding registry not initialized".to_string(),
+    ))?;
 
-    let session_registry = app
-        .try_state::<Arc<SessionRegistry>>()
-        .ok_or((
-            protocol::ERR_INTERNAL,
-            "Session registry not initialized".to_string(),
-        ))?;
+    let session_registry = app.try_state::<Arc<SessionRegistry>>().ok_or((
+        protocol::ERR_INTERNAL,
+        "Session registry not initialized".to_string(),
+    ))?;
 
     let session_filter = params
         .get("session_id")
@@ -241,7 +232,11 @@ async fn list_forwards(app: &tauri::AppHandle, params: Value) -> Result<Value, (
     let session_ids: Vec<String> = if let Some(sid) = session_filter {
         vec![sid]
     } else {
-        session_registry.list().iter().map(|s| s.id.clone()).collect()
+        session_registry
+            .list()
+            .iter()
+            .map(|s| s.id.clone())
+            .collect()
     };
 
     let mut all_forwards = Vec::new();
@@ -269,21 +264,17 @@ async fn list_forwards(app: &tauri::AppHandle, params: Value) -> Result<Value, (
 
 /// Get health status for one or all sessions.
 async fn health(app: &tauri::AppHandle, params: Value) -> Result<Value, (i32, String)> {
-    let health_registry = app
-        .try_state::<HealthRegistry>()
-        .ok_or((
-            protocol::ERR_INTERNAL,
-            "Health registry not initialized".to_string(),
-        ))?;
+    let health_registry = app.try_state::<HealthRegistry>().ok_or((
+        protocol::ERR_INTERNAL,
+        "Health registry not initialized".to_string(),
+    ))?;
 
     if let Some(session_id) = params.get("session_id").and_then(|v| v.as_str()) {
         // Single session health
-        let tracker = health_registry
-            .get(session_id)
-            .ok_or((
-                protocol::ERR_INVALID_PARAMS,
-                format!("No health tracker for session: {session_id}"),
-            ))?;
+        let tracker = health_registry.get(session_id).ok_or((
+            protocol::ERR_INVALID_PARAMS,
+            format!("No health tracker for session: {session_id}"),
+        ))?;
 
         let metrics = tracker.metrics().await;
         let check =
@@ -315,20 +306,15 @@ async fn health(app: &tauri::AppHandle, params: Value) -> Result<Value, (i32, St
 
 /// Disconnect a session by ID or name.
 async fn disconnect(app: &tauri::AppHandle, params: Value) -> Result<Value, (i32, String)> {
-    let target = params
-        .get("target")
-        .and_then(|v| v.as_str())
-        .ok_or((
-            protocol::ERR_INVALID_PARAMS,
-            "Missing required parameter: target".to_string(),
-        ))?;
+    let target = params.get("target").and_then(|v| v.as_str()).ok_or((
+        protocol::ERR_INVALID_PARAMS,
+        "Missing required parameter: target".to_string(),
+    ))?;
 
-    let registry = app
-        .try_state::<Arc<SessionRegistry>>()
-        .ok_or((
-            protocol::ERR_INTERNAL,
-            "Session registry not initialized".to_string(),
-        ))?;
+    let registry = app.try_state::<Arc<SessionRegistry>>().ok_or((
+        protocol::ERR_INTERNAL,
+        "Session registry not initialized".to_string(),
+    ))?;
 
     // Resolve target: try as session ID first, then match by name
     let session_id = {
@@ -426,13 +412,10 @@ async fn config_list(app: &tauri::AppHandle) -> Result<Value, (i32, String)> {
 
 /// Get details of a connection by name (no password/key content exposed).
 async fn config_get(app: &tauri::AppHandle, params: Value) -> Result<Value, (i32, String)> {
-    let name = params
-        .get("name")
-        .and_then(|v| v.as_str())
-        .ok_or((
-            protocol::ERR_INVALID_PARAMS,
-            "Missing required parameter: name".to_string(),
-        ))?;
+    let name = params.get("name").and_then(|v| v.as_str()).ok_or((
+        protocol::ERR_INVALID_PARAMS,
+        "Missing required parameter: name".to_string(),
+    ))?;
 
     let config_state = app
         .try_state::<Arc<ConfigState>>()
@@ -490,13 +473,10 @@ async fn config_get(app: &tauri::AppHandle, params: Value) -> Result<Value, (i32
 
 /// Create a port forward on an active session.
 async fn create_forward(app: &tauri::AppHandle, params: Value) -> Result<Value, (i32, String)> {
-    let session_id = params
-        .get("session_id")
-        .and_then(|v| v.as_str())
-        .ok_or((
-            protocol::ERR_INVALID_PARAMS,
-            "Missing required parameter: session_id".to_string(),
-        ))?;
+    let session_id = params.get("session_id").and_then(|v| v.as_str()).ok_or((
+        protocol::ERR_INVALID_PARAMS,
+        "Missing required parameter: session_id".to_string(),
+    ))?;
 
     let forward_type_str = params
         .get("forward_type")
@@ -509,13 +489,10 @@ async fn create_forward(app: &tauri::AppHandle, params: Value) -> Result<Value, 
         .unwrap_or("127.0.0.1")
         .to_string();
 
-    let bind_port = params
-        .get("bind_port")
-        .and_then(|v| v.as_u64())
-        .ok_or((
-            protocol::ERR_INVALID_PARAMS,
-            "Missing required parameter: bind_port".to_string(),
-        ))? as u16;
+    let bind_port = params.get("bind_port").and_then(|v| v.as_u64()).ok_or((
+        protocol::ERR_INVALID_PARAMS,
+        "Missing required parameter: bind_port".to_string(),
+    ))? as u16;
 
     let target_host = params
         .get("target_host")
@@ -555,20 +532,15 @@ async fn create_forward(app: &tauri::AppHandle, params: Value) -> Result<Value, 
         ));
     }
 
-    let forwarding_registry = app
-        .try_state::<Arc<ForwardingRegistry>>()
-        .ok_or((
-            protocol::ERR_INTERNAL,
-            "Forwarding registry not initialized".to_string(),
-        ))?;
+    let forwarding_registry = app.try_state::<Arc<ForwardingRegistry>>().ok_or((
+        protocol::ERR_INTERNAL,
+        "Forwarding registry not initialized".to_string(),
+    ))?;
 
-    let mgr = forwarding_registry
-        .get(session_id)
-        .await
-        .ok_or((
-            protocol::ERR_NOT_CONNECTED,
-            format!("No forwarding manager for session: {session_id}"),
-        ))?;
+    let mgr = forwarding_registry.get(session_id).await.ok_or((
+        protocol::ERR_NOT_CONNECTED,
+        format!("No forwarding manager for session: {session_id}"),
+    ))?;
 
     let rule = ForwardRule {
         id: uuid::Uuid::new_v4().to_string(),
@@ -616,36 +588,25 @@ async fn create_forward(app: &tauri::AppHandle, params: Value) -> Result<Value, 
 
 /// Delete a port forward from an active session.
 async fn delete_forward(app: &tauri::AppHandle, params: Value) -> Result<Value, (i32, String)> {
-    let session_id = params
-        .get("session_id")
-        .and_then(|v| v.as_str())
-        .ok_or((
-            protocol::ERR_INVALID_PARAMS,
-            "Missing required parameter: session_id".to_string(),
-        ))?;
+    let session_id = params.get("session_id").and_then(|v| v.as_str()).ok_or((
+        protocol::ERR_INVALID_PARAMS,
+        "Missing required parameter: session_id".to_string(),
+    ))?;
 
-    let forward_id = params
-        .get("forward_id")
-        .and_then(|v| v.as_str())
-        .ok_or((
-            protocol::ERR_INVALID_PARAMS,
-            "Missing required parameter: forward_id".to_string(),
-        ))?;
+    let forward_id = params.get("forward_id").and_then(|v| v.as_str()).ok_or((
+        protocol::ERR_INVALID_PARAMS,
+        "Missing required parameter: forward_id".to_string(),
+    ))?;
 
-    let forwarding_registry = app
-        .try_state::<Arc<ForwardingRegistry>>()
-        .ok_or((
-            protocol::ERR_INTERNAL,
-            "Forwarding registry not initialized".to_string(),
-        ))?;
+    let forwarding_registry = app.try_state::<Arc<ForwardingRegistry>>().ok_or((
+        protocol::ERR_INTERNAL,
+        "Forwarding registry not initialized".to_string(),
+    ))?;
 
-    let mgr = forwarding_registry
-        .get(session_id)
-        .await
-        .ok_or((
-            protocol::ERR_NOT_CONNECTED,
-            format!("No forwarding manager for session: {session_id}"),
-        ))?;
+    let mgr = forwarding_registry.get(session_id).await.ok_or((
+        protocol::ERR_NOT_CONNECTED,
+        format!("No forwarding manager for session: {session_id}"),
+    ))?;
 
     match mgr.delete_forward(forward_id).await {
         Ok(()) => {
@@ -668,13 +629,10 @@ async fn delete_forward(app: &tauri::AppHandle, params: Value) -> Result<Value, 
 
 /// Trigger the GUI to connect to a saved connection.
 async fn connect(app: &tauri::AppHandle, params: Value) -> Result<Value, (i32, String)> {
-    let target = params
-        .get("target")
-        .and_then(|v| v.as_str())
-        .ok_or((
-            protocol::ERR_INVALID_PARAMS,
-            "Missing required parameter: target".to_string(),
-        ))?;
+    let target = params.get("target").and_then(|v| v.as_str()).ok_or((
+        protocol::ERR_INVALID_PARAMS,
+        "Missing required parameter: target".to_string(),
+    ))?;
 
     // Resolve target to a saved connection
     let config_state = app
@@ -693,11 +651,14 @@ async fn connect(app: &tauri::AppHandle, params: Value) -> Result<Value, (i32, S
 
     // Emit event for frontend to handle
     use tauri::Emitter;
-    app.emit("cli:connect", json!({
-        "connection_id": conn.id,
-        "name": conn.name,
-        "host": conn.host,
-    }))
+    app.emit(
+        "cli:connect",
+        json!({
+            "connection_id": conn.id,
+            "name": conn.name,
+            "host": conn.host,
+        }),
+    )
     .map_err(|e| (protocol::ERR_INTERNAL, format!("Failed to emit event: {e}")))?;
 
     Ok(json!({
@@ -728,13 +689,10 @@ async fn open_tab(app: &tauri::AppHandle, params: Value) -> Result<Value, (i32, 
 /// 2. Local terminal (by ID or shell name)
 /// 3. Raw target passed to frontend (matches by tab title/id)
 async fn focus_tab(app: &tauri::AppHandle, params: Value) -> Result<Value, (i32, String)> {
-    let target = params
-        .get("target")
-        .and_then(|v| v.as_str())
-        .ok_or((
-            protocol::ERR_INVALID_PARAMS,
-            "Missing required parameter: target".to_string(),
-        ))?;
+    let target = params.get("target").and_then(|v| v.as_str()).ok_or((
+        protocol::ERR_INVALID_PARAMS,
+        "Missing required parameter: target".to_string(),
+    ))?;
 
     use tauri::Emitter;
 
@@ -744,11 +702,7 @@ async fn focus_tab(app: &tauri::AppHandle, params: Value) -> Result<Value, (i32,
         if let Some(session) = sessions
             .iter()
             .find(|s| s.id == target || s.name == target)
-            .or_else(|| {
-                sessions
-                    .iter()
-                    .find(|s| s.id.starts_with(target))
-            })
+            .or_else(|| sessions.iter().find(|s| s.id.starts_with(target)))
         {
             app.emit("cli:focus-tab", json!({ "session_id": session.id }))
                 .map_err(|e| (protocol::ERR_INTERNAL, format!("Failed to emit event: {e}")))?;
@@ -769,16 +723,12 @@ async fn focus_tab(app: &tauri::AppHandle, params: Value) -> Result<Value, (i32,
     #[cfg(feature = "local-terminal")]
     if let Some(state) = app.try_state::<Arc<crate::commands::local::LocalTerminalState>>() {
         let locals = state.registry.list_sessions().await;
-        if let Some(local) = locals
-            .iter()
-            .find(|l| l.id == target)
-            .or_else(|| {
-                let lower = target.to_lowercase();
-                locals
-                    .iter()
-                    .find(|l| l.shell.id.to_lowercase() == lower || l.shell.label.to_lowercase() == lower)
+        if let Some(local) = locals.iter().find(|l| l.id == target).or_else(|| {
+            let lower = target.to_lowercase();
+            locals.iter().find(|l| {
+                l.shell.id.to_lowercase() == lower || l.shell.label.to_lowercase() == lower
             })
-        {
+        }) {
             app.emit("cli:focus-tab", json!({ "session_id": local.id }))
                 .map_err(|e| (protocol::ERR_INTERNAL, format!("Failed to emit event: {e}")))?;
 
@@ -893,28 +843,62 @@ fn estimate_tokens(text: &str) -> usize {
 fn get_model_context_window(model: &str) -> usize {
     let m = model.to_lowercase();
     // OpenAI
-    if m.contains("gpt-4.1") { return 1_048_576; }
-    if m.starts_with("o1") || m.starts_with("o2") || m.starts_with("o3") { return 200_000; }
-    if m.contains("gpt-4o-mini") { return 128_000; }
-    if m.contains("gpt-4-turbo") || m.contains("gpt-4o") { return 128_000; }
-    if m.contains("gpt-4") { return 8_192; }
-    if m.contains("gpt-3.5") { return 4_096; }
+    if m.contains("gpt-4.1") {
+        return 1_048_576;
+    }
+    if m.starts_with("o1") || m.starts_with("o2") || m.starts_with("o3") {
+        return 200_000;
+    }
+    if m.contains("gpt-4o-mini") {
+        return 128_000;
+    }
+    if m.contains("gpt-4-turbo") || m.contains("gpt-4o") {
+        return 128_000;
+    }
+    if m.contains("gpt-4") {
+        return 8_192;
+    }
+    if m.contains("gpt-3.5") {
+        return 4_096;
+    }
     // Anthropic
-    if m.contains("claude") { return 200_000; }
+    if m.contains("claude") {
+        return 200_000;
+    }
     // Google
-    if m.contains("gemini-2") || m.contains("gemini-1.5") { return 1_048_576; }
-    if m.contains("gemini") { return 128_000; }
+    if m.contains("gemini-2") || m.contains("gemini-1.5") {
+        return 1_048_576;
+    }
+    if m.contains("gemini") {
+        return 128_000;
+    }
     // Meta
-    if m.contains("llama-4") { return 1_048_576; }
-    if m.contains("llama-3.1") || m.contains("llama-3.2") || m.contains("llama-3.3") { return 128_000; }
-    if m.contains("llama") { return 8_192; }
+    if m.contains("llama-4") {
+        return 1_048_576;
+    }
+    if m.contains("llama-3.1") || m.contains("llama-3.2") || m.contains("llama-3.3") {
+        return 128_000;
+    }
+    if m.contains("llama") {
+        return 8_192;
+    }
     // Others
-    if m.contains("qwen") { return 128_000; }
-    if m.contains("deepseek") { return 128_000; }
-    if m.contains("mistral-large") || m.contains("mistral-medium") { return 128_000; }
-    if m.contains("mistral") { return 32_000; }
+    if m.contains("qwen") {
+        return 128_000;
+    }
+    if m.contains("deepseek") {
+        return 128_000;
+    }
+    if m.contains("mistral-large") || m.contains("mistral-medium") {
+        return 128_000;
+    }
+    if m.contains("mistral") {
+        return 32_000;
+    }
     // Moonshot (common for this user)
-    if m.contains("moonshot") { return 128_000; }
+    if m.contains("moonshot") {
+        return 128_000;
+    }
     DEFAULT_CONTEXT_WINDOW
 }
 
@@ -931,7 +915,7 @@ fn trim_history_to_budget(history: &[Value], model: &str) -> Vec<Value> {
     // Budget for history = context_window × HISTORY_BUDGET_RATIO,
     // minus a reserve for system prompt (~200 tokens) and response (~4096 tokens)
     let budget = ((context_window as f64 * HISTORY_BUDGET_RATIO) as usize)
-        .saturating_sub(200)  // system prompt reserve
+        .saturating_sub(200) // system prompt reserve
         .saturating_sub(4096); // response reserve
 
     let mut total_tokens = 0usize;
@@ -1048,9 +1032,13 @@ async fn ask<W: AsyncWriteExt + Unpin>(
         ));
     }
 
-    let (provider_type, base_url, api_key, model) =
-        resolve_ai_provider(app, &config_state, provider_override.as_deref(), model_override.as_deref())
-            .await?;
+    let (provider_type, base_url, api_key, model) = resolve_ai_provider(
+        app,
+        &config_state,
+        provider_override.as_deref(),
+        model_override.as_deref(),
+    )
+    .await?;
 
     // Optionally get terminal buffer as context
     let terminal_context = if let Some(sid) = &session_id {
@@ -1090,7 +1078,10 @@ async fn ask<W: AsyncWriteExt + Unpin>(
         // Continue existing conversation
         if let Some(ref store) = ai_store {
             let full = store.get_conversation(cid).map_err(|e| {
-                (protocol::ERR_INVALID_PARAMS, format!("Conversation not found: {e}"))
+                (
+                    protocol::ERR_INVALID_PARAMS,
+                    format!("Conversation not found: {e}"),
+                )
             })?;
             let history: Vec<Value> = full
                 .messages
@@ -1156,18 +1147,37 @@ async fn ask<W: AsyncWriteExt + Unpin>(
     let client = reqwest::Client::builder()
         .timeout(AI_REQUEST_TIMEOUT)
         .build()
-        .map_err(|e| (protocol::ERR_INTERNAL, format!("Failed to create HTTP client: {e}")))?;
+        .map_err(|e| {
+            (
+                protocol::ERR_INTERNAL,
+                format!("Failed to create HTTP client: {e}"),
+            )
+        })?;
 
     let result = match provider_type.as_str() {
         "anthropic" => {
             call_anthropic(
-                &client, &base_url, &api_key, &model, &system_prompt, &messages, stream, writer,
+                &client,
+                &base_url,
+                &api_key,
+                &model,
+                &system_prompt,
+                &messages,
+                stream,
+                writer,
             )
             .await
         }
         _ => {
             call_openai_compatible(
-                &client, &base_url, &api_key, &model, &system_prompt, &messages, stream, writer,
+                &client,
+                &base_url,
+                &api_key,
+                &model,
+                &system_prompt,
+                &messages,
+                stream,
+                writer,
             )
             .await
         }
@@ -1221,7 +1231,10 @@ async fn resolve_ai_provider(
 
     if let Some(provider_type) = provider_override {
         // Try synced providers first (matches by type)
-        if let Some(p) = synced_providers.iter().find(|p| p.provider_type == provider_type && p.enabled) {
+        if let Some(p) = synced_providers
+            .iter()
+            .find(|p| p.provider_type == provider_type && p.enabled)
+        {
             if let Ok(key) = get_provider_api_key(app, config_state, &p.id).await {
                 let model = model_override.unwrap_or(&p.default_model).to_string();
                 return Ok((p.provider_type.clone(), p.base_url.clone(), key, model));
@@ -1237,9 +1250,7 @@ async fn resolve_ai_provider(
             ))?;
 
         let api_key = get_provider_api_key(app, config_state, builtin.keychain_id).await?;
-        let model = model_override
-            .unwrap_or(builtin.default_model)
-            .to_string();
+        let model = model_override.unwrap_or(builtin.default_model).to_string();
 
         return Ok((
             provider_type.to_string(),
@@ -1251,7 +1262,10 @@ async fn resolve_ai_provider(
 
     // Auto-detect: try active provider from frontend settings first
     if let Some(ref active_id) = active_provider_id {
-        if let Some(p) = synced_providers.iter().find(|p| &p.id == active_id && p.enabled) {
+        if let Some(p) = synced_providers
+            .iter()
+            .find(|p| &p.id == active_id && p.enabled)
+        {
             if let Ok(key) = get_provider_api_key(app, config_state, &p.id).await {
                 let model = model_override.unwrap_or(&p.default_model).to_string();
                 return Ok((p.provider_type.clone(), p.base_url.clone(), key, model));
@@ -1261,7 +1275,9 @@ async fn resolve_ai_provider(
 
     // Try all synced providers
     for p in &synced_providers {
-        if !p.enabled { continue; }
+        if !p.enabled {
+            continue;
+        }
         if let Ok(key) = get_provider_api_key(app, config_state, &p.id).await {
             let model = model_override.unwrap_or(&p.default_model).to_string();
             return Ok((p.provider_type.clone(), p.base_url.clone(), key, model));
@@ -1271,9 +1287,7 @@ async fn resolve_ai_provider(
     // Fall back to builtin defaults
     for builtin in BUILTIN_PROVIDERS {
         if let Ok(key) = get_provider_api_key(app, config_state, builtin.keychain_id).await {
-            let model = model_override
-                .unwrap_or(builtin.default_model)
-                .to_string();
+            let model = model_override.unwrap_or(builtin.default_model).to_string();
             return Ok((
                 builtin.provider_type.to_string(),
                 builtin.base_url.to_string(),
@@ -1285,7 +1299,8 @@ async fn resolve_ai_provider(
 
     Err((
         protocol::ERR_INTERNAL,
-        "No AI provider API key found. Configure one in OxideTerm Settings → AI, or use --provider".to_string(),
+        "No AI provider API key found. Configure one in OxideTerm Settings → AI, or use --provider"
+            .to_string(),
     ))
 }
 
@@ -1306,7 +1321,10 @@ async fn get_provider_api_key(
     // Try keychain (skip Touch ID — CLI context cannot display biometric prompt)
     match config_state.ai_keychain.get_without_biometrics(provider_id) {
         Ok(key) => {
-            config_state.api_key_cache.write().insert(provider_id.to_string(), key.clone());
+            config_state
+                .api_key_cache
+                .write()
+                .insert(provider_id.to_string(), key.clone());
             Ok(key)
         }
         Err(_) => Err((
@@ -1321,12 +1339,10 @@ async fn get_terminal_buffer(
     app: &tauri::AppHandle,
     session_id: &str,
 ) -> Result<String, (i32, String)> {
-    let registry = app
-        .try_state::<Arc<SessionRegistry>>()
-        .ok_or((
-            protocol::ERR_INTERNAL,
-            "Session registry not initialized".to_string(),
-        ))?;
+    let registry = app.try_state::<Arc<SessionRegistry>>().ok_or((
+        protocol::ERR_INTERNAL,
+        "Session registry not initialized".to_string(),
+    ))?;
 
     let scroll_buffer = registry
         .with_session(session_id, |entry| entry.scroll_buffer.clone())
@@ -1369,9 +1385,7 @@ async fn call_openai_compatible<W: AsyncWriteExt + Unpin>(
         "stream": stream,
     });
 
-    let mut request = client
-        .post(&url)
-        .header("Content-Type", "application/json");
+    let mut request = client.post(&url).header("Content-Type", "application/json");
 
     if !api_key.is_empty() {
         request = request.header("Authorization", format!("Bearer {api_key}"));
@@ -1386,11 +1400,17 @@ async fn call_openai_compatible<W: AsyncWriteExt + Unpin>(
     let status = response.status().as_u16();
     if status >= 400 {
         let body_text = response.text().await.unwrap_or_default();
-        return Err((protocol::ERR_INTERNAL, format!("AI API error ({status}): {body_text}")));
+        return Err((
+            protocol::ERR_INTERNAL,
+            format!("AI API error ({status}): {body_text}"),
+        ));
     }
 
     if !stream {
-        let body_text = response.text().await.map_err(|e| (protocol::ERR_INTERNAL, e.to_string()))?;
+        let body_text = response
+            .text()
+            .await
+            .map_err(|e| (protocol::ERR_INTERNAL, e.to_string()))?;
         let parsed: Value = serde_json::from_str(&body_text)
             .map_err(|e| (protocol::ERR_INTERNAL, format!("Invalid AI response: {e}")))?;
         let text = parsed
@@ -1459,7 +1479,10 @@ async fn call_anthropic<W: AsyncWriteExt + Unpin>(
     let url = format!("{clean_url}/v1/messages");
 
     if api_key.is_empty() {
-        return Err((protocol::ERR_INTERNAL, "Anthropic API key is empty".to_string()));
+        return Err((
+            protocol::ERR_INTERNAL,
+            "Anthropic API key is empty".to_string(),
+        ));
     }
 
     let body = json!({
@@ -1483,11 +1506,17 @@ async fn call_anthropic<W: AsyncWriteExt + Unpin>(
     let status = response.status().as_u16();
     if status >= 400 {
         let body_text = response.text().await.unwrap_or_default();
-        return Err((protocol::ERR_INTERNAL, format!("AI API error ({status}): {body_text}")));
+        return Err((
+            protocol::ERR_INTERNAL,
+            format!("AI API error ({status}): {body_text}"),
+        ));
     }
 
     if !stream {
-        let body_text = response.text().await.map_err(|e| (protocol::ERR_INTERNAL, e.to_string()))?;
+        let body_text = response
+            .text()
+            .await
+            .map_err(|e| (protocol::ERR_INTERNAL, e.to_string()))?;
         let parsed: Value = serde_json::from_str(&body_text)
             .map_err(|e| (protocol::ERR_INTERNAL, format!("Invalid AI response: {e}")))?;
         let text = parsed
@@ -1524,9 +1553,8 @@ async fn call_anthropic<W: AsyncWriteExt + Unpin>(
                 if let Ok(parsed) = serde_json::from_str::<Value>(data) {
                     // Anthropic content_block_delta
                     if parsed.get("type").and_then(|v| v.as_str()) == Some("content_block_delta") {
-                        if let Some(text_delta) = parsed
-                            .pointer("/delta/text")
-                            .and_then(|v| v.as_str())
+                        if let Some(text_delta) =
+                            parsed.pointer("/delta/text").and_then(|v| v.as_str())
                         {
                             if !text_delta.is_empty() {
                                 full_text.push_str(text_delta);
@@ -1553,10 +1581,10 @@ async fn call_anthropic<W: AsyncWriteExt + Unpin>(
 /// while the GUI continues running independently. Both share the same
 /// underlying data channels (mpsc for input, broadcast for output).
 async fn attach(app: &tauri::AppHandle, params: Value) -> Result<Value, (i32, String)> {
-    let session_id = params
-        .get("session_id")
-        .and_then(|v| v.as_str())
-        .ok_or((protocol::ERR_INVALID_PARAMS, "session_id required".to_string()))?;
+    let session_id = params.get("session_id").and_then(|v| v.as_str()).ok_or((
+        protocol::ERR_INVALID_PARAMS,
+        "session_id required".to_string(),
+    ))?;
 
     // Try SSH session first
     if let Some(session_registry) = app.try_state::<Arc<SessionRegistry>>() {
@@ -1674,18 +1702,12 @@ async fn attach(app: &tauri::AppHandle, params: Value) -> Result<Value, (i32, St
 
 /// List directory contents via SFTP.
 async fn sftp_ls(app: &tauri::AppHandle, params: Value) -> Result<Value, (i32, String)> {
-    let session_id = params
-        .get("session_id")
-        .and_then(|v| v.as_str())
-        .ok_or((
-            protocol::ERR_INVALID_PARAMS,
-            "Missing required parameter: session_id".to_string(),
-        ))?;
+    let session_id = params.get("session_id").and_then(|v| v.as_str()).ok_or((
+        protocol::ERR_INVALID_PARAMS,
+        "Missing required parameter: session_id".to_string(),
+    ))?;
 
-    let path = params
-        .get("path")
-        .and_then(|v| v.as_str())
-        .unwrap_or(".");
+    let path = params.get("path").and_then(|v| v.as_str()).unwrap_or(".");
 
     let router = app
         .try_state::<Arc<NodeRouter>>()
@@ -1735,29 +1757,20 @@ async fn sftp_ls(app: &tauri::AppHandle, params: Value) -> Result<Value, (i32, S
 
 /// Download a file via SFTP.
 async fn sftp_get(app: &tauri::AppHandle, params: Value) -> Result<Value, (i32, String)> {
-    let session_id = params
-        .get("session_id")
-        .and_then(|v| v.as_str())
-        .ok_or((
-            protocol::ERR_INVALID_PARAMS,
-            "Missing required parameter: session_id".to_string(),
-        ))?;
+    let session_id = params.get("session_id").and_then(|v| v.as_str()).ok_or((
+        protocol::ERR_INVALID_PARAMS,
+        "Missing required parameter: session_id".to_string(),
+    ))?;
 
-    let remote_path = params
-        .get("remote_path")
-        .and_then(|v| v.as_str())
-        .ok_or((
-            protocol::ERR_INVALID_PARAMS,
-            "Missing required parameter: remote_path".to_string(),
-        ))?;
+    let remote_path = params.get("remote_path").and_then(|v| v.as_str()).ok_or((
+        protocol::ERR_INVALID_PARAMS,
+        "Missing required parameter: remote_path".to_string(),
+    ))?;
 
-    let local_path = params
-        .get("local_path")
-        .and_then(|v| v.as_str())
-        .ok_or((
-            protocol::ERR_INVALID_PARAMS,
-            "Missing required parameter: local_path".to_string(),
-        ))?;
+    let local_path = params.get("local_path").and_then(|v| v.as_str()).ok_or((
+        protocol::ERR_INVALID_PARAMS,
+        "Missing required parameter: local_path".to_string(),
+    ))?;
 
     // Validate local path: parent directory must exist
     let local = std::path::Path::new(local_path);
@@ -1796,29 +1809,20 @@ async fn sftp_get(app: &tauri::AppHandle, params: Value) -> Result<Value, (i32, 
 
 /// Upload a file via SFTP.
 async fn sftp_put(app: &tauri::AppHandle, params: Value) -> Result<Value, (i32, String)> {
-    let session_id = params
-        .get("session_id")
-        .and_then(|v| v.as_str())
-        .ok_or((
-            protocol::ERR_INVALID_PARAMS,
-            "Missing required parameter: session_id".to_string(),
-        ))?;
+    let session_id = params.get("session_id").and_then(|v| v.as_str()).ok_or((
+        protocol::ERR_INVALID_PARAMS,
+        "Missing required parameter: session_id".to_string(),
+    ))?;
 
-    let local_path = params
-        .get("local_path")
-        .and_then(|v| v.as_str())
-        .ok_or((
-            protocol::ERR_INVALID_PARAMS,
-            "Missing required parameter: local_path".to_string(),
-        ))?;
+    let local_path = params.get("local_path").and_then(|v| v.as_str()).ok_or((
+        protocol::ERR_INVALID_PARAMS,
+        "Missing required parameter: local_path".to_string(),
+    ))?;
 
-    let remote_path = params
-        .get("remote_path")
-        .and_then(|v| v.as_str())
-        .ok_or((
-            protocol::ERR_INVALID_PARAMS,
-            "Missing required parameter: remote_path".to_string(),
-        ))?;
+    let remote_path = params.get("remote_path").and_then(|v| v.as_str()).ok_or((
+        protocol::ERR_INVALID_PARAMS,
+        "Missing required parameter: remote_path".to_string(),
+    ))?;
 
     // Validate local file exists
     if !std::path::Path::new(local_path).exists() {
@@ -1861,9 +1865,12 @@ async fn import_list(app: &tauri::AppHandle) -> Result<Value, (i32, String)> {
         .try_state::<Arc<ConfigState>>()
         .ok_or((protocol::ERR_INTERNAL, "Config not initialized".to_string()))?;
 
-    let hosts = parse_ssh_config(None)
-        .await
-        .map_err(|e| (protocol::ERR_INTERNAL, format!("Failed to parse SSH config: {e}")))?;
+    let hosts = parse_ssh_config(None).await.map_err(|e| {
+        (
+            protocol::ERR_INTERNAL,
+            format!("Failed to parse SSH config: {e}"),
+        )
+    })?;
 
     let existing_names: std::collections::HashSet<String> = {
         let config = config_state.get_config_snapshot();
@@ -1919,9 +1926,12 @@ async fn import_hosts(app: &tauri::AppHandle, params: Value) -> Result<Value, (i
         ));
     }
 
-    let hosts = parse_ssh_config(None)
-        .await
-        .map_err(|e| (protocol::ERR_INTERNAL, format!("Failed to parse SSH config: {e}")))?;
+    let hosts = parse_ssh_config(None).await.map_err(|e| {
+        (
+            protocol::ERR_INTERNAL,
+            format!("Failed to parse SSH config: {e}"),
+        )
+    })?;
 
     let existing_names: std::collections::HashSet<String> = {
         let config = config_state.get_config_snapshot();
@@ -1986,16 +1996,23 @@ async fn import_hosts(app: &tauri::AppHandle, params: Value) -> Result<Value, (i
                     config.groups.push("Imported".to_string());
                 }
             })
-            .map_err(|e| (protocol::ERR_INTERNAL, format!("Failed to update config: {e}")))?;
+            .map_err(|e| {
+                (
+                    protocol::ERR_INTERNAL,
+                    format!("Failed to update config: {e}"),
+                )
+            })?;
 
         imported += 1;
     }
 
     if imported > 0 {
-        config_state
-            .save_config()
-            .await
-            .map_err(|e| (protocol::ERR_INTERNAL, format!("Failed to save config: {e}")))?;
+        config_state.save_config().await.map_err(|e| {
+            (
+                protocol::ERR_INTERNAL,
+                format!("Failed to save config: {e}"),
+            )
+        })?;
     }
 
     Ok(json!({

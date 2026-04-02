@@ -30,9 +30,7 @@ pub async fn list_applications(
     let icon_cache_dir = get_icon_cache_dir(app)?;
     std::fs::create_dir_all(&icon_cache_dir)?;
 
-    let icon_dir_str = icon_cache_dir
-        .to_str()
-        .map(|s| s.to_string());
+    let icon_dir_str = icon_cache_dir.to_str().map(|s| s.to_string());
 
     // Move all blocking FS/subprocess work off the async runtime
     let entries = tokio::task::spawn_blocking(move || {
@@ -123,14 +121,12 @@ fn build_app_entry(app_path: &Path) -> Option<AppEntry> {
     });
 
     // ── Bundle ID from Info.plist ────────────────────────────────────────
-    let bundle_id = plist::Value::from_file(&info_plist)
-        .ok()
-        .and_then(|v| {
-            v.as_dictionary()?
-                .get("CFBundleIdentifier")
-                .and_then(|v| v.as_string())
-                .map(|s| s.to_string())
-        });
+    let bundle_id = plist::Value::from_file(&info_plist).ok().and_then(|v| {
+        v.as_dictionary()?
+            .get("CFBundleIdentifier")
+            .and_then(|v| v.as_string())
+            .map(|s| s.to_string())
+    });
 
     Some(AppEntry {
         name: display_name,

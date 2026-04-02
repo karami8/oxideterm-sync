@@ -27,8 +27,7 @@ use tracing::{debug, info, warn};
 
 use crate::agent::{
     AgentDeployer, AgentRegistry, AgentSession, AgentStatus, DeployError, GitStatusResult,
-    GrepMatch, ListTreeResult, ReadFileResult, SymbolIndexResult, SymbolInfo,
-    WriteFileResult,
+    GrepMatch, ListTreeResult, ReadFileResult, SymbolIndexResult, SymbolInfo, WriteFileResult,
 };
 use crate::router::NodeRouter;
 
@@ -65,13 +64,7 @@ pub async fn node_agent_deploy(
     let sftp = sftp_arc.lock().await;
 
     // Deploy
-    match AgentDeployer::deploy_and_start(
-        &resolved.handle_controller,
-        &sftp,
-        &app_handle,
-    )
-    .await
-    {
+    match AgentDeployer::deploy_and_start(&resolved.handle_controller, &sftp, &app_handle).await {
         Ok((transport, info)) => {
             let status = AgentStatus::Ready {
                 version: info.version.clone(),
@@ -215,10 +208,7 @@ pub async fn node_agent_read_file(
         .get(&resolved.connection_id)
         .ok_or_else(|| "Agent not deployed".to_string())?;
 
-    session
-        .read_file(&path)
-        .await
-        .map_err(|e| e.to_string())
+    session.read_file(&path).await.map_err(|e| e.to_string())
 }
 
 /// Write a file via agent (atomic write with optional optimistic lock).
@@ -292,7 +282,12 @@ pub async fn node_agent_grep(
         .ok_or_else(|| "Agent not deployed".to_string())?;
 
     session
-        .grep(&pattern, &path, case_sensitive.unwrap_or(false), max_results)
+        .grep(
+            &pattern,
+            &path,
+            case_sensitive.unwrap_or(false),
+            max_results,
+        )
         .await
         .map_err(|e| e.to_string())
 }
@@ -314,10 +309,7 @@ pub async fn node_agent_git_status(
         .get(&resolved.connection_id)
         .ok_or_else(|| "Agent not deployed".to_string())?;
 
-    session
-        .git_status(&path)
-        .await
-        .map_err(|e| e.to_string())
+    session.git_status(&path).await.map_err(|e| e.to_string())
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -365,10 +357,7 @@ pub async fn node_agent_watch_stop(
         .get(&resolved.connection_id)
         .ok_or_else(|| "Agent not deployed".to_string())?;
 
-    session
-        .watch_stop(&path)
-        .await
-        .map_err(|e| e.to_string())
+    session.watch_stop(&path).await.map_err(|e| e.to_string())
 }
 
 /// Start relaying watch events from the agent to Tauri frontend events.

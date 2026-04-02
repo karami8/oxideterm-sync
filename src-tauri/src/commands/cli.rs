@@ -86,8 +86,7 @@ pub async fn cli_uninstall() -> Result<String, String> {
         return Ok("CLI is not installed".to_string());
     }
 
-    std::fs::remove_file(&target)
-        .map_err(|e| format!("Failed to remove {:?}: {e}", target))?;
+    std::fs::remove_file(&target).map_err(|e| format!("Failed to remove {:?}: {e}", target))?;
 
     let msg = format!("CLI uninstalled from {}", target.display());
     tracing::info!("{}", msg);
@@ -99,10 +98,10 @@ fn find_bundled_cli(app_handle: &tauri::AppHandle) -> Option<PathBuf> {
     let binary_name = cli_binary_name();
 
     // Try Tauri resource resolver (bundled in cli-bin/ subdirectory)
-    if let Ok(path) = app_handle
-        .path()
-        .resolve(format!("cli-bin/{binary_name}"), tauri::path::BaseDirectory::Resource)
-    {
+    if let Ok(path) = app_handle.path().resolve(
+        format!("cli-bin/{binary_name}"),
+        tauri::path::BaseDirectory::Resource,
+    ) {
         if path.exists() {
             return Some(path);
         }
@@ -146,10 +145,7 @@ fn cli_install_path() -> PathBuf {
     {
         // Use %LOCALAPPDATA%\OxideTerm\bin
         if let Some(local_app_data) = dirs::data_local_dir() {
-            return local_app_data
-                .join("OxideTerm")
-                .join("bin")
-                .join("oxt.exe");
+            return local_app_data.join("OxideTerm").join("bin").join("oxt.exe");
         }
         PathBuf::from("oxt.exe")
     }
