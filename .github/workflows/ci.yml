@@ -1,0 +1,103 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel in-flight runs for the same branch/PR when a newer commit arrives
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── Frontend: TypeScript + i18n ────────────────────────────────────
+  frontend:
+    name: Frontend (TypeScript + i18n)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: TypeScript type check
+        run: npx tsc --noEmit
+
+      - name: i18n completeness check
+        run: node scripts/check-i18n.cjs
+
+  # ── Rust: check + fmt + deny ────────────────────────────────────────
+  rust:
+    name: Rust (check + fmt)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            ./src-tauri -> target
+            ./cli -> target
+          cache-on-failure: false
+
+      - name: Install Linux system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libgtk-3-dev \
+            libwebkit2gtk-4.1-dev \
+            libjavascriptcoregtk-4.1-dev \
+            libsoup-3.0-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libssl-dev \
+            pkg-config \
+            build-essential
+
+      - name: cargo check (src-tauri)
+        run: cd src-tauri && cargo check --all-features
+
+      - name: cargo fmt (src-tauri)
+        run: cd src-tauri && cargo fmt --check
+
+      - name: cargo check (cli)
+        run: cd cli && cargo check
+
+      - name: cargo fmt (cli)
+        run: cd cli && cargo fmt --check
+
+  # ── Security & license audit ────────────────────────────────────────
+  # cargo deny reads the dependency graph only — no compilation, no Linux
+  # graphics libs needed.  Runs in parallel with the rust job.
+  cargo-deny:
+    name: Security & License audit (cargo deny)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: cargo deny (src-tauri)
+        uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          manifest-path: src-tauri/Cargo.toml
+          # advisories = known CVEs, licenses = license policy, bans = duplicate crates
+          command: check advisories licenses bans
+
+      - name: cargo deny (cli)
+        uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          manifest-path: cli/Cargo.toml
+          command: check advisories licenses bans
