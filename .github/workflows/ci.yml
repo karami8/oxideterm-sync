@@ -100,4 +100,5 @@ jobs:
         uses: EmbarkStudios/cargo-deny-action@v2
         with:
           manifest-path: cli/Cargo.toml
+          config: src-tauri/deny.toml
           command: check advisories licenses bans
