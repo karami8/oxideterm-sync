@@ -1884,8 +1884,8 @@ const mockConnect = async (req: ConnectRequest): Promise<SessionInfo> => {
 };
 
 const mockConnections: ConnectionInfo[] = [
-  { id: '1', name: 'Production DB', group: 'Production', host: '10.0.0.1', port: 22, username: 'admin', auth_type: 'key', key_path: '~/.ssh/id_rsa', created_at: '2023-09-01', last_used_at: '2023-10-01', color: null, tags: [] },
-  { id: '2', name: 'Dev Server', group: 'Development', host: 'localhost', port: 2222, username: 'user', auth_type: 'password', key_path: null, created_at: '2023-09-15', last_used_at: '2023-10-02', color: null, tags: [] },
+  { id: '1', name: 'Production DB', group: 'Production', host: '10.0.0.1', port: 22, username: 'admin', auth_type: 'key', key_path: '~/.ssh/id_rsa', cert_path: null, created_at: '2023-09-01', last_used_at: '2023-10-01', color: null, tags: [] },
+  { id: '2', name: 'Dev Server', group: 'Development', host: 'localhost', port: 2222, username: 'user', auth_type: 'password', key_path: null, cert_path: null, created_at: '2023-09-15', last_used_at: '2023-10-02', color: null, tags: [] },
 ];
 
 const mockSshKeys: SshKeyInfo[] = [

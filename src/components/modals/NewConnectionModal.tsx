@@ -297,6 +297,8 @@ export const NewConnectionModal = () => {
           password: (authType === 'password' && savePassword) ? password : undefined,
           key_path: (authType === 'key' || authType === 'default_key' || authType === 'certificate') ? keyPath : undefined,
           cert_path: authType === 'certificate' ? certPath : undefined,
+          tags: [],
+          proxy_chain: proxyServers.length > 0 ? proxyServers : undefined,
         });
       }
       

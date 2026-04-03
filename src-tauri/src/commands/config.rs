@@ -123,8 +123,9 @@ pub struct ConnectionInfo {
     pub host: String,
     pub port: u16,
     pub username: String,
-    pub auth_type: String, // "password", "key", "agent"
+    pub auth_type: String, // "password", "key", "agent", "certificate"
     pub key_path: Option<String>,
+    pub cert_path: Option<String>,
     pub created_at: String,
     pub last_used_at: Option<String>,
     pub color: Option<String>,
@@ -133,28 +134,32 @@ pub struct ConnectionInfo {
     pub proxy_chain: Vec<ProxyHopInfo>,
 }
 
-/// Helper to convert SavedAuth to (auth_type, key_path) tuple
-fn auth_to_info(auth: &SavedAuth) -> (String, Option<String>) {
+/// Helper to convert SavedAuth to (auth_type, key_path, cert_path) tuple
+fn auth_to_info(auth: &SavedAuth) -> (String, Option<String>, Option<String>) {
     match auth {
-        SavedAuth::Password { .. } => ("password".to_string(), None),
-        SavedAuth::Key { key_path, .. } => ("key".to_string(), Some(key_path.clone())),
-        SavedAuth::Certificate { key_path, .. } => {
-            ("certificate".to_string(), Some(key_path.clone()))
-        }
-        SavedAuth::Agent => ("agent".to_string(), None),
+        SavedAuth::Password { .. } => ("password".to_string(), None, None),
+        SavedAuth::Key { key_path, .. } => ("key".to_string(), Some(key_path.clone()), None),
+        SavedAuth::Certificate {
+            key_path, cert_path, ..
+        } => (
+            "certificate".to_string(),
+            Some(key_path.clone()),
+            Some(cert_path.clone()),
+        ),
+        SavedAuth::Agent => ("agent".to_string(), None, None),
     }
 }
 
 impl From<&SavedConnection> for ConnectionInfo {
     fn from(conn: &SavedConnection) -> Self {
-        let (auth_type, key_path) = auth_to_info(&conn.auth);
+        let (auth_type, key_path, cert_path) = auth_to_info(&conn.auth);
 
         // Convert proxy_chain to ProxyHopInfo (without sensitive data)
         let proxy_chain: Vec<ProxyHopInfo> = conn
             .proxy_chain
             .iter()
             .map(|hop| {
-                let (hop_auth_type, hop_key_path) = auth_to_info(&hop.auth);
+                let (hop_auth_type, hop_key_path, _) = auth_to_info(&hop.auth);
                 ProxyHopInfo {
                     host: hop.host.clone(),
                     port: hop.port,
@@ -174,6 +179,7 @@ impl From<&SavedConnection> for ConnectionInfo {
             username: conn.username.clone(),
             auth_type,
             key_path,
+            cert_path,
             created_at: conn.created_at.to_rfc3339(),
             last_used_at: conn.last_used_at.map(|t| t.to_rfc3339()),
             color: conn.color.clone(),
@@ -195,7 +201,9 @@ pub struct SaveConnectionRequest {
     pub auth_type: String,        // "password", "key", "agent"
     pub password: Option<String>, // Only for password auth
     pub key_path: Option<String>, // Only for key auth
+    pub cert_path: Option<String>, // Only for certificate auth
     pub color: Option<String>,
+    #[serde(default)]
     pub tags: Vec<String>,
     pub jump_host: Option<String>, // Legacy jump host for backward compatibility
     pub proxy_chain: Option<Vec<ProxyHopRequest>>, // Multi-hop proxy chain
@@ -302,6 +310,45 @@ pub async fn search_connections(
 pub async fn get_groups(state: State<'_, Arc<ConfigState>>) -> Result<Vec<String>, String> {
     let config = state.config.read();
     Ok(config.groups.clone())
+}
+
+/// Build a SavedAuth from request fields
+fn build_saved_auth(
+    auth_type: &str,
+    password: Option<&str>,
+    key_path: Option<&str>,
+    cert_path: Option<&str>,
+    keychain: &crate::config::keychain::Keychain,
+) -> Result<SavedAuth, String> {
+    match auth_type {
+        "password" => {
+            let pwd = password.ok_or("Password required for password authentication")?;
+            let keychain_id = format!("oxide_conn_{}", uuid::Uuid::new_v4());
+            keychain
+                .store(&keychain_id, pwd)
+                .map_err(|e| e.to_string())?;
+            Ok(SavedAuth::Password { keychain_id })
+        }
+        "certificate" => {
+            let kp = key_path.ok_or("Key path required for certificate authentication")?;
+            let cp = cert_path.ok_or("Certificate path required for certificate authentication")?;
+            Ok(SavedAuth::Certificate {
+                key_path: kp.to_string(),
+                cert_path: cp.to_string(),
+                has_passphrase: false,
+                passphrase_keychain_id: None,
+            })
+        }
+        "key" => {
+            let kp = key_path.ok_or("Key path required for key authentication")?;
+            Ok(SavedAuth::Key {
+                key_path: kp.to_string(),
+                has_passphrase: false,
+                passphrase_keychain_id: None,
+            })
+        }
+        _ => Ok(SavedAuth::Agent),
+    }
 }
 
 /// Save (create or update) a connection
@@ -441,43 +488,25 @@ pub async fn save_connection(
             conn.color = request.color;
             conn.tags = request.tags;
 
-            if let Some(ref password) = request.password {
-                let keychain_id = format!("oxide_conn_{}", uuid::Uuid::new_v4());
-                state
-                    .keychain
-                    .store(&keychain_id, password)
-                    .map_err(|e| e.to_string())?;
-                conn.auth = SavedAuth::Password { keychain_id };
-            } else if let Some(ref key_path) = request.key_path {
-                conn.auth = SavedAuth::Key {
-                    key_path: key_path.clone(),
-                    has_passphrase: false,
-                    passphrase_keychain_id: None,
-                };
-            } else {
-                conn.auth = SavedAuth::Agent;
-            }
+            conn.auth = build_saved_auth(
+                &request.auth_type,
+                request.password.as_deref(),
+                request.key_path.as_deref(),
+                request.cert_path.as_deref(),
+                &state.keychain,
+            )?;
 
             conn.last_used_at = Some(chrono::Utc::now());
 
             conn.clone()
         } else {
-            let auth = if let Some(ref password) = request.password {
-                let keychain_id = format!("oxide_conn_{}", uuid::Uuid::new_v4());
-                state
-                    .keychain
-                    .store(&keychain_id, password)
-                    .map_err(|e| e.to_string())?;
-                SavedAuth::Password { keychain_id }
-            } else if let Some(ref key_path) = request.key_path {
-                SavedAuth::Key {
-                    key_path: key_path.clone(),
-                    has_passphrase: false,
-                    passphrase_keychain_id: None,
-                }
-            } else {
-                SavedAuth::Agent
-            };
+            let auth = build_saved_auth(
+                &request.auth_type,
+                request.password.as_deref(),
+                request.key_path.as_deref(),
+                request.cert_path.as_deref(),
+                &state.keychain,
+            )?;
 
             let mut proxy_chain = Vec::new();
 

@@ -72,6 +72,10 @@ export const BatchActionsMenu = ({
             port: conn.port,
             username: conn.username,
             auth_type: conn.auth_type,
+            key_path: conn.key_path ?? undefined,
+            color: conn.color ?? undefined,
+            tags: conn.tags,
+            proxy_chain: conn.proxy_chain,
           });
         }
       }

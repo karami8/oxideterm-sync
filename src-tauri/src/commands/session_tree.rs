@@ -50,6 +50,7 @@ pub struct ConnectServerRequest {
     pub auth_type: String,
     pub password: Option<String>,
     pub key_path: Option<String>,
+    pub cert_path: Option<String>,
     pub passphrase: Option<String>,
     pub display_name: Option<String>,
 }
@@ -70,6 +71,7 @@ pub struct DrillDownRequest {
     pub auth_type: String,
     pub password: Option<String>,
     pub key_path: Option<String>,
+    pub cert_path: Option<String>,
     pub passphrase: Option<String>,
     pub display_name: Option<String>,
 }
@@ -94,6 +96,7 @@ pub struct HopInfo {
     pub auth_type: String,
     pub password: Option<String>,
     pub key_path: Option<String>,
+    pub cert_path: Option<String>,
     pub passphrase: Option<String>,
 }
 
@@ -115,6 +118,7 @@ fn build_auth(
     auth_type: &str,
     password: Option<String>,
     key_path: Option<String>,
+    cert_path: Option<String>,
     passphrase: Option<String>,
 ) -> Result<AuthMethod, String> {
     match auth_type {
@@ -126,6 +130,15 @@ fn build_auth(
             let path = key_path.ok_or("Key path required for key authentication")?;
             Ok(AuthMethod::Key {
                 key_path: path,
+                passphrase,
+            })
+        }
+        "certificate" => {
+            let kp = key_path.ok_or("Key path required for certificate authentication")?;
+            let cp = cert_path.ok_or("Certificate path required for certificate authentication")?;
+            Ok(AuthMethod::Certificate {
+                key_path: kp,
+                cert_path: cp,
                 passphrase,
             })
         }
@@ -196,6 +209,7 @@ pub async fn add_root_node(
         &request.auth_type,
         request.password,
         request.key_path,
+        request.cert_path,
         request.passphrase,
     )?;
 
@@ -227,6 +241,7 @@ pub async fn tree_drill_down(
         &request.auth_type,
         request.password,
         request.key_path,
+        request.cert_path,
         request.passphrase,
     )?;
 
@@ -283,6 +298,7 @@ pub async fn expand_manual_preset(
             &hop.auth_type,
             hop.password.clone(),
             hop.key_path.clone(),
+            hop.cert_path.clone(),
             hop.passphrase.clone(),
         )?;
         hops.push(build_connection(
@@ -298,6 +314,7 @@ pub async fn expand_manual_preset(
         &request.target.auth_type,
         request.target.password.clone(),
         request.target.key_path.clone(),
+        request.target.cert_path.clone(),
         request.target.passphrase.clone(),
     )?;
     let target = build_connection(
@@ -860,6 +877,7 @@ pub async fn connect_manual_preset(
             &hop.auth_type,
             hop.password.clone(),
             hop.key_path.clone(),
+            hop.cert_path.clone(),
             hop.passphrase.clone(),
         )?;
         hops.push(build_connection(
@@ -875,6 +893,7 @@ pub async fn connect_manual_preset(
         &request.target.auth_type,
         request.target.password.clone(),
         request.target.key_path.clone(),
+        request.target.cert_path.clone(),
         request.target.passphrase.clone(),
     )?;
     let target = build_connection(

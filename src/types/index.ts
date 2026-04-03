@@ -486,8 +486,9 @@ export interface ConnectionInfo {
   host: string;
   port: number;
   username: string;
-  auth_type: 'password' | 'key' | 'agent';
+  auth_type: 'password' | 'key' | 'agent' | 'certificate';
   key_path: string | null;
+  cert_path: string | null;
   created_at: string;
   last_used_at: string | null;
   color: string | null;
@@ -555,7 +556,18 @@ export interface SaveConnectionRequest {
   cert_path?: string;
   color?: string;
   tags?: string[];
-  proxy_chain?: ProxyHopInfo[];
+  proxy_chain?: SaveProxyHopRequest[];
+}
+
+/** Proxy hop request with credentials for save_connection */
+export interface SaveProxyHopRequest {
+  host: string;
+  port: number;
+  username: string;
+  auth_type: string;
+  password?: string;
+  key_path?: string;
+  passphrase?: string;
 }
 
 // Terminal Config
