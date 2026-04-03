@@ -145,6 +145,8 @@ const FileList = ({
   pathInputValue,
   onPathInputChange,
   onPathInputSubmit,
+  onPathEditStart,
+  onPathEditCancel,
   isRemote = false,
   loading = false,
   t
@@ -180,6 +182,8 @@ const FileList = ({
   pathInputValue?: string,
   onPathInputChange?: (v: string) => void,
   onPathInputSubmit?: () => void,
+  onPathEditStart?: () => void,
+  onPathEditCancel?: () => void,
   isRemote?: boolean,
   loading?: boolean,
   t: (key: string, options?: Record<string, unknown>) => string
@@ -340,7 +344,10 @@ const FileList = ({
       )}>
         <span className="font-semibold text-xs text-theme-text-muted uppercase tracking-wider min-w-12">{title}</span>
         {/* Path bar - breadcrumb navigation or editable input */}
-        <div className="flex-1 flex items-center gap-1 bg-theme-bg-sunken border border-theme-border px-2 py-0.5 rounded-sm overflow-hidden">
+        <div
+          className="flex-1 flex items-center gap-1 bg-theme-bg-sunken border border-theme-border px-2 py-0.5 rounded-sm overflow-hidden cursor-text"
+          onDoubleClick={() => { if (!isPathEditable) onPathEditStart?.(); }}
+        >
           {isPathEditable && pathInputValue !== undefined ? (
             <input
               type="text"
@@ -352,10 +359,16 @@ const FileList = ({
                   onPathInputSubmit?.();
                 }
                 if (e.key === 'Escape') {
-                  onPathInputChange?.(path);
+                  e.preventDefault();
+                  onPathEditCancel?.();
                 }
               }}
-              onBlur={() => onPathInputChange?.(path)}
+              onBlur={(e) => {
+                // Don't cancel if clicking the Go button (it would unmount before onClick fires)
+                const related = e.relatedTarget as HTMLElement | null;
+                if (related?.closest('[data-path-go-btn]')) return;
+                onPathEditCancel?.();
+              }}
               className="flex-1 bg-transparent text-theme-text text-xs outline-none"
               placeholder={t('sftp.file_list.path_placeholder')}
               autoFocus
@@ -369,7 +382,7 @@ const FileList = ({
             />
           )}
           {isPathEditable && (
-            <Button size="icon" variant="ghost" className="h-4 w-4 shrink-0" onClick={onPathInputSubmit} title={t('sftp.file_list.go')}>
+            <Button data-path-go-btn size="icon" variant="ghost" className="h-4 w-4 shrink-0" onClick={onPathInputSubmit} title={t('sftp.file_list.go')}>
               <CornerDownLeft className="h-3 w-3" />
             </Button>
           )}
@@ -898,6 +911,45 @@ export const SFTPView = ({ nodeId }: { nodeId: string }) => {
     }
   }, [remotePath, isRemotePathEditing]);
 
+  // Keyboard shortcut: Cmd/Ctrl+L to toggle path editing on active pane
+  const activePaneRef = useRef(activePane);
+  activePaneRef.current = activePane;
+  const localEditingRef = useRef(isLocalPathEditing);
+  localEditingRef.current = isLocalPathEditing;
+  const remoteEditingRef = useRef(isRemotePathEditing);
+  remoteEditingRef.current = isRemotePathEditing;
+  const localPathRef = useRef(localPath);
+  localPathRef.current = localPath;
+  const remotePathRef = useRef(remotePath);
+  remotePathRef.current = remotePath;
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'l') {
+        e.preventDefault();
+        if (activePaneRef.current === 'local') {
+          if (localEditingRef.current) {
+            setLocalPathInput(localPathRef.current);
+            setIsLocalPathEditing(false);
+          } else {
+            setLocalPathInput(localPathRef.current);
+            setIsLocalPathEditing(true);
+          }
+        } else {
+          if (remoteEditingRef.current) {
+            setRemotePathInput(remotePathRef.current);
+            setIsRemotePathEditing(false);
+          } else {
+            setRemotePathInput(remotePathRef.current);
+            setIsRemotePathEditing(true);
+          }
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   // 🔴 路径记忆：卸载前保存当前路径（使用 memoryKey 以支持 nodeId 代理）
   useEffect(() => {
     return () => {
@@ -1208,15 +1260,21 @@ export const SFTPView = ({ nodeId }: { nodeId: string }) => {
 
   // Handle path input submission
   const handleLocalPathSubmit = useCallback(() => {
-    if (localPathInput.trim()) {
-      setLocalPath(localPathInput.trim());
+    const trimmed = localPathInput.trim();
+    if (trimmed) {
+      setLocalPath(trimmed);
     }
     setIsLocalPathEditing(false);
   }, [localPathInput]);
 
   const handleRemotePathSubmit = useCallback(() => {
-    if (remotePathInput.trim()) {
-      setRemotePath(remotePathInput.trim());
+    let trimmed = remotePathInput.trim();
+    if (trimmed) {
+      // Remote paths must be absolute
+      if (!trimmed.startsWith('/')) {
+        trimmed = '/' + trimmed;
+      }
+      setRemotePath(trimmed);
     }
     setIsRemotePathEditing(false);
   }, [remotePathInput]);
@@ -1916,6 +1974,8 @@ export const SFTPView = ({ nodeId }: { nodeId: string }) => {
              pathInputValue={localPathInput}
              onPathInputChange={(v) => { setLocalPathInput(v); setIsLocalPathEditing(true); }}
              onPathInputSubmit={handleLocalPathSubmit}
+             onPathEditStart={() => { setLocalPathInput(localPath); setIsLocalPathEditing(true); }}
+             onPathEditCancel={() => { setLocalPathInput(localPath); setIsLocalPathEditing(false); }}
              t={t}
            />
         </div>
@@ -1953,6 +2013,8 @@ export const SFTPView = ({ nodeId }: { nodeId: string }) => {
              pathInputValue={remotePathInput}
              onPathInputChange={(v) => { setRemotePathInput(v); setIsRemotePathEditing(true); }}
              onPathInputSubmit={handleRemotePathSubmit}
+             onPathEditStart={() => { setRemotePathInput(remotePath); setIsRemotePathEditing(true); }}
+             onPathEditCancel={() => { setRemotePathInput(remotePath); setIsRemotePathEditing(false); }}
              isRemote={true}
              t={t}
            />
