@@ -339,7 +339,7 @@ pub async fn create_terminal(
             request.rows,
             0,
             0,
-            &[],
+            crate::ssh::DEFAULT_PTY_MODES,
         )
         .await
         .map_err(|e| {
@@ -740,7 +740,15 @@ pub async fn recreate_terminal_pty(
 
     // 请求 PTY
     channel
-        .request_pty(false, "xterm-256color", config.cols, config.rows, 0, 0, &[])
+        .request_pty(
+            false,
+            "xterm-256color",
+            config.cols,
+            config.rows,
+            0,
+            0,
+            crate::ssh::DEFAULT_PTY_MODES,
+        )
         .await
         .map_err(|e| format!("Failed to request PTY: {}", e))?;
 

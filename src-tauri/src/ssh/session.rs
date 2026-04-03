@@ -4,13 +4,56 @@
 //! SSH Session management
 
 use russh::client::Handle;
-use russh::ChannelMsg;
+use russh::{ChannelMsg, Pty};
 use tokio::sync::{broadcast, mpsc};
 use tracing::{debug, error, info};
 
 use super::client::ClientHandler;
 use super::error::SshError;
 use super::handle_owner::{spawn_handle_owner_task, HandleController};
+
+/// Standard PTY modes matching OpenSSH client defaults.
+/// Ensures the remote PTY is correctly configured for interactive use
+/// with a modern terminal emulator (xterm-256color).
+pub const DEFAULT_PTY_MODES: &[(Pty, u32)] = &[
+    // Special characters
+    (Pty::VINTR, 0x03),    // Ctrl+C
+    (Pty::VQUIT, 0x1c),    // Ctrl+\
+    (Pty::VERASE, 0x7f),   // DEL (backspace)
+    (Pty::VKILL, 0x15),    // Ctrl+U
+    (Pty::VEOF, 0x04),     // Ctrl+D
+    (Pty::VEOL, 0x00),     // disabled
+    (Pty::VEOL2, 0x00),    // disabled
+    (Pty::VSTART, 0x11),   // Ctrl+Q (XON)
+    (Pty::VSTOP, 0x13),    // Ctrl+S (XOFF)
+    (Pty::VSUSP, 0x1a),    // Ctrl+Z
+    (Pty::VREPRINT, 0x12), // Ctrl+R
+    (Pty::VWERASE, 0x17),  // Ctrl+W
+    (Pty::VLNEXT, 0x16),   // Ctrl+V
+    (Pty::VDISCARD, 0x0f), // Ctrl+O
+    // Input modes
+    (Pty::ICRNL, 1),   // Map CR to NL on input
+    (Pty::IXON, 1),    // Enable XON/XOFF flow control
+    (Pty::IMAXBEL, 1), // Ring bell on input queue full
+    (Pty::IUTF8, 1),   // UTF-8 input
+    // Local modes
+    (Pty::ISIG, 1),    // Enable signals
+    (Pty::ICANON, 1),  // Canonical mode
+    (Pty::ECHO, 1),    // Echo input
+    (Pty::ECHOE, 1),   // Echo erase as backspace
+    (Pty::ECHOK, 1),   // Echo kill
+    (Pty::IEXTEN, 1),  // Extended input processing
+    (Pty::ECHOCTL, 1), // Echo control chars as ^X
+    (Pty::ECHOKE, 1),  // Echo kill with BS-SP-BS
+    // Output modes
+    (Pty::OPOST, 1), // Post-process output
+    (Pty::ONLCR, 1), // Map NL to CR-NL on output
+    // Character size
+    (Pty::CS8, 1), // 8-bit characters
+    // Speeds
+    (Pty::TTY_OP_ISPEED, 38400),
+    (Pty::TTY_OP_OSPEED, 38400),
+];
 
 /// Commands that can be sent to the SSH session
 #[derive(Debug)]
@@ -157,7 +200,15 @@ impl SshSession {
 
         // Request PTY
         channel
-            .request_pty(false, "xterm-256color", self.cols, self.rows, 0, 0, &[])
+            .request_pty(
+                false,
+                "xterm-256color",
+                self.cols,
+                self.rows,
+                0,
+                0,
+                DEFAULT_PTY_MODES,
+            )
             .await
             .map_err(|e| SshError::ChannelError(format!("PTY request failed: {}", e)))?;
 

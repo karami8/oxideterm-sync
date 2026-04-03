@@ -44,4 +44,6 @@ pub use preflight::{
     accept_host_key, check_host_key, get_host_key_cache, HostKeyCache, HostKeyStatus,
 };
 pub use proxy::{connect_via_proxy, connect_via_single_hop, ProxyChain, ProxyConnection, ProxyHop};
-pub use session::{ExtendedSessionHandle, SessionCommand, SessionHandle, SshSession};
+pub use session::{
+    ExtendedSessionHandle, SessionCommand, SessionHandle, SshSession, DEFAULT_PTY_MODES,
+};
