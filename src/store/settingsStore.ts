@@ -889,12 +889,12 @@ export const useSettingsStore = create<SettingsStore>()(
 
         // Sync to backend for transfer manager settings
         if (key === 'maxConcurrentTransfers' || key === 'speedLimitEnabled' || key === 'speedLimitKBps') {
-          const sftp = newSettings.sftp!;
           // Dynamically import api to avoid circular dependencies
           import('../lib/api').then(({ api }) => {
+            const latestSftp = get().settings.sftp || defaultSftpSettings;
             api.sftpUpdateSettings(
-              sftp.maxConcurrentTransfers,
-              sftp.speedLimitEnabled ? sftp.speedLimitKBps : 0
+              latestSftp.maxConcurrentTransfers,
+              latestSftp.speedLimitEnabled ? latestSftp.speedLimitKBps : 0
             ).catch((err) => console.error('Failed to sync SFTP settings to backend:', err));
           });
         }

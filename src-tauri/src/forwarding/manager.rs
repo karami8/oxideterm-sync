@@ -875,6 +875,12 @@ impl ForwardingManager {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tokio::sync::mpsc;
+
+    fn create_test_manager() -> ForwardingManager {
+        let (tx, _rx) = mpsc::channel(1);
+        ForwardingManager::new(HandleController::new(tx), "session-test")
+    }
 
     #[test]
     fn test_forward_rule_local() {
@@ -897,5 +903,86 @@ mod tests {
     fn test_forward_rule_custom_id() {
         let rule = ForwardRule::local("127.0.0.1", 8888, "localhost", 8888).with_id("my-jupyter");
         assert_eq!(rule.id, "my-jupyter");
+    }
+
+    #[test]
+    fn test_forward_rule_dynamic_defaults() {
+        let rule = ForwardRule::dynamic("127.0.0.1", 1080);
+        assert_eq!(rule.forward_type, ForwardType::Dynamic);
+        assert_eq!(rule.bind_port, 1080);
+        assert_eq!(rule.target_host, "");
+        assert_eq!(rule.target_port, 0);
+        assert_eq!(rule.description.as_deref(), Some("SOCKS5 Proxy"));
+    }
+
+    #[tokio::test]
+    async fn test_update_forward_mutates_stopped_rule_only() {
+        let manager = create_test_manager();
+        let rule = ForwardRule::local("127.0.0.1", 8080, "localhost", 3000).with_id("rule-1");
+        manager
+            .stopped_forwards
+            .write()
+            .await
+            .insert(rule.id.clone(), rule);
+
+        let updated = manager
+            .update_forward(
+                "rule-1",
+                ForwardRuleUpdate {
+                    bind_port: Some(9090),
+                    description: Some("Updated".into()),
+                    ..Default::default()
+                },
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(updated.bind_port, 9090);
+        assert_eq!(updated.description.as_deref(), Some("Updated"));
+    }
+
+    #[tokio::test]
+    async fn test_list_forwards_includes_stopped_entries() {
+        let manager = create_test_manager();
+        let stopped = ForwardRule::remote("0.0.0.0", 9000, "localhost", 3000)
+            .with_description("API")
+            .with_id("stopped-1");
+        manager
+            .stopped_forwards
+            .write()
+            .await
+            .insert(stopped.id.clone(), stopped.clone());
+
+        let forwards = manager.list_forwards().await;
+
+        assert_eq!(forwards.len(), 1);
+        assert_eq!(forwards[0].id, "stopped-1");
+        assert_eq!(forwards[0].forward_type, ForwardType::Remote);
+    }
+
+    #[tokio::test]
+    async fn test_delete_forward_removes_stopped_rule() {
+        let manager = create_test_manager();
+        let rule = ForwardRule::local("127.0.0.1", 8080, "localhost", 3000).with_id("rule-delete");
+        manager
+            .stopped_forwards
+            .write()
+            .await
+            .insert(rule.id.clone(), rule);
+
+        manager.delete_forward("rule-delete").await.unwrap();
+
+        assert!(manager.stopped_forwards.read().await.is_empty());
+        let err = manager.delete_forward("rule-delete").await.unwrap_err();
+        assert!(err.to_string().contains("Forward not found"));
+    }
+
+    #[tokio::test]
+    async fn test_restart_forward_missing_rule_errors() {
+        let manager = create_test_manager();
+
+        let err = manager.restart_forward("missing-rule").await.unwrap_err();
+
+        assert!(err.to_string().contains("Stopped forward not found"));
     }
 }

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { invoke } from '@tauri-apps/api/core';
 
 const settingsStoreMock = vi.hoisted(() => ({
   state: {
@@ -234,5 +235,54 @@ describe('aiChatStore helpers', () => {
     useAiChatStore.getState().setSessionDisabledTools(['session.run_terminal']);
 
     expect(Array.from(useAiChatStore.getState().getEffectiveDisabledTools())).toEqual(['session.run_terminal']);
+  });
+
+  it('initializes by loading conversation metadata and the first conversation body', async () => {
+    vi.mocked(invoke)
+      .mockResolvedValueOnce({
+        conversations: [
+          {
+            id: 'conv-1',
+            title: 'Loaded conversation',
+            createdAt: 1,
+            updatedAt: 2,
+            messageCount: 1,
+            origin: 'sidebar',
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        id: 'conv-1',
+        title: 'Loaded conversation',
+        createdAt: 1,
+        updatedAt: 2,
+        sessionId: null,
+        origin: 'sidebar',
+        messages: [
+          {
+            id: 'msg-1',
+            role: 'assistant',
+            content: 'Hello from backend',
+            timestamp: 3,
+            context: null,
+          },
+        ],
+      });
+
+    useAiChatStore.setState({
+      conversations: [],
+      activeConversationId: null,
+      isInitialized: false,
+    });
+
+    await useAiChatStore.getState().init();
+
+    expect(useAiChatStore.getState().isInitialized).toBe(true);
+    expect(useAiChatStore.getState().activeConversationId).toBe('conv-1');
+    expect(useAiChatStore.getState().conversations[0]).toMatchObject({
+      id: 'conv-1',
+      title: 'Loaded conversation',
+      messages: [{ id: 'msg-1', content: 'Hello from backend' }],
+    });
   });
 });

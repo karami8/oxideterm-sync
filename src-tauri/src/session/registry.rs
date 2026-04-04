@@ -160,18 +160,37 @@ impl SessionRegistry {
 
     /// Start connecting a session
     pub fn start_connecting(&self, session_id: &str) -> Result<(), RegistryError> {
-        let mut entry = self
-            .sessions
-            .get_mut(session_id)
-            .ok_or_else(|| RegistryError::SessionNotFound(session_id.to_string()))?;
+        // Serialize capacity check with the state transition so concurrent callers
+        // cannot oversubscribe active sessions between the check and increment.
+        {
+            let _guard = self.create_lock.lock();
 
-        entry
-            .state_machine
-            .start_connecting()
-            .map_err(|e| RegistryError::StateTransition(e.to_string()))?;
+            let mut entry = self
+                .sessions
+                .get_mut(session_id)
+                .ok_or_else(|| RegistryError::SessionNotFound(session_id.to_string()))?;
 
-        // Increment active count when entering active state
-        self.increment_active();
+            if matches!(entry.state_machine.state(), SessionState::Disconnected | SessionState::Error) {
+                let active_count = self.active_count();
+                let max = self.max_sessions();
+
+                if active_count >= max {
+                    return Err(RegistryError::ConnectionLimitReached {
+                        current: active_count,
+                        max,
+                    });
+                }
+            }
+
+            entry
+                .state_machine
+                .start_connecting()
+                .map_err(|e| RegistryError::StateTransition(e.to_string()))?;
+
+            // Increment active count while still holding the gate so the limit
+            // check and state transition remain part of one critical section.
+            self.increment_active();
+        }
 
         debug!("Session {} state -> Connecting", session_id);
         Ok(())
@@ -932,5 +951,63 @@ mod tests {
             .connect_failed(&id2, "test error".to_string())
             .unwrap();
         assert_eq!(registry.active_count(), 0);
+    }
+
+    #[test]
+    fn test_start_connecting_twice_does_not_double_increment_active_count() {
+        let registry = SessionRegistry::with_max_sessions(5);
+        let config = SessionConfig::with_password("example.com", 22, "user", "pass");
+
+        let id = registry.create_session(config).unwrap();
+        registry.start_connecting(&id).unwrap();
+        assert_eq!(registry.active_count(), 1);
+
+        let result = registry.start_connecting(&id);
+        assert!(matches!(result, Err(RegistryError::StateTransition(_))));
+        assert_eq!(registry.active_count(), 1);
+    }
+
+    #[test]
+    fn test_start_connecting_respects_capacity_for_precreated_sessions() {
+        let registry = Arc::new(SessionRegistry::with_max_sessions(1));
+        let barrier = Arc::new(std::sync::Barrier::new(3));
+
+        let first_id = registry
+            .create_session(SessionConfig::with_password("server1.com", 22, "user", "pass"))
+            .unwrap();
+        let second_id = registry
+            .create_session(SessionConfig::with_password("server2.com", 22, "user", "pass"))
+            .unwrap();
+
+        let registry_a = Arc::clone(&registry);
+        let barrier_a = Arc::clone(&barrier);
+        let first = std::thread::spawn(move || {
+            barrier_a.wait();
+            registry_a.start_connecting(&first_id)
+        });
+
+        let registry_b = Arc::clone(&registry);
+        let barrier_b = Arc::clone(&barrier);
+        let second = std::thread::spawn(move || {
+            barrier_b.wait();
+            registry_b.start_connecting(&second_id)
+        });
+
+        barrier.wait();
+
+        let first_result = first.join().unwrap();
+        let second_result = second.join().unwrap();
+        let success_count = [first_result.is_ok(), second_result.is_ok()]
+            .into_iter()
+            .filter(|ok| *ok)
+            .count();
+        let limit_error_count = [first_result, second_result]
+            .into_iter()
+            .filter(|result| matches!(result, Err(RegistryError::ConnectionLimitReached { .. })))
+            .count();
+
+        assert_eq!(success_count, 1);
+        assert_eq!(limit_error_count, 1);
+        assert_eq!(registry.active_count(), 1);
     }
 }
