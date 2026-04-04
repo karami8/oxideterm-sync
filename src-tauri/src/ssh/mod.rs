@@ -15,6 +15,7 @@
 //! - Keyboard-Interactive authentication (2FA) support
 
 mod agent;
+mod auth;
 mod client;
 mod config;
 pub mod connection_registry;
@@ -24,6 +25,8 @@ pub mod keyboard_interactive;
 pub mod known_hosts;
 pub mod preflight;
 mod proxy;
+#[cfg(test)]
+mod proxy_integration_tests;
 mod session;
 
 pub use agent::{is_agent_available, SshAgentClient};

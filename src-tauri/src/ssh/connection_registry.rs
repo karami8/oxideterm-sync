@@ -46,6 +46,10 @@ use tokio::sync::{Mutex, RwLock};
 use tokio::task::JoinHandle;
 use tracing::{debug, error, info, warn};
 
+use super::auth::{
+    authenticate_password, build_client_config, ensure_auth_success,
+    load_certificate_auth_material, load_public_key_auth_material, DEFAULT_AUTH_TIMEOUT_SECS,
+};
 use super::handle_owner::HandleController;
 use super::{AuthMethod as SshAuthMethod, SshClient, SshConfig};
 use crate::session::{AuthMethod, RemoteEnvInfo, SessionConfig};
@@ -1055,14 +1059,7 @@ impl SshConnectionRegistry {
 
         // 创建 SSH 配置（非严格主机密钥检查，因为是隧道连接）
         // Defense-in-depth: native keepalive as safety net (see HEARTBEAT_INTERVAL)
-        let ssh_config = russh::client::Config {
-            inactivity_timeout: None,
-            keepalive_interval: Some(std::time::Duration::from_secs(30)),
-            keepalive_max: 3,
-            window_size: 32 * 1024 * 1024,
-            maximum_packet_size: 256 * 1024,
-            ..Default::default()
-        };
+        let ssh_config = build_client_config();
 
         let handler = super::client::ClientHandler::new(
             target_config.host.clone(),
@@ -1093,107 +1090,44 @@ impl SshConnectionRegistry {
 
         // 5. 认证
         let authenticated = match &target_config.auth {
-            AuthMethod::Password { password } => {
-                let result = tokio::time::timeout(
-                    Duration::from_secs(30),
-                    handle.authenticate_password(&target_config.username, password),
+            AuthMethod::Password { password } => authenticate_password(
+                &mut handle,
+                &target_config.username,
+                password,
+                DEFAULT_AUTH_TIMEOUT_SECS,
+                "Password authentication timed out",
+                "Password authentication timed out (retry)",
+                &format!("Tunnel password auth to {}", target_config.host),
+            )
+            .await
+            .map_err(|e| ConnectionRegistryError::ConnectionFailed(e.to_string()))?,
+            AuthMethod::Key {
+                key_path,
+                passphrase,
+            } => handle
+                .authenticate_publickey(
+                    &target_config.username,
+                    load_public_key_auth_material(key_path, passphrase.as_deref())
+                        .map_err(|e| ConnectionRegistryError::ConnectionFailed(e.to_string()))?,
                 )
                 .await
-                .map_err(|_| {
-                    ConnectionRegistryError::ConnectionFailed(
-                        "Password authentication timed out".to_string(),
-                    )
-                })?
                 .map_err(|e| {
                     ConnectionRegistryError::ConnectionFailed(format!(
                         "Authentication failed: {}",
                         e
                     ))
-                })?;
-
-                if matches!(
-                    result,
-                    russh::client::AuthResult::Failure {
-                        partial_success: false,
-                        ..
-                    }
-                ) {
-                    debug!(
-                        "Tunnel password auth attempt 1 returned {:?}, retrying",
-                        result
-                    );
-                    tokio::time::sleep(Duration::from_millis(500)).await;
-                    tokio::time::timeout(
-                        Duration::from_secs(30),
-                        handle.authenticate_password(&target_config.username, password),
-                    )
-                    .await
-                    .map_err(|_| {
-                        ConnectionRegistryError::ConnectionFailed(
-                            "Password authentication timed out (retry)".to_string(),
-                        )
-                    })?
-                    .map_err(|e| {
-                        ConnectionRegistryError::ConnectionFailed(format!(
-                            "Authentication failed: {}",
-                            e
-                        ))
-                    })?
-                } else {
-                    result
-                }
-            }
-            AuthMethod::Key {
-                key_path,
-                passphrase,
-            } => {
-                let key =
-                    russh::keys::load_secret_key(key_path, passphrase.as_deref()).map_err(|e| {
-                        ConnectionRegistryError::ConnectionFailed(format!(
-                            "Failed to load key: {}",
-                            e
-                        ))
-                    })?;
-
-                let key_with_hash =
-                    russh::keys::key::PrivateKeyWithHashAlg::new(std::sync::Arc::new(key), None);
-
-                handle
-                    .authenticate_publickey(&target_config.username, key_with_hash)
-                    .await
-                    .map_err(|e| {
-                        ConnectionRegistryError::ConnectionFailed(format!(
-                            "Authentication failed: {}",
-                            e
-                        ))
-                    })?
-            }
+                })?,
             AuthMethod::Certificate {
                 key_path,
                 cert_path,
                 passphrase,
             } => {
-                let key =
-                    russh::keys::load_secret_key(key_path, passphrase.as_deref()).map_err(|e| {
-                        ConnectionRegistryError::ConnectionFailed(format!(
-                            "Failed to load key: {}",
-                            e
-                        ))
-                    })?;
-
-                let cert = russh::keys::load_openssh_certificate(cert_path).map_err(|e| {
-                    ConnectionRegistryError::ConnectionFailed(format!(
-                        "Failed to load certificate: {}",
-                        e
-                    ))
-                })?;
+                let (key, cert) =
+                    load_certificate_auth_material(key_path, cert_path, passphrase.as_deref())
+                        .map_err(|e| ConnectionRegistryError::ConnectionFailed(e.to_string()))?;
 
                 handle
-                    .authenticate_openssh_cert(
-                        &target_config.username,
-                        std::sync::Arc::new(key),
-                        cert,
-                    )
+                    .authenticate_openssh_cert(&target_config.username, key, cert)
                     .await
                     .map_err(|e| {
                         ConnectionRegistryError::ConnectionFailed(format!(
@@ -1231,12 +1165,11 @@ impl SshConnectionRegistry {
             }
         };
 
-        if !authenticated.success() {
-            return Err(ConnectionRegistryError::ConnectionFailed(format!(
-                "Authentication to {} rejected",
-                target_config.host
-            )));
-        }
+        ensure_auth_success(
+            &authenticated,
+            format!("Authentication to {} rejected", target_config.host),
+        )
+        .map_err(|e| ConnectionRegistryError::ConnectionFailed(e.to_string()))?;
 
         info!(
             "Tunneled SSH connection {} established via {}",

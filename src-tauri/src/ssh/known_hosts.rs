@@ -74,6 +74,17 @@ impl KnownHostsStore {
 
     /// Create a new known hosts store, loading from default location
     pub fn new() -> Self {
+        #[cfg(test)]
+        let path = std::env::temp_dir().join(format!(
+            "oxideterm-test-known_hosts-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_nanos()
+        ));
+
+        #[cfg(not(test))]
         let path = dirs::home_dir()
             .map(|h| h.join(".ssh").join("known_hosts"))
             .unwrap_or_else(|| PathBuf::from("~/.ssh/known_hosts"));

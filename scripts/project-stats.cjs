@@ -116,6 +116,57 @@ const stats = {
   byDir: {},
 };
 
+// 测试代码统计
+const testStats = {
+  files: 0,
+  lines: { total: 0, code: 0, comment: 0, blank: 0 },
+  byLang: {},
+  rustInlineLines: 0, // Rust #[cfg(test)] inline test blocks
+};
+
+// 判断文件是否为测试文件
+function isTestFile(relPath, name) {
+  // Frontend: src/test/ directory
+  if (relPath.includes("/test/") || relPath.startsWith("test/")) return true;
+  // Files named *.test.* or *_test.* or *_tests.*
+  if (/\.(test|spec)\.[^.]+$/.test(name)) return true;
+  if (/_(tests?)\./.test(name)) return true;
+  // Rust integration test files
+  if (name.endsWith(".rs") && /_tests?\.rs$/.test(name)) return true;
+  return false;
+}
+
+// 计算 Rust 文件中 #[cfg(test)] 块的行数
+function countRustInlineTestLines(buffer) {
+  const text = buffer.toString("utf-8");
+  const lines = text.split(/\r?\n/);
+  let inTestBlock = false;
+  let braceDepth = 0;
+  let testLines = 0;
+
+  for (const line of lines) {
+    if (!inTestBlock) {
+      if (line.trim() === "#[cfg(test)]") {
+        inTestBlock = true;
+        braceDepth = 0;
+        testLines++;
+        continue;
+      }
+    }
+    if (inTestBlock) {
+      testLines++;
+      for (const ch of line) {
+        if (ch === "{") braceDepth++;
+        if (ch === "}") braceDepth--;
+      }
+      if (braceDepth <= 0 && line.includes("}")) {
+        inTestBlock = false;
+      }
+    }
+  }
+  return testLines;
+}
+
 function walk(dir, currentDir = "") {
   const entries = fs.readdirSync(dir, { withFileTypes: true });
 
@@ -179,6 +230,24 @@ function walk(dir, currentDir = "") {
       extStat.lines.code += lines.code;
       extStat.lines.comment += lines.comment;
       extStat.lines.blank += lines.blank;
+
+      // 测试代码统计
+      const relPath = currentDir ? `${currentDir}/${entry.name}` : entry.name;
+      if (isTestFile(relPath, entry.name)) {
+        testStats.files++;
+        testStats.lines.total += lines.total;
+        testStats.lines.code += lines.code;
+        testStats.lines.comment += lines.comment;
+        testStats.lines.blank += lines.blank;
+        const lang = getLangGroup(ext);
+        if (!testStats.byLang[lang]) testStats.byLang[lang] = { files: 0, code: 0 };
+        testStats.byLang[lang].files++;
+        testStats.byLang[lang].code += lines.code;
+      } else if (ext === ".rs") {
+        // Rust inline #[cfg(test)] blocks
+        const inlineTestLines = countRustInlineTestLines(content);
+        testStats.rustInlineLines += inlineTestLines;
+      }
     }
   }
 }
@@ -297,6 +366,32 @@ function printClocReport() {
   console.log(`  ├─ 空行:    ${((total.blank / totalLines) * 100).toFixed(1)}%  (${total.blank.toLocaleString()})`);
   console.log(`  ├─ 注释:    ${((total.comment / totalLines) * 100).toFixed(1)}%  (${total.comment.toLocaleString()})`);
   console.log(`  └─ 代码:    ${((total.code / totalLines) * 100).toFixed(1)}%  (${total.code.toLocaleString()})`);
+
+  // 测试代码统计
+  const testCodeTotal = testStats.lines.code + testStats.rustInlineLines;
+  console.log("\n" + "═".repeat(70));
+  console.log("🧪 测试代码统计");
+  console.log("═".repeat(70));
+  console.log(`测试文件:       ${String(testStats.files).padStart(8)}`);
+  console.log(`测试代码行:     ${testStats.lines.code.toLocaleString().padStart(8)}`);
+  console.log(`Rust inline:    ${testStats.rustInlineLines.toLocaleString().padStart(8)}  (#[cfg(test)] 块)`);
+  console.log(`测试代码合计:   ${testCodeTotal.toLocaleString().padStart(8)}`);
+  if (total.code > 0) {
+    console.log(`测试/代码比:    ${((testCodeTotal / total.code) * 100).toFixed(1).padStart(7)}%`);
+  }
+
+  const sortedTestLangs = Object.entries(testStats.byLang)
+    .sort((a, b) => b[1].code - a[1].code);
+  if (sortedTestLangs.length > 0 || testStats.rustInlineLines > 0) {
+    console.log("\n" + "Language".padEnd(12) + "files".padStart(8) + "code".padStart(12));
+    console.log("-".repeat(32));
+    for (const [lang, d] of sortedTestLangs) {
+      console.log(lang.padEnd(12) + String(d.files).padStart(8) + d.code.toLocaleString().padStart(12));
+    }
+    if (testStats.rustInlineLines > 0) {
+      console.log("Rust(inline)".padEnd(12) + "-".padStart(8) + testStats.rustInlineLines.toLocaleString().padStart(12));
+    }
+  }
 
   // 按目录统计
   if (byDir) {

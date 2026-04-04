@@ -30,14 +30,16 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use russh::client::{self, Handle};
-use russh::keys::key::PrivateKeyWithHashAlg;
 use tracing::{debug, info};
 
+use super::auth::{
+    authenticate_password, build_client_config, ensure_auth_success,
+    load_certificate_auth_material, load_public_key_auth_material, DEFAULT_AUTH_TIMEOUT_SECS,
+};
 use super::client::ClientHandler;
 use super::config::AuthMethod;
 use super::error::SshError;
 
-use crate::path_utils::expand_tilde;
 use crate::session::tree::MAX_CHAIN_DEPTH;
 
 /// Proxy hop configuration
@@ -171,6 +173,18 @@ impl Drop for ProxyConnection {
     }
 }
 
+fn build_proxy_client_handler(host: String, port: u16) -> ClientHandler {
+    #[cfg(test)]
+    {
+        return ClientHandler::with_trust(host, port, false, Some(false));
+    }
+
+    #[cfg(not(test))]
+    {
+        ClientHandler::new(host, port, false)
+    }
+}
+
 /// Connect directly to a single SSH host (internal helper)
 async fn direct_connect(
     hop: &ProxyHop,
@@ -186,17 +200,10 @@ async fn direct_connect(
     info!("Connecting to jump host at {}", addr);
 
     // Create SSH config with keepalive
-    let ssh_config = client::Config {
-        inactivity_timeout: None, // Disabled: app-level heartbeat handles liveness
-        keepalive_interval: Some(Duration::from_secs(30)),
-        keepalive_max: 3,
-        window_size: 32 * 1024 * 1024,
-        maximum_packet_size: 256 * 1024,
-        ..Default::default()
-    };
+    let ssh_config = build_client_config();
 
     // Use non-strict mode for jump hosts (auto-accept unknown)
-    let handler = ClientHandler::new(hop.host.clone(), hop.port, false);
+    let handler = build_proxy_client_handler(hop.host.clone(), hop.port);
 
     // Connect with timeout
     let mut handle = tokio::time::timeout(
@@ -212,75 +219,41 @@ async fn direct_connect(
     // Authenticate
     let authenticated = match &hop.auth {
         AuthMethod::Password { password } => {
-            info!("Authenticating to jump host with password");
-            let result = tokio::time::timeout(
-                Duration::from_secs(30),
-                handle.authenticate_password(&hop.username, password),
+            authenticate_password(
+                &mut handle,
+                &hop.username,
+                password,
+                DEFAULT_AUTH_TIMEOUT_SECS,
+                &format!("Password auth to {} timed out", hop.host),
+                &format!("Password auth to {} timed out (retry)", hop.host),
+                &format!("Jump host password auth to {}", hop.host),
             )
-            .await
-            .map_err(|_| SshError::Timeout(format!("Password auth to {} timed out", hop.host)))?
-            .map_err(|e| SshError::AuthenticationFailed(e.to_string()))?;
-
-            if matches!(
-                result,
-                client::AuthResult::Failure {
-                    partial_success: false,
-                    ..
-                }
-            ) {
-                debug!(
-                    "Jump host password auth attempt 1 returned {:?}, retrying",
-                    result
-                );
-                tokio::time::sleep(Duration::from_millis(500)).await;
-                tokio::time::timeout(
-                    Duration::from_secs(30),
-                    handle.authenticate_password(&hop.username, password),
-                )
-                .await
-                .map_err(|_| {
-                    SshError::Timeout(format!("Password auth to {} timed out (retry)", hop.host))
-                })?
-                .map_err(|e| SshError::AuthenticationFailed(e.to_string()))?
-            } else {
-                result
-            }
+            .await?
         }
         AuthMethod::Key {
             key_path,
             passphrase,
-        } => {
-            info!("Authenticating to jump host with key: {}", key_path);
-            let key = russh::keys::load_secret_key(key_path, passphrase.as_deref())
-                .map_err(|e| SshError::KeyError(e.to_string()))?;
-
-            let key_with_hash = PrivateKeyWithHashAlg::new(Arc::new(key), None);
-
-            handle
-                .authenticate_publickey(&hop.username, key_with_hash)
-                .await
-                .map_err(|e| SshError::AuthenticationFailed(e.to_string()))?
-        }
+        } => handle
+            .authenticate_publickey(
+                &hop.username,
+                load_public_key_auth_material(key_path, passphrase.as_deref())?,
+            )
+            .await
+            .map_err(|e| SshError::AuthenticationFailed(e.to_string()))?,
         AuthMethod::Certificate {
             key_path,
             cert_path,
             passphrase,
         } => {
-            // Expand ~ in paths before loading (russh::keys doesn't handle tilde)
-            let expanded_key_path = expand_tilde(key_path);
-            let expanded_cert_path = expand_tilde(cert_path);
             info!(
                 "Authenticating to jump host with certificate: {}",
-                expanded_cert_path
+                cert_path
             );
-            let key = russh::keys::load_secret_key(&expanded_key_path, passphrase.as_deref())
-                .map_err(|e| SshError::KeyError(e.to_string()))?;
-
-            let cert = russh::keys::load_openssh_certificate(&expanded_cert_path)
-                .map_err(|e| SshError::CertificateParseError(e.to_string()))?;
+            let (key, cert) =
+                load_certificate_auth_material(key_path, cert_path, passphrase.as_deref())?;
 
             handle
-                .authenticate_openssh_cert(&hop.username, Arc::new(key), cert)
+                .authenticate_openssh_cert(&hop.username, key, cert)
                 .await
                 .map_err(|e| SshError::AuthenticationFailed(e.to_string()))?
         }
@@ -300,12 +273,10 @@ async fn direct_connect(
         }
     };
 
-    if !authenticated.success() {
-        return Err(SshError::AuthenticationFailed(format!(
-            "Authentication to {} rejected",
-            hop.host
-        )));
-    }
+    ensure_auth_success(
+        &authenticated,
+        format!("Authentication to {} rejected", hop.host),
+    )?;
 
     info!("Authenticated to jump host {}", hop.host);
     Ok(handle)
@@ -338,17 +309,10 @@ async fn connect_via_stream(
     );
 
     // Create SSH config with keepalive
-    let ssh_config = client::Config {
-        inactivity_timeout: None, // Disabled: app-level heartbeat handles liveness
-        keepalive_interval: Some(Duration::from_secs(30)),
-        keepalive_max: 3,
-        window_size: 32 * 1024 * 1024,
-        maximum_packet_size: 256 * 1024,
-        ..Default::default()
-    };
+    let ssh_config = build_client_config();
 
     // Use non-strict mode for tunnel hosts (auto-accept unknown)
-    let handler = ClientHandler::new(hop.host.clone(), hop.port, false);
+    let handler = build_proxy_client_handler(hop.host.clone(), hop.port);
     let config = Arc::new(ssh_config);
 
     // Use russh::connect_stream() to connect over our custom stream!
@@ -376,75 +340,38 @@ async fn connect_via_stream(
     // Authenticate
     let authenticated = match &hop.auth {
         AuthMethod::Password { password } => {
-            info!("Authenticating via stream with password");
-            let result = tokio::time::timeout(
-                Duration::from_secs(30),
-                handle.authenticate_password(&hop.username, password),
+            authenticate_password(
+                &mut handle,
+                &hop.username,
+                password,
+                DEFAULT_AUTH_TIMEOUT_SECS,
+                &format!("Password auth to {} timed out", hop.host),
+                &format!("Password auth to {} timed out (retry)", hop.host),
+                &format!("Stream password auth to {}", hop.host),
             )
-            .await
-            .map_err(|_| SshError::Timeout(format!("Password auth to {} timed out", hop.host)))?
-            .map_err(|e| SshError::AuthenticationFailed(e.to_string()))?;
-
-            if matches!(
-                result,
-                client::AuthResult::Failure {
-                    partial_success: false,
-                    ..
-                }
-            ) {
-                debug!(
-                    "Stream password auth attempt 1 returned {:?}, retrying",
-                    result
-                );
-                tokio::time::sleep(Duration::from_millis(500)).await;
-                tokio::time::timeout(
-                    Duration::from_secs(30),
-                    handle.authenticate_password(&hop.username, password),
-                )
-                .await
-                .map_err(|_| {
-                    SshError::Timeout(format!("Password auth to {} timed out (retry)", hop.host))
-                })?
-                .map_err(|e| SshError::AuthenticationFailed(e.to_string()))?
-            } else {
-                result
-            }
+            .await?
         }
         AuthMethod::Key {
             key_path,
             passphrase,
-        } => {
-            info!("Authenticating via stream with key: {}", key_path);
-            let key = russh::keys::load_secret_key(key_path, passphrase.as_deref())
-                .map_err(|e| SshError::KeyError(e.to_string()))?;
-
-            let key_with_hash = PrivateKeyWithHashAlg::new(Arc::new(key), None);
-
-            handle
-                .authenticate_publickey(&hop.username, key_with_hash)
-                .await
-                .map_err(|e| SshError::AuthenticationFailed(e.to_string()))?
-        }
+        } => handle
+            .authenticate_publickey(
+                &hop.username,
+                load_public_key_auth_material(key_path, passphrase.as_deref())?,
+            )
+            .await
+            .map_err(|e| SshError::AuthenticationFailed(e.to_string()))?,
         AuthMethod::Certificate {
             key_path,
             cert_path,
             passphrase,
         } => {
-            // Expand ~ in paths before loading (russh::keys doesn't handle tilde)
-            let expanded_key_path = expand_tilde(key_path);
-            let expanded_cert_path = expand_tilde(cert_path);
-            info!(
-                "Authenticating via stream with certificate: {}",
-                expanded_cert_path
-            );
-            let key = russh::keys::load_secret_key(&expanded_key_path, passphrase.as_deref())
-                .map_err(|e| SshError::KeyError(e.to_string()))?;
-
-            let cert = russh::keys::load_openssh_certificate(&expanded_cert_path)
-                .map_err(|e| SshError::CertificateParseError(e.to_string()))?;
+            info!("Authenticating via stream with certificate: {}", cert_path);
+            let (key, cert) =
+                load_certificate_auth_material(key_path, cert_path, passphrase.as_deref())?;
 
             handle
-                .authenticate_openssh_cert(&hop.username, Arc::new(key), cert)
+                .authenticate_openssh_cert(&hop.username, key, cert)
                 .await
                 .map_err(|e| SshError::AuthenticationFailed(e.to_string()))?
         }
@@ -464,12 +391,10 @@ async fn connect_via_stream(
         }
     };
 
-    if !authenticated.success() {
-        return Err(SshError::AuthenticationFailed(format!(
-            "Authentication to {} rejected",
-            hop.host
-        )));
-    }
+    ensure_auth_success(
+        &authenticated,
+        format!("Authentication to {} rejected", hop.host),
+    )?;
 
     info!("Authenticated via stream to {}", hop.host);
     Ok(handle)

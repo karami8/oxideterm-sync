@@ -7,11 +7,14 @@ use std::net::ToSocketAddrs;
 use std::sync::Arc;
 use std::time::Duration;
 
-use russh::keys::key::PrivateKeyWithHashAlg;
 use russh::keys::PublicKey;
 use russh::*;
 use tracing::{debug, info, warn};
 
+use super::auth::{
+    authenticate_password, build_client_config, ensure_auth_success,
+    load_certificate_auth_material, load_public_key_auth_material, DEFAULT_AUTH_TIMEOUT_SECS,
+};
 use super::config::{AuthMethod, SshConfig};
 use super::error::SshError;
 use super::known_hosts::{get_known_hosts, HostKeyVerification};
@@ -44,16 +47,7 @@ impl SshClient {
         // Layer 1 (here): russh native keepalive — safety net in case app heartbeat stalls
         // Layer 2: App-level heartbeat (15s) in connection_registry — provides granular
         //          LinkDown events, smart probe confirmation, and frontend state updates
-        let ssh_config = client::Config {
-            inactivity_timeout: None, // Disabled: app-level heartbeat handles liveness
-            keepalive_interval: Some(Duration::from_secs(30)),
-            keepalive_max: 3,
-            // Increase window/packet sizes for high-throughput SFTP transfers
-            // Default: window_size=2MB, maximum_packet_size=32KB
-            window_size: 32 * 1024 * 1024, // 32 MB — eliminates WINDOW_ADJUST stalls
-            maximum_packet_size: 256 * 1024, // 256 KB — matches SFTP chunk size
-            ..Default::default()
-        };
+        let ssh_config = build_client_config();
 
         // Create SSH client handler with host info for key verification
         let handler = ClientHandler::with_trust(
@@ -77,61 +71,27 @@ impl SshClient {
         // Authenticate
         let authenticated = match &self.config.auth {
             AuthMethod::Password { password } => {
-                let result = tokio::time::timeout(
-                    Duration::from_secs(30),
-                    handle.authenticate_password(&self.config.username, password),
+                authenticate_password(
+                    &mut handle,
+                    &self.config.username,
+                    password,
+                    DEFAULT_AUTH_TIMEOUT_SECS,
+                    "Password authentication timed out",
+                    "Password authentication timed out (retry)",
+                    "Password auth",
                 )
-                .await
-                .map_err(|_| SshError::Timeout("Password authentication timed out".to_string()))?
-                .map_err(|e| SshError::AuthenticationFailed(e.to_string()))?;
-
-                // Retry once on Failure (not partial success) to handle intermittent
-                // server-side rejections, PAM delays, and protocol timing issues.
-                // Do NOT retry partial_success=true (multi-factor auth in progress).
-                if matches!(
-                    result,
-                    client::AuthResult::Failure {
-                        partial_success: false,
-                        ..
-                    }
-                ) {
-                    debug!(
-                        "Password auth attempt 1 returned {:?}, retrying after 500ms",
-                        result
-                    );
-                    tokio::time::sleep(Duration::from_millis(500)).await;
-                    tokio::time::timeout(
-                        Duration::from_secs(30),
-                        handle.authenticate_password(&self.config.username, password),
-                    )
-                    .await
-                    .map_err(|_| {
-                        SshError::Timeout("Password authentication timed out (retry)".to_string())
-                    })?
-                    .map_err(|e| SshError::AuthenticationFailed(e.to_string()))?
-                } else {
-                    result
-                }
+                .await?
             }
             AuthMethod::Key {
                 key_path,
                 passphrase,
-            } => {
-                let key = if let Some(pass) = passphrase {
-                    russh::keys::load_secret_key(key_path, Some(pass))
-                        .map_err(|e| SshError::KeyError(e.to_string()))?
-                } else {
-                    russh::keys::load_secret_key(key_path, None)
-                        .map_err(|e| SshError::KeyError(e.to_string()))?
-                };
-
-                let key_with_hash = PrivateKeyWithHashAlg::new(Arc::new(key), None);
-
-                handle
-                    .authenticate_publickey(&self.config.username, key_with_hash)
-                    .await
-                    .map_err(|e| SshError::AuthenticationFailed(e.to_string()))?
-            }
+            } => handle
+                .authenticate_publickey(
+                    &self.config.username,
+                    load_public_key_auth_material(key_path, passphrase.as_deref())?,
+                )
+                .await
+                .map_err(|e| SshError::AuthenticationFailed(e.to_string()))?,
             AuthMethod::Agent => {
                 // Connect to SSH Agent and authenticate
                 let mut agent = crate::ssh::agent::SshAgentClient::connect().await?;
@@ -145,23 +105,12 @@ impl SshClient {
                 cert_path,
                 passphrase,
             } => {
-                // Load private key
-                let key = if let Some(pass) = passphrase {
-                    russh::keys::load_secret_key(key_path, Some(pass))
-                        .map_err(|e| SshError::KeyError(e.to_string()))?
-                } else {
-                    russh::keys::load_secret_key(key_path, None)
-                        .map_err(|e| SshError::KeyError(e.to_string()))?
-                };
-
-                // Load and parse OpenSSH certificate
-                let cert = russh::keys::load_openssh_certificate(cert_path).map_err(|e| {
-                    SshError::CertificateParseError(format!("Failed to load certificate: {}", e))
-                })?;
+                let (key, cert) =
+                    load_certificate_auth_material(key_path, cert_path, passphrase.as_deref())?;
 
                 // Authenticate with certificate
                 handle
-                    .authenticate_openssh_cert(&self.config.username, Arc::new(key), cert)
+                    .authenticate_openssh_cert(&self.config.username, key, cert)
                     .await
                     .map_err(|e| {
                         SshError::AuthenticationFailed(format!(
@@ -179,12 +128,7 @@ impl SshClient {
             }
         };
 
-        if !authenticated.success() {
-            return Err(SshError::AuthenticationFailed(format!(
-                "Authentication rejected by server ({:?})",
-                authenticated
-            )));
-        }
+        ensure_auth_success(&authenticated, "Authentication rejected by server")?;
 
         info!("SSH authentication successful");
 
