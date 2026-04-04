@@ -168,17 +168,30 @@ export function useConnectionEvents(): void {
                 sessionIdsToClose.push(sessionId);
               }
             });
+
+            // 收集关联的 nodeId，用于关闭 SFTP/IDE/Forwards 等非终端标签页
+            const disconnNodeId = topologyResolver.getNodeId(connection_id);
             
             if (sessionIdsToClose.length > 0) {
               const sessionIdSet = new Set(sessionIdsToClose);
-              const tabsToClose = appStore.tabs.filter(tab => tab.sessionId && sessionIdSet.has(tab.sessionId));
+              const tabsToClose = appStore.tabs.filter(tab =>
+                (tab.sessionId && sessionIdSet.has(tab.sessionId)) ||
+                (tab.nodeId && disconnNodeId && tab.nodeId === disconnNodeId)
+              );
               for (const tab of tabsToClose) {
+                appStore.closeTab(tab.id);
+              }
+            } else if (disconnNodeId) {
+              // 即使没有终端 session，也要关闭该节点的非终端标签页（SFTP/IDE/Forwards）
+              const nodeTabsToClose = appStore.tabs.filter(tab =>
+                tab.nodeId && tab.nodeId === disconnNodeId
+              );
+              for (const tab of nodeTabsToClose) {
                 appStore.closeTab(tab.id);
               }
             }
             
             // 中断 SFTP 传输
-            const disconnNodeId = topologyResolver.getNodeId(connection_id);
             if (disconnNodeId) {
               interruptTransfersByNode(disconnNodeId, i18n.t('connections.events.connection_closed'));
             }

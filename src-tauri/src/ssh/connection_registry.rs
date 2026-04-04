@@ -680,7 +680,7 @@ pub enum ConnectionRegistryError {
 /// SSH 连接注册表
 pub struct SshConnectionRegistry {
     /// 所有活跃的 SSH 连接
-    connections: DashMap<String, Arc<ConnectionEntry>>,
+    connections: Arc<DashMap<String, Arc<ConnectionEntry>>>,
 
     /// 连接池配置
     config: RwLock<ConnectionPoolConfig>,
@@ -705,7 +705,7 @@ impl SshConnectionRegistry {
     /// 创建新的连接注册表
     pub fn new() -> Self {
         Self {
-            connections: DashMap::new(),
+            connections: Arc::new(DashMap::new()),
             config: RwLock::new(ConnectionPoolConfig::default()),
             app_handle: RwLock::new(None),
             pending_events: Mutex::new(Vec::new()),
@@ -716,7 +716,7 @@ impl SshConnectionRegistry {
     /// 使用自定义配置创建
     pub fn with_config(config: ConnectionPoolConfig) -> Self {
         Self {
-            connections: DashMap::new(),
+            connections: Arc::new(DashMap::new()),
             config: RwLock::new(config),
             app_handle: RwLock::new(None),
             pending_events: Mutex::new(Vec::new()),
@@ -1625,6 +1625,8 @@ impl SshConnectionRegistry {
                 }
 
                 // 断开当前连接
+                conn_clone.cancel_heartbeat().await;
+                conn_clone.cancel_reconnect().await;
                 conn_clone.clear_sftp().await; // Oxide-Next Phase 1.5: 清理 SFTP
                 conn_clone.handle_controller.disconnect().await;
                 conn_clone.set_state(ConnectionState::Disconnected).await;
@@ -1675,6 +1677,18 @@ impl SshConnectionRegistry {
                     );
                     // 注销映射
                     emitter.unregister(&connection_id);
+                }
+
+                // 如果是隧道子连接，释放父连接的引用计数
+                if let Some(ref parent_id) = conn_clone.parent_connection_id {
+                    if let Some(parent_entry) = connections.get(parent_id) {
+                        let parent_conn = parent_entry.value();
+                        parent_conn.release();
+                        debug!(
+                            "Parent connection {} ref_count decreased (idle child {} disconnected)",
+                            parent_id, connection_id
+                        );
+                    }
                 }
 
                 // 从注册表移除
