@@ -132,8 +132,10 @@ function updateReadmeBadges(version, filePath) {
   
   let content = fs.readFileSync(filePath, 'utf8');
   // Update version badge: img src="https://img.shields.io/badge/version-X.Y.Z-blue"
-  const badgeRegex = /(img\.shields\.io\/badge\/version-)[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?(-blue)/g;
-  const newContent = content.replace(badgeRegex, `$1${version}$3`);
+  // shields.io uses '-' as a separator; literal hyphens in the value must be escaped as '--'
+  const badgeVersion = version.replace(/-/g, '--');
+  const badgeRegex = /(img\.shields\.io\/badge\/version-)[0-9]+\.[0-9]+\.[0-9]+([0-9a-zA-Z.-]*)(-blue)/g;
+  const newContent = content.replace(badgeRegex, `$1${badgeVersion}$3`);
   
   if (newContent !== content) {
     fs.writeFileSync(filePath, newContent);
