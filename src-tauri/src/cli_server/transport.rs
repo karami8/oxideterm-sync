@@ -232,8 +232,8 @@ mod platform {
         // Apply the security descriptor to the created pipe
         if let Ok(ref pipe_server) = server {
             use std::os::windows::io::AsRawHandle;
-            use windows_sys::Win32::Security::Authorization::SetSecurityInfo;
             use windows_sys::Win32::Security::Authorization::SE_KERNEL_OBJECT;
+            use windows_sys::Win32::Security::Authorization::SetSecurityInfo;
             use windows_sys::Win32::Security::DACL_SECURITY_INFORMATION;
 
             let handle = pipe_server.as_raw_handle() as *mut core::ffi::c_void;

@@ -21,12 +21,12 @@ pub mod vault;
 pub mod touch_id;
 
 pub use keychain::{Keychain, KeychainError};
-pub use ssh_config::{default_ssh_config_path, parse_ssh_config, SshConfigError, SshConfigHost};
+pub use ssh_config::{SshConfigError, SshConfigHost, default_ssh_config_path, parse_ssh_config};
 pub use storage::{
-    config_dir, connections_file, default_dir, get_data_dir_info, save_bootstrap_config,
-    BootstrapConfig, ConfigStorage, StorageError,
+    BootstrapConfig, ConfigStorage, StorageError, config_dir, connections_file, default_dir,
+    get_data_dir_info, save_bootstrap_config,
 };
 pub use types::{
-    ConfigFile, ConnectionOptions, ProxyHopConfig, SavedAuth, SavedConnection, CONFIG_VERSION,
+    CONFIG_VERSION, ConfigFile, ConnectionOptions, ProxyHopConfig, SavedAuth, SavedConnection,
 };
 pub use vault::{AiProviderVault, AiVault, VaultError};

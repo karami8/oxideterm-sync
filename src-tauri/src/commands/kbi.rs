@@ -15,12 +15,12 @@
 use crate::bridge::WsBridge;
 use crate::session::{SessionConfig, SessionRegistry};
 use crate::ssh::{
-    keyboard_interactive::{
-        cancel_pending, cleanup_pending, complete_pending, register_pending, KbiCancelRequest,
-        KbiPrompt, KbiPromptEvent, KbiRespondRequest, KbiResultEvent, EVENT_KBI_PROMPT,
-        EVENT_KBI_RESULT,
-    },
     AuthMethod, ClientHandler, SshSession,
+    keyboard_interactive::{
+        EVENT_KBI_PROMPT, EVENT_KBI_RESULT, KbiCancelRequest, KbiPrompt, KbiPromptEvent,
+        KbiRespondRequest, KbiResultEvent, cancel_pending, cleanup_pending, complete_pending,
+        register_pending,
+    },
 };
 use russh::client::KeyboardInteractiveAuthResponse;
 use std::sync::Arc;

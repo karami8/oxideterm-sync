@@ -29,7 +29,7 @@ mod proxy;
 mod proxy_integration_tests;
 mod session;
 
-pub use agent::{is_agent_available, SshAgentClient};
+pub use agent::{SshAgentClient, is_agent_available};
 pub use client::{ClientHandler, SshClient};
 pub use config::{AuthMethod, ProxyHopConfig, SshConfig};
 pub use connection_registry::{
@@ -37,16 +37,16 @@ pub use connection_registry::{
     ConnectionRegistryError, ConnectionState, SshConnectionRegistry,
 };
 pub use error::SshError;
-pub use handle_owner::{spawn_handle_owner_task, HandleCommand, HandleController};
+pub use handle_owner::{HandleCommand, HandleController, spawn_handle_owner_task};
 pub use keyboard_interactive::{
-    KbiCancelRequest, KbiError, KbiPrompt, KbiPromptEvent, KbiRespondRequest, KbiResultEvent,
-    EVENT_KBI_PROMPT, EVENT_KBI_RESULT,
+    EVENT_KBI_PROMPT, EVENT_KBI_RESULT, KbiCancelRequest, KbiError, KbiPrompt, KbiPromptEvent,
+    KbiRespondRequest, KbiResultEvent,
 };
-pub use known_hosts::{get_known_hosts, HostKeyVerification, KnownHostsStore};
+pub use known_hosts::{HostKeyVerification, KnownHostsStore, get_known_hosts};
 pub use preflight::{
-    accept_host_key, check_host_key, get_host_key_cache, HostKeyCache, HostKeyStatus,
+    HostKeyCache, HostKeyStatus, accept_host_key, check_host_key, get_host_key_cache,
 };
-pub use proxy::{connect_via_proxy, connect_via_single_hop, ProxyChain, ProxyConnection, ProxyHop};
+pub use proxy::{ProxyChain, ProxyConnection, ProxyHop, connect_via_proxy, connect_via_single_hop};
 pub use session::{
-    ExtendedSessionHandle, SessionCommand, SessionHandle, SshSession, DEFAULT_PTY_MODES,
+    DEFAULT_PTY_MODES, ExtendedSessionHandle, SessionCommand, SessionHandle, SshSession,
 };

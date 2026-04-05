@@ -7,8 +7,8 @@
 //! Includes connection limiting and lifecycle management.
 
 use dashmap::DashMap;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 use tokio::sync::{broadcast, mpsc, oneshot};
 use tracing::{debug, info, warn};
@@ -16,7 +16,7 @@ use tracing::{debug, info, warn};
 use super::state::SessionState;
 use super::types::{SessionConfig, SessionEntry, SessionInfo, SessionStats};
 use crate::ssh::{HandleController, SessionCommand};
-use crate::state::{session::SessionPersistence, PersistedSession, StateStore};
+use crate::state::{PersistedSession, StateStore, session::SessionPersistence};
 
 /// Default maximum concurrent sessions
 const DEFAULT_MAX_SESSIONS: usize = 20;

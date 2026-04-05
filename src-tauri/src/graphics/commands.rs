@@ -18,8 +18,8 @@ use std::time::Duration;
 use tauri::{AppHandle, Emitter, State};
 
 use super::{
-    bridge, limits, wsl, wslg, GraphicsSessionMode, WslDistro, WslGraphicsHandle,
-    WslGraphicsSession, WslGraphicsState, WslgStatus,
+    GraphicsSessionMode, WslDistro, WslGraphicsHandle, WslGraphicsSession, WslGraphicsState,
+    WslgStatus, bridge, limits, wsl, wslg,
 };
 
 /// List available WSL distributions.

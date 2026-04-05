@@ -21,7 +21,7 @@ use tauri::{AppHandle, Emitter, State};
 
 use crate::local::registry::LocalTerminalRegistry;
 use crate::local::session::{BackgroundSessionInfo, LocalTerminalInfo, SessionEvent};
-use crate::local::shell::{default_shell, scan_shells, ShellInfo};
+use crate::local::shell::{ShellInfo, default_shell, scan_shells};
 
 /// Global local terminal registry state
 pub struct LocalTerminalState {
@@ -1061,11 +1061,7 @@ pub fn get_audio_metadata(path: String) -> Result<AudioMetadata, String> {
         duration_secs: {
             let d = properties.duration();
             let secs = d.as_secs_f64();
-            if secs > 0.0 {
-                Some(secs)
-            } else {
-                None
-            }
+            if secs > 0.0 { Some(secs) } else { None }
         },
         bitrate_kbps: properties.audio_bitrate(),
         sample_rate: properties.sample_rate(),

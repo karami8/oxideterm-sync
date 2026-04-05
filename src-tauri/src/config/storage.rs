@@ -15,7 +15,7 @@ use std::sync::OnceLock;
 use tokio::fs;
 use tokio::io::AsyncWriteExt;
 
-use super::types::{ConfigFile, CONFIG_VERSION};
+use super::types::{CONFIG_VERSION, ConfigFile};
 
 /// Configuration storage errors
 #[derive(Debug, thiserror::Error)]

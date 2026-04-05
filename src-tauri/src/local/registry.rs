@@ -10,7 +10,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::sync::{mpsc, oneshot, RwLock};
+use tokio::sync::{RwLock, mpsc, oneshot};
 
 use crate::local::session::{
     BackgroundSessionInfo, LocalTerminalInfo, LocalTerminalSession, SessionError, SessionEvent,

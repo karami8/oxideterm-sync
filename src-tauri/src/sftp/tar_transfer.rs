@@ -18,8 +18,8 @@
 //! regular SFTP path.
 
 use std::path::Path;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Instant;
 
 use russh::ChannelMsg;

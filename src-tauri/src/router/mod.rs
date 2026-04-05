@@ -442,10 +442,10 @@ impl NodeRouter {
                     match state {
                         ConnectionState::Active | ConnectionState::Idle => return Ok(()),
                         ConnectionState::Error(msg) => {
-                            return Err(RouteError::ConnectionError(msg))
+                            return Err(RouteError::ConnectionError(msg));
                         }
                         ConnectionState::Disconnected | ConnectionState::Disconnecting => {
-                            return Err(RouteError::NotConnected(connection_id.into()))
+                            return Err(RouteError::NotConnected(connection_id.into()));
                         }
                         _ => {
                             // Still connecting/reconnecting, wait

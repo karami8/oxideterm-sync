@@ -15,16 +15,16 @@
 //!
 //! See `generate_powershell_init_script()` for details.
 
-use portable_pty::{native_pty_system, CommandBuilder, MasterPty, PtySize};
+use portable_pty::{CommandBuilder, MasterPty, PtySize, native_pty_system};
 use std::io::{Read, Write};
 #[cfg(unix)]
 use std::path::Path;
 use std::sync::{Arc, Mutex as StdMutex};
 
-use crate::local::shell::{get_shell_args, ShellInfo};
+use crate::local::shell::{ShellInfo, get_shell_args};
 
 #[cfg(unix)]
-use nix::sys::signal::{killpg, Signal};
+use nix::sys::signal::{Signal, killpg};
 #[cfg(unix)]
 use nix::unistd::Pid;
 

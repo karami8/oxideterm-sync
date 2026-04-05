@@ -25,7 +25,7 @@ use serde::Serialize;
 use tracing::{debug, info, warn};
 
 use super::error::SshError;
-use super::known_hosts::{get_known_hosts, HostKeyVerification, KnownHostsStore};
+use super::known_hosts::{HostKeyVerification, KnownHostsStore, get_known_hosts};
 
 /// Cache TTL for verified hosts (1 hour)
 const CACHE_TTL_SECS: u64 = 3600;
@@ -288,13 +288,13 @@ pub async fn check_host_key(host: &str, port: u16, timeout_secs: u64) -> HostKey
             None => {
                 return HostKeyStatus::Error {
                     message: format!("Could not resolve address: {}", addr),
-                }
+                };
             }
         },
         Err(e) => {
             return HostKeyStatus::Error {
                 message: format!("DNS resolution failed: {}", e),
-            }
+            };
         }
     };
 

@@ -32,7 +32,7 @@ use objc2_foundation::{NSError, NSString};
 
 // Link against the LocalAuthentication framework
 #[link(name = "LocalAuthentication", kind = "framework")]
-extern "C" {}
+unsafe extern "C" {}
 
 // ─── LAPolicy constants ─────────────────────────────────────────────────────
 

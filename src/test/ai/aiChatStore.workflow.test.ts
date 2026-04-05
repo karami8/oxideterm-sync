@@ -2,9 +2,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const invokeMock = vi.hoisted(() => vi.fn());
 const parseUserInputMock = vi.hoisted(() => vi.fn(() => ({
-  slashCommand: null,
-  participants: [],
-  references: [],
+  slashCommand: null as { name: string; raw: string } | null,
+  participants: [] as { name: string; raw: string }[],
+  references: [] as { type: string; value?: string; raw: string }[],
   cleanText: '',
 })));
 const resolveSlashCommandMock = vi.hoisted(() => vi.fn());
@@ -217,7 +217,7 @@ describe('aiChatStore workflows', () => {
     const createConversation = vi.fn().mockResolvedValue('conv-new');
     setConversation([{ id: 'u-1', role: 'user', content: 'hello', timestamp: 1 }]);
     parseUserInputMock.mockReturnValue({
-      slashCommand: { name: 'clear' },
+      slashCommand: { name: 'clear', raw: '/clear' },
       participants: [],
       references: [],
       cleanText: '',

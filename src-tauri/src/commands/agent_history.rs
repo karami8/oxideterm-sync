@@ -6,8 +6,8 @@
 //! Tauri IPC commands for persisting and querying agent task history.
 //! v2 separates metadata from steps for lazy loading and incremental persistence.
 
-use crate::state::agent_history::TaskMeta;
 use crate::state::AgentHistoryStore;
+use crate::state::agent_history::TaskMeta;
 use std::sync::Arc;
 use tauri::State;
 

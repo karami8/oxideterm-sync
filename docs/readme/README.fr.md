@@ -23,7 +23,7 @@
   <img src="https://img.shields.io/badge/version-1.0.13-blue" alt="Version">
   <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-blue" alt="Plateforme">
   <img src="https://img.shields.io/badge/license-GPL--3.0-blue" alt="Licence">
-  <img src="https://img.shields.io/badge/rust-1.75+-orange" alt="Rust">
+  <img src="https://img.shields.io/badge/rust-1.85+-orange" alt="Rust">
   <img src="https://img.shields.io/badge/tauri-2.0-purple" alt="Tauri">
 </p>
 
@@ -64,7 +64,7 @@ https://github.com/user-attachments/assets/4ba033aa-94b5-4ed4-980c-5c3f9f21db7e
 | Reconnexion = tout perdu | **Reconnexion avec période de grâce** : sonde l'ancienne connexion 30 s avant de la couper — vos vim/htop/yazi survivent |
 | L'édition distante nécessite VS Code Remote | **IDE intégré** : CodeMirror 6 via SFTP avec 30+ langages, agent distant optionnel (~1 Mo) sur Linux |
 | Pas de réutilisation de connexion SSH | **Multiplexage** : terminal, SFTP, redirections, IDE partagent une seule connexion SSH via un pool à comptage de références |
-| Les bibliothèques SSH dépendent d'OpenSSL | **russh 0.54** : SSH pur Rust compilé avec `ring` — zéro dépendance C |
+| Les bibliothèques SSH dépendent d'OpenSSL | **russh 0.59** : SSH pur Rust compilé avec `ring` — zéro dépendance C |
 | Applications Electron de 100+ Mo | **Tauri 2.0** : backend Rust natif, binaire de 25–40 Mo |
 | IA verrouillée sur un fournisseur | **OxideSens** : 40+ outils, protocole MCP, base de connaissances RAG — fonctionne avec OpenAI/Ollama/DeepSeek/toute API compatible |
 | Identifiants stockés en clair | **Trousseau système uniquement** : mots de passe et clés API jamais écrits sur disque ; fichiers `.oxide` chiffrés ChaCha20-Poly1305 + Argon2id |
@@ -94,10 +94,10 @@ https://github.com/user-attachments/assets/4ba033aa-94b5-4ed4-980c-5c3f9f21db7e
 | **Terminal** | PTY local (zsh/bash/fish/pwsh/WSL2), SSH distant, panneaux divisés, diffusion d'entrée, enregistrement/lecture de sessions (asciicast v2), rendu WebGL, 30+ thèmes + éditeur personnalisé, palette de commandes (`⌘K`), mode zen |
 | **SSH & Auth** | Pool de connexions & multiplexage, ProxyJump (sauts illimités) avec graphe topologique, reconnexion automatique avec période de grâce. Auth : mot de passe, clé SSH (RSA/Ed25519/ECDSA), SSH Agent, certificats, 2FA interactif clavier, Known Hosts TOFU |
 | **SFTP** | Navigateur double volet, glisser-déposer, aperçu intelligent (images/vidéo/audio/code/PDF/hex/polices), file de transfert avec progression & ETA, signets, extraction d'archives |
-| **Mode IDE** | CodeMirror 6 avec 30+ langages, arborescence + statut Git, multi-onglets, résolution de conflits, terminal intégré. Agent distant optionnel pour Linux (10+ architectures) |
+| **Mode IDE** | CodeMirror 6 avec 30+ langages, arborescence + statut Git, multi-onglets, résolution de conflits, terminal intégré. Agent distant optionnel pour Linux (9 architectures supplémentaires) |
 | **Redirection de ports** | Local (-L), distant (-R), SOCKS5 dynamique (-D), I/O par passage de messages sans verrou, restauration automatique à la reconnexion, rapport d'arrêt, délai d'inactivité |
 | **IA (OxideSens)** | Panneau inline (`⌘I`) + chat latéral, capture du buffer terminal (panneau unique/tous), contexte multi-sources (IDE/SFTP/Git), 40+ outils autonomes, intégration serveur MCP, base de connaissances RAG (recherche hybride BM25 + vecteurs), streaming SSE |
-| **Plugins** | Chargement ESM en runtime, 8 espaces de noms API, 24 composants UI Kit, API gelée + ACL Proxy, disjoncteur, désactivation automatique en cas d'erreurs |
+| **Plugins** | Chargement ESM en runtime, 18 espaces de noms API, 24 composants UI Kit, API gelée + ACL Proxy, disjoncteur, désactivation automatique en cas d'erreurs |
 | **CLI** | Companion `oxt` : JSON-RPC 2.0 via Unix Socket / Named Pipe, `status`/`list`/`ping`, sortie humaine + JSON |
 | **Sécurité** | Export chiffré .oxide (ChaCha20-Poly1305 + Argon2id 256 Mo), trousseau OS, Touch ID (macOS), TOFU clé hôte, nettoyage mémoire `zeroize` |
 | **i18n** | 11 langues : EN, 简体中文, 繁體中文, 日本語, 한국어, FR, DE, ES, IT, PT-BR, VI |
@@ -113,7 +113,7 @@ OxideTerm sépare les données du terminal des commandes de contrôle en deux pl
 ```
 ┌─────────────────────────────────────┐
 │        Frontend (React 19)          │
-│  xterm.js 6 (WebGL) + 18 stores    │
+│  xterm.js 6 (WebGL) + 19 stores    │
 └──────────┬──────────────┬───────────┘
            │ Tauri IPC    │ WebSocket (binaire)
            │ (JSON)       │ port par session
@@ -129,14 +129,14 @@ OxideTerm sépare les données du terminal des commandes de contrôle en deux pl
 - **Plan de contrôle (Tauri IPC)** : gestion des connexions, opérations SFTP, redirections, configuration — JSON structuré, mais hors du chemin critique.
 - **Adressage par nœud** : le frontend ne touche jamais `sessionId` ni `connectionId`. Tout est adressé par `nodeId`, résolu atomiquement côté serveur par le `NodeRouter`. La reconnexion SSH modifie le `connectionId` sous-jacent — mais SFTP, IDE et redirections ne sont absolument pas affectés.
 
-### 🔩 SSH pur Rust — russh 0.54
+### 🔩 SSH pur Rust — russh 0.59
 
-L'intégralité de la pile SSH est **russh 0.54** compilée avec le backend cryptographique **`ring`** :
+L'intégralité de la pile SSH est **russh 0.59** compilée avec le backend cryptographique **`ring`** :
 
 - **Zéro dépendance C/OpenSSL** — toute la pile crypto est en Rust. Plus de débogage « quelle version d'OpenSSL ? ».
 - Protocole SSH2 complet : échange de clés, canaux, sous-système SFTP, redirection de ports
 - Suites de chiffrement ChaCha20-Poly1305 et AES-GCM, clés Ed25519/RSA/ECDSA
-- **`AgentSigner`** personnalisé : encapsule le SSH Agent système et implémente le trait `Signer` de russh, résolvant les problèmes de bornes `Send` RPITIT dans russh 0.54 en clonant `&PublicKey` vers une valeur possédée avant de traverser `.await`
+- **`AgentSigner`** personnalisé : encapsule le SSH Agent système et implémente le trait `Signer` de russh, résolvant les problèmes de bornes `Send` RPITIT en clonant `&AgentIdentity` vers une valeur possédée avant de traverser `.await`
 
 ```rust
 pub struct AgentSigner { /* wraps system SSH Agent */ }
@@ -190,11 +190,11 @@ Assistant IA axé sur la confidentialité avec deux modes d'interaction :
 Éditeur CodeMirror 6 opérant via SFTP — aucune installation côté serveur requise par défaut :
 
 - **Arborescence de fichiers** : chargement paresseux des répertoires avec indicateurs de statut Git (modifié/non suivi/ajouté)
-- **30+ modes de langage** : 16 natifs CodeMirror + modes hérités via `@codemirror/legacy-modes`
+- **24 modes de langage** : 14 natifs CodeMirror + modes hérités via `@codemirror/legacy-modes`
 - **Résolution de conflits** : verrouillage optimiste par mtime — détecte les modifications distantes avant l'écrasement
 - **Git événementiel** : rafraîchissement automatique à la sauvegarde, création, suppression, renommage et touche Entrée du terminal
 - **State Gating** : toutes les E/S bloquées quand `readiness !== 'ready'`, Key-Driven Reset force un remontage complet à la reconnexion
-- **Agent distant** (optionnel) : binaire Rust d'environ 1 Mo, déployé automatiquement sur x86_64/aarch64 Linux. 10+ architectures supplémentaires (ARMv7, RISC-V64, LoongArch64, s390x, mips64, Power64LE…) dans `agents/extra/` pour upload manuel. Active l'arborescence améliorée, la recherche de symboles et la surveillance de fichiers.
+- **Agent distant** (optionnel) : binaire Rust d'environ 1 Mo, déployé automatiquement sur x86_64/aarch64 Linux. 9 architectures supplémentaires (ARMv7, RISC-V64, LoongArch64, s390x, Power64LE, i686, ARM, Android aarch64, FreeBSD x86_64) dans `agents/extra/` pour upload manuel. Active l'arborescence améliorée, la recherche de symboles et la surveillance de fichiers.
 
 ### 🔀 Redirection de ports — I/O sans verrou
 
@@ -209,7 +209,7 @@ Redirection locale (-L), distante (-R) et dynamique SOCKS5 (-D) complète :
 
 Chargement ESM dynamique avec une surface API gelée et renforcée en sécurité :
 
-- **API PluginContext** : 8 espaces de noms — terminal, ui, commands, settings, lifecycle, events, storage, system
+- **API PluginContext** : 18 espaces de noms — terminal, ui, commands, settings, lifecycle, events, storage, system
 - **24 composants UI Kit** : composants React préconstruits (boutons, champs de saisie, dialogues, tableaux…) injectés dans les sandboxes de plugins via `window.__OXIDE__`
 - **Membrane de sécurité** : `Object.freeze` sur tous les objets de contexte, ACL basée sur Proxy, liste blanche IPC, disjoncteur avec désactivation automatique après erreurs répétées
 - **Modules partagés** : React, ReactDOM, zustand, lucide-react exposés pour utilisation par les plugins sans duplication de bundles
@@ -259,10 +259,10 @@ Shell local multiplateforme via `portable-pty 0.8`, protégé par le feature gat
 ### Et plus encore
 
 - **Profileur de ressources** : CPU/mémoire/réseau en direct via canal SSH persistant lisant `/proc/stat`, calcul basé sur les deltas, dégradation automatique vers RTT-only sur les systèmes non-Linux
-- **Moteur de thèmes personnalisé** : 30+ thèmes intégrés, éditeur visuel avec aperçu en direct, 22 champs xterm.js + 19 variables CSS, dérivation automatique des couleurs UI depuis la palette du terminal
+- **Moteur de thèmes personnalisé** : 30+ thèmes intégrés, éditeur visuel avec aperçu en direct, 20 champs xterm.js + 24 variables de couleur UI, dérivation automatique des couleurs UI depuis la palette du terminal
 - **Enregistrement de session** : format asciicast v2, enregistrement et lecture complets
 - **Diffusion d'entrée** : tapez une fois, envoyez à tous les panneaux divisés — opérations serveur par lots
-- **Galerie d'arrière-plans** : images d'arrière-plan par onglet, 13 types d'onglets, contrôle opacité/flou/ajustement
+- **Galerie d'arrière-plans** : images d'arrière-plan par onglet, 16 types d'onglets, contrôle opacité/flou/ajustement
 - **Companion CLI** (`oxt`) : binaire d'environ 1 Mo, JSON-RPC 2.0 via Unix Socket / Named Pipe, `status`/`list`/`ping` avec sortie humaine ou `--json`
 - **WSL Graphics** ⚠️ expérimental : visionneuse VNC intégrée — 9 environnements de bureau + mode application unique, détection WSLg, Xtigervnc + noVNC
 
@@ -299,7 +299,7 @@ Shell local multiplateforme via `portable-pty 0.8`, protégé par le feature gat
 
 ### Prérequis
 
-- **Rust** 1.75+
+- **Rust** 1.85+
 - **Node.js** 18+ (pnpm recommandé)
 - **Outils plateforme** :
   - macOS : Xcode Command Line Tools
@@ -333,15 +333,15 @@ cd src-tauri && cargo build --no-default-features --release
 |---|---|---|
 | **Framework** | Tauri 2.0 | Binaire natif, 25–40 Mo |
 | **Runtime** | Tokio + DashMap 6 | Entièrement asynchrone, maps concurrentes sans verrou |
-| **SSH** | russh 0.54 (`ring`) | Pur Rust, zéro dépendance C, SSH Agent |
+| **SSH** | russh 0.59 (`ring`) | Pur Rust, zéro dépendance C, SSH Agent |
 | **PTY local** | portable-pty 0.8 | Feature-gated, ConPTY sous Windows |
 | **Frontend** | React 19.1 + TypeScript 5.8 | Vite 7, Tailwind CSS 4 |
-| **État** | Zustand 5 | 18 stores spécialisés |
+| **État** | Zustand 5 | 19 stores spécialisés |
 | **Terminal** | xterm.js 6 + WebGL | Accéléré GPU, 60 fps+ |
 | **Éditeur** | CodeMirror 6 | 30+ modes de langage |
 | **Chiffrement** | ChaCha20-Poly1305 + Argon2id | AEAD + KDF gourmande en mémoire (256 Mo) |
 | **Stockage** | redb 2.1 | Store KV embarqué |
-| **i18n** | i18next 25 | 11 langues × 21 espaces de noms |
+| **i18n** | i18next 25 | 11 langues × 22 espaces de noms |
 | **Plugins** | ESM Runtime | PluginContext gelé + 24 UI Kit |
 | **CLI** | JSON-RPC 2.0 | Unix Socket / Named Pipe |
 
@@ -386,7 +386,7 @@ Texte intégral : [Licence Publique Générale GNU v3.0](https://www.gnu.org/lic
 ---
 
 <p align="center">
-  <sub>134 000+ lignes de Rust & TypeScript — construit avec ⚡ et ☕</sub>
+  <sub>236 000+ lignes de Rust & TypeScript — construit avec ⚡ et ☕</sub>
 </p>
 
 ## Star History

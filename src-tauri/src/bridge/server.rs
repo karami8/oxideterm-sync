@@ -3,13 +3,13 @@
 
 //! WebSocket Server for SSH bridge with Wire Protocol support
 
-use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
+use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
 use bytes::Bytes;
 use futures_util::{SinkExt, StreamExt};
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
-use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 use subtle::ConstantTimeEq;
 use tokio::net::{TcpListener, TcpStream};
@@ -17,8 +17,8 @@ use tokio::sync::{mpsc, oneshot};
 use tokio_tungstenite::{accept_async, tungstenite::Message};
 use tracing::{debug, error, info, warn};
 
-use super::protocol::{data_frame, error_frame, heartbeat_frame, Frame, FrameCodec};
-use crate::session::{parse_terminal_output, ScrollBuffer};
+use super::protocol::{Frame, FrameCodec, data_frame, error_frame, heartbeat_frame};
+use crate::session::{ScrollBuffer, parse_terminal_output};
 use crate::ssh::{
     ExtendedSessionHandle as SshExtendedSessionHandle, SessionCommand, SessionHandle,
 };

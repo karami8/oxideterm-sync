@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { ReconnectPhase } from '@/store/reconnectOrchestratorStore';
 
 const reconnectConfig = vi.hoisted(() => ({
   enabled: true,
@@ -315,7 +316,7 @@ describe('reconnectOrchestratorStore', () => {
 
   it('clearCompleted only removes terminal jobs', async () => {
     const store = await loadStore();
-    const jobFactory = (status: string) => ({
+    const jobFactory = (status: ReconnectPhase) => ({
       nodeId: status,
       nodeName: status,
       status,

@@ -23,7 +23,7 @@
   <img src="https://img.shields.io/badge/version-1.0.13-blue" alt="版本">
   <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-blue" alt="平台">
   <img src="https://img.shields.io/badge/license-GPL--3.0-blue" alt="授權條款">
-  <img src="https://img.shields.io/badge/rust-1.75+-orange" alt="Rust">
+  <img src="https://img.shields.io/badge/rust-1.85+-orange" alt="Rust">
   <img src="https://img.shields.io/badge/tauri-2.0-purple" alt="Tauri">
 </p>
 
@@ -64,7 +64,7 @@ https://github.com/user-attachments/assets/4ba033aa-94b5-4ed4-980c-5c3f9f21db7e
 | 斷線重連 = 遺失一切 | **寬限期重連**：斷開前探測舊連線 30 秒——您的 vim/htop/yazi 安然無恙 |
 | 遠端編輯需要 VS Code Remote | **內建 IDE**：CodeMirror 6 基於 SFTP，支援 30+ 語言，可選 ~1 MB Linux 遠端 Agent |
 | SSH 連線無法複用 | **多工複用**：終端、SFTP、轉發、IDE 透過參考計數連線池共用同一 SSH 連線 |
-| SSH 函式庫依賴 OpenSSL | **russh 0.54**：基於 `ring` 編譯的純 Rust SSH——零 C 依賴 |
+| SSH 函式庫依賴 OpenSSL | **russh 0.59**：基於 `ring` 編譯的純 Rust SSH——零 C 依賴 |
 | 100+ MB 的 Electron 應用 | **Tauri 2.0**：原生 Rust 後端，25–40 MB 二進位檔 |
 | AI 被鎖定在單一供應商 | **OxideSens**：40+ 工具、MCP 協定、RAG 知識庫——支援 OpenAI/Ollama/DeepSeek 及任何相容 API |
 | 憑證存放在明文設定檔中 | **僅系統鑰匙圈**：密碼和 API 金鑰絕不落地；`.oxide` 檔案使用 ChaCha20-Poly1305 + Argon2id 加密 |
@@ -94,10 +94,10 @@ https://github.com/user-attachments/assets/4ba033aa-94b5-4ed4-980c-5c3f9f21db7e
 | **終端** | 本機 PTY（zsh/bash/fish/pwsh/WSL2）、SSH 遠端、分割窗格、廣播輸入、工作階段錄製/回放（asciicast v2）、WebGL 算繪、30+ 主題 + 自訂編輯器、命令面板（`⌘K`）、禪模式 |
 | **SSH 與驗證** | 連線池與多工複用、ProxyJump（無限跳數）拓撲圖、寬限期自動重連。驗證方式：密碼、SSH 金鑰（RSA/Ed25519/ECDSA）、SSH Agent、憑證、keyboard-interactive 2FA、Known Hosts TOFU |
 | **SFTP** | 雙窗格瀏覽器、拖放操作、智慧預覽（圖片/影片/音訊/程式碼/PDF/十六進位/字型）、帶進度和預估時間的傳輸佇列、書籤、壓縮檔解壓 |
-| **IDE 模式** | CodeMirror 6 支援 30+ 語言、檔案樹 + Git 狀態、多分頁、衝突解決、整合終端。可選 Linux 遠端 Agent（10+ 架構） |
+| **IDE 模式** | CodeMirror 6 支援 30+ 語言、檔案樹 + Git 狀態、多分頁、衝突解決、整合終端。可選 Linux 遠端 Agent（9 種額外架構） |
 | **連接埠轉發** | 本機（-L）、遠端（-R）、動態 SOCKS5（-D）、無鎖訊息傳遞 I/O、重連自動恢復、終止報告、閒置逾時 |
 | **AI（OxideSens）** | 內嵌面板（`⌘I`）+ 側邊欄聊天、終端緩衝區擷取（單窗格/所有窗格）、多來源上下文（IDE/SFTP/Git）、40+ 自主工具、MCP 伺服器整合、RAG 知識庫（BM25 + 向量混合搜尋）、SSE 串流輸出 |
-| **外掛** | 執行階段 ESM 載入、8 個 API 命名空間、24 個 UI Kit 元件、凍結 API + Proxy ACL、斷路器、錯誤時自動停用 |
+| **外掛** | 執行階段 ESM 載入、18 個 API 命名空間、24 個 UI Kit 元件、凍結 API + Proxy ACL、斷路器、錯誤時自動停用 |
 | **CLI** | `oxt` 伴隨工具：JSON-RPC 2.0 基於 Unix Socket / Named Pipe、`status`/`list`/`ping`、人類可讀 + JSON 輸出 |
 | **安全** | .oxide 加密匯出（ChaCha20-Poly1305 + Argon2id 256 MB）、OS 鑰匙圈、Touch ID（macOS）、主機金鑰 TOFU、`zeroize` 記憶體清除 |
 | **國際化** | 11 種語言：EN、简体中文、繁體中文、日本語、한국어、FR、DE、ES、IT、PT-BR、VI |
@@ -113,7 +113,7 @@ OxideTerm 將終端資料與控制命令分離為兩個獨立平面：
 ```
 ┌─────────────────────────────────────┐
 │        Frontend (React 19)          │
-│  xterm.js 6 (WebGL) + 18 stores    │
+│  xterm.js 6 (WebGL) + 19 stores    │
 └──────────┬──────────────┬───────────┘
            │ Tauri IPC    │ WebSocket (binary)
            │ (JSON)       │ per-session port
@@ -129,14 +129,14 @@ OxideTerm 將終端資料與控制命令分離為兩個獨立平面：
 - **控制平面（Tauri IPC）**：連線管理、SFTP 操作、轉發、組態——結構化 JSON，但不在關鍵路徑上。
 - **Node 優先定址**：前端從不直接觸及 `sessionId` 或 `connectionId`。一切透過 `nodeId` 定址，由 `NodeRouter` 在伺服端原子解析。SSH 重連會更換底層 `connectionId`——但 SFTP、IDE 和轉發完全不受影響。
 
-### 🔩 純 Rust SSH — russh 0.54
+### 🔩 純 Rust SSH — russh 0.59
 
-整個 SSH 協定棧使用 **russh 0.54**，基於 **`ring`** 加密後端編譯：
+整個 SSH 協定棧使用 **russh 0.59**，基於 **`ring`** 加密後端編譯：
 
 - **零 C/OpenSSL 依賴**——完整的加密棧由 Rust 實作，告別「哪個 OpenSSL 版本？」的除錯噩夢。
 - 完整的 SSH2 協定：金鑰交換、通道、SFTP 子系統、連接埠轉發
 - ChaCha20-Poly1305 和 AES-GCM 加密套件，Ed25519/RSA/ECDSA 金鑰
-- 自訂 **`AgentSigner`**：封裝系統 SSH Agent 並實作 russh 的 `Signer` trait，透過在 `.await` 前將 `&PublicKey` 複製為 owned 值，解決 russh 0.54 中 RPITIT `Send` 約束問題
+- 自訂 **`AgentSigner`**：封裝系統 SSH Agent 並實作 russh 的 `Signer` trait，透過在 `.await` 前將 `&AgentIdentity` 複製為 owned 值，解決 RPITIT `Send` 約束問題
 
 ```rust
 pub struct AgentSigner { /* wraps system SSH Agent */ }
@@ -190,11 +190,11 @@ impl Signer for AgentSigner { /* challenge-response via Agent IPC */ }
 CodeMirror 6 編輯器基於 SFTP 運作——預設無需伺服端安裝：
 
 - **檔案樹**：延遲載入目錄，帶 Git 狀態指示器（已修改/未追蹤/已新增）
-- **30+ 語言模式**：16 種原生 CodeMirror + 透過 `@codemirror/legacy-modes` 提供的傳統模式
+- **24 語言模式**：14 種原生 CodeMirror + 透過 `@codemirror/legacy-modes` 提供的傳統模式
 - **衝突解決**：樂觀 mtime 鎖定——覆寫前偵測遠端變更
 - **事件驅動 Git**：儲存、建立、刪除、重新命名及終端 Enter 按鍵時自動重新整理
 - **狀態閘控**：當 `readiness !== 'ready'` 時阻止所有 IO，Key-Driven Reset 在重連時強制完整重新掛載
-- **遠端 Agent**（可選）：~1 MB Rust 二進位檔，在 x86_64/aarch64 Linux 上自動部署。10+ 額外架構（ARMv7、RISC-V64、LoongArch64、s390x、mips64、Power64LE……）位於 `agents/extra/`，可手動上傳。提供增強檔案樹、符號搜尋和檔案監視功能。
+- **遠端 Agent**（可選）：~1 MB Rust 二進位檔，在 x86_64/aarch64 Linux 上自動部署。9 種額外架構（ARMv7、RISC-V64、LoongArch64、s390x、Power64LE、i686、ARM、Android aarch64、FreeBSD x86_64）位於 `agents/extra/`，可手動上傳。提供增強檔案樹、符號搜尋和檔案監視功能。
 
 ### 🔀 連接埠轉發——無鎖 I/O
 
@@ -209,7 +209,7 @@ CodeMirror 6 編輯器基於 SFTP 運作——預設無需伺服端安裝：
 
 動態 ESM 載入，安全強化的凍結 API 表面：
 
-- **PluginContext API**：8 個命名空間——terminal、ui、commands、settings、lifecycle、events、storage、system
+- **PluginContext API**：18 個命名空間——terminal、ui、commands、settings、lifecycle、events、storage、system
 - **24 個 UI Kit 元件**：預建的 React 元件（按鈕、輸入框、對話方塊、表格……）透過 `window.__OXIDE__` 注入外掛沙箱
 - **安全膜**：對所有上下文物件使用 `Object.freeze`，基於 Proxy 的 ACL，IPC 白名單，斷路器在重複錯誤後自動停用
 - **共用模組**：React、ReactDOM、zustand、lucide-react 對外暴露供外掛使用，無需重複打包
@@ -259,10 +259,10 @@ CodeMirror 6 編輯器基於 SFTP 運作——預設無需伺服端安裝：
 ### 更多功能
 
 - **資源分析器**：透過持久 SSH 通道讀取 `/proc/stat` 取得即時 CPU/記憶體/網路資料，基於增量計算，非 Linux 環境自動降級為僅 RTT
-- **自訂主題引擎**：30+ 內建主題，視覺化編輯器即時預覽，22 個 xterm.js 欄位 + 19 個 CSS 變數，從終端調色盤自動推導 UI 顏色
+- **自訂主題引擎**：30+ 內建主題，視覺化編輯器即時預覽，20 個 xterm.js 欄位 + 24 個 UI 顏色變數，從終端調色盤自動推導 UI 顏色
 - **工作階段錄製**：asciicast v2 格式，完整錄製和回放
 - **廣播輸入**：輸入一次，傳送至所有分割窗格——批次伺服器操作
-- **背景相簿**：每分頁背景圖片，13 種分頁類型，透明度/模糊/適配控制
+- **背景相簿**：每分頁背景圖片，16 種分頁類型，透明度/模糊/適配控制
 - **CLI 伴隨工具**（`oxt`）：~1 MB 二進位檔，JSON-RPC 2.0 基於 Unix Socket / Named Pipe，`status`/`list`/`ping` 支援人類可讀或 `--json` 輸出
 - **WSL Graphics** ⚠️ 實驗性：內建 VNC 檢視器——9 種桌面環境 + 單應用模式，WSLg 偵測，Xtigervnc + noVNC
 
@@ -299,7 +299,7 @@ CodeMirror 6 編輯器基於 SFTP 運作——預設無需伺服端安裝：
 
 ### 先決條件
 
-- **Rust** 1.75+
+- **Rust** 1.85+
 - **Node.js** 18+（推薦 pnpm）
 - **平台工具**：
   - macOS：Xcode Command Line Tools
@@ -333,15 +333,15 @@ cd src-tauri && cargo build --no-default-features --release
 |---|---|---|
 | **框架** | Tauri 2.0 | 原生二進位檔，25–40 MB |
 | **執行環境** | Tokio + DashMap 6 | 全非同步，無鎖並行對映 |
-| **SSH** | russh 0.54（`ring`） | 純 Rust，零 C 依賴，SSH Agent |
+| **SSH** | russh 0.59（`ring`） | 純 Rust，零 C 依賴，SSH Agent |
 | **本機 PTY** | portable-pty 0.8 | Feature 閘控，Windows 上使用 ConPTY |
 | **前端** | React 19.1 + TypeScript 5.8 | Vite 7，Tailwind CSS 4 |
-| **狀態** | Zustand 5 | 18 個專用 Store |
+| **狀態** | Zustand 5 | 19 個專用 Store |
 | **終端** | xterm.js 6 + WebGL | GPU 加速，60fps+ |
 | **編輯器** | CodeMirror 6 | 30+ 語言模式 |
 | **加密** | ChaCha20-Poly1305 + Argon2id | AEAD + 記憶體硬化 KDF（256 MB） |
 | **儲存** | redb 2.1 | 嵌入式 KV 儲存 |
-| **國際化** | i18next 25 | 11 種語言 × 21 個命名空間 |
+| **國際化** | i18next 25 | 11 種語言 × 22 個命名空間 |
 | **外掛** | ESM 執行階段 | 凍結 PluginContext + 24 UI Kit |
 | **CLI** | JSON-RPC 2.0 | Unix Socket / Named Pipe |
 
@@ -386,7 +386,7 @@ cd src-tauri && cargo build --no-default-features --release
 ---
 
 <p align="center">
-  <sub>134,000+ 行 Rust 與 TypeScript 程式碼——以 ⚡ 和 ☕ 建構</sub>
+  <sub>236,000+ 行 Rust 與 TypeScript 程式碼——以 ⚡ 和 ☕ 建構</sub>
 </p>
 
 ## Star History

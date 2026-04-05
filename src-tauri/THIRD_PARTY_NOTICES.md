@@ -445,7 +445,7 @@ This report does not attempt to interpret SPDX boolean logic beyond simple group
 | rmp | 0.8.15 | MIT | registry+https://github.com/rust-lang/crates.io-index |
 | rmp-serde | 1.3.1 | MIT | registry+https://github.com/rust-lang/crates.io-index |
 | rsa | 0.9.10 | MIT, Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index |
-| russh | 0.54.5 | Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index |
+| russh | 0.59.0 | Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index |
 | russh-cryptovec | 0.52.0 | Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index |
 | russh-sftp | 2.1.1 | Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index |
 | russh-util | 0.52.0 | Apache-2.0 | registry+https://github.com/rust-lang/crates.io-index |

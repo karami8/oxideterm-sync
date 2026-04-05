@@ -7,8 +7,8 @@
 //! Example: Local SOCKS5 proxy on 127.0.0.1:1080 -> SSH tunnel -> any destination
 
 use std::net::SocketAddr;
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
@@ -305,7 +305,7 @@ pub async fn start_dynamic_forward_with_disconnect(
         let _ = child_shutdown_tx.send(());
 
         // Emit status event based on exit reason
-        if let (Some(ref emitter), Some(ref fwd_id)) = (&event_emitter, &forward_id) {
+        if let (Some(emitter), Some(fwd_id)) = (&event_emitter, &forward_id) {
             match exit_reason {
                 ExitReason::SshDisconnected => {
                     emitter.emit_status_changed(

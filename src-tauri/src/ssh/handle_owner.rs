@@ -28,8 +28,8 @@
 //! let bound_port = controller.tcpip_forward("0.0.0.0", 8080).await?;
 //! ```
 
-use russh::client::{Handle, Msg};
 use russh::Channel;
+use russh::client::{Handle, Msg};
 use tokio::sync::{broadcast, mpsc, oneshot};
 use tracing::{debug, info, warn};
 
@@ -267,7 +267,7 @@ pub fn spawn_handle_owner_task(
     let disconnect_tx_clone = disconnect_tx.clone();
 
     tokio::spawn(async move {
-        let mut handle = handle; // Move into task, becomes sole owner
+        let handle = handle; // Move into task, becomes sole owner
 
         info!("Handle owner task started for session {}", session_id);
 
@@ -375,7 +375,10 @@ pub fn spawn_handle_owner_task(
                                         );
                                         PingResult::IoError
                                     } else {
-                                        warn!("Keepalive SSH error for session {} (treating as soft failure): {:?}", session_id, e);
+                                        warn!(
+                                            "Keepalive SSH error for session {} (treating as soft failure): {:?}",
+                                            session_id, e
+                                        );
                                         PingResult::Timeout
                                     }
                                 }

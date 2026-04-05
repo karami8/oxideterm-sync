@@ -14,17 +14,17 @@ use tracing::info;
 use uuid::Uuid;
 
 use super::dynamic::{
-    start_dynamic_forward_with_disconnect, DynamicForward, DynamicForwardHandle,
-    ForwardStats as DynamicForwardStats,
+    DynamicForward, DynamicForwardHandle, ForwardStats as DynamicForwardStats,
+    start_dynamic_forward_with_disconnect,
 };
 use super::events::ForwardEventEmitter;
 use super::local::{
-    start_local_forward_with_disconnect, ForwardStats as LocalForwardStats, LocalForward,
-    LocalForwardHandle,
+    ForwardStats as LocalForwardStats, LocalForward, LocalForwardHandle,
+    start_local_forward_with_disconnect,
 };
 use super::remote::{
-    start_remote_forward_with_disconnect, ForwardStats as RemoteForwardStats, RemoteForward,
-    RemoteForwardHandle,
+    ForwardStats as RemoteForwardStats, RemoteForward, RemoteForwardHandle,
+    start_remote_forward_with_disconnect,
 };
 use crate::ssh::{HandleController, SshError};
 
@@ -793,7 +793,7 @@ impl ForwardingManager {
         port: u16,
         timeout_ms: u64,
     ) -> Result<bool, SshError> {
-        use tokio::time::{timeout, Duration};
+        use tokio::time::{Duration, timeout};
 
         let timeout_duration = Duration::from_millis(timeout_ms);
 

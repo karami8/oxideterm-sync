@@ -6,11 +6,11 @@
 //! Provides concurrent transfer control with pause/cancel support.
 
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use parking_lot::RwLock;
-use tokio::sync::{watch, Semaphore};
+use tokio::sync::{Semaphore, watch};
 use tracing::{debug, info, warn};
 
 /// Transfer control signals

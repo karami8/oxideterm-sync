@@ -7,13 +7,13 @@
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::AtomicUsize;
 use std::sync::Arc;
+use std::sync::atomic::AtomicUsize;
 
 use base64::Engine;
 use parking_lot::RwLock;
-use russh_sftp::client::error::Error as SftpErrorInner;
 use russh_sftp::client::SftpSession as RusshSftpSession;
+use russh_sftp::client::error::Error as SftpErrorInner;
 use russh_sftp::protocol::OpenFlags;
 use tokio::io::AsyncWriteExt;
 use tokio::sync::mpsc;
@@ -22,7 +22,7 @@ use tracing::{debug, info, warn};
 use super::error::SftpError;
 use super::path_utils::{is_absolute_remote_path, join_local_path, join_remote_path};
 use super::progress::{ProgressStore, StoredTransferProgress, TransferType};
-use super::retry::{transfer_with_retry, RetryConfig};
+use super::retry::{RetryConfig, transfer_with_retry};
 use super::transfer::TransferManager;
 use super::types::*;
 use crate::ssh::HandleController;
@@ -979,7 +979,7 @@ impl SftpSession {
 
         for entry in entries {
             // Check cancellation before processing each entry
-            if let Some(ref flag) = cancel_flag {
+            if let Some(flag) = cancel_flag {
                 if flag.load(std::sync::atomic::Ordering::Relaxed) {
                     info!("Download directory cancelled at {} files", count);
                     return Err(SftpError::TransferCancelled);
@@ -1061,7 +1061,7 @@ impl SftpSession {
                     chunk_sizer.record(n);
 
                     // Speed limit throttle (token-bucket style)
-                    if let Some(ref limit) = speed_limit_bps {
+                    if let Some(limit) = speed_limit_bps {
                         let bps = limit.load(std::sync::atomic::Ordering::Relaxed);
                         if bps > 0 {
                             let elapsed = file_start.elapsed().as_secs_f64();
@@ -1077,7 +1077,7 @@ impl SftpSession {
 
                     // Per-chunk progress for large files (throttled to 200ms)
                     if last_file_progress.elapsed().as_millis() >= 200 {
-                        if let Some(ref tx) = progress_tx {
+                        if let Some(tx) = progress_tx {
                             let elapsed = file_start.elapsed().as_secs_f64();
                             let speed = if elapsed > 0.0 {
                                 (file_transferred as f64 / elapsed) as u64
@@ -1112,7 +1112,7 @@ impl SftpSession {
                 count += 1;
 
                 // Final file progress (ensure 100%)
-                if let Some(ref tx) = progress_tx {
+                if let Some(tx) = progress_tx {
                     let elapsed = file_start.elapsed().as_secs_f64();
                     let speed = if elapsed > 0.0 {
                         (file_transferred as f64 / elapsed) as u64
@@ -1268,7 +1268,7 @@ impl SftpSession {
 
         while let Some(entry) = entries.next_entry().await.map_err(SftpError::IoError)? {
             // Check cancellation before processing each entry
-            if let Some(ref flag) = cancel_flag {
+            if let Some(flag) = cancel_flag {
                 if flag.load(std::sync::atomic::Ordering::Relaxed) {
                     info!("Upload directory cancelled at {} files", count);
                     return Err(SftpError::TransferCancelled);
@@ -1346,7 +1346,7 @@ impl SftpSession {
                     chunk_sizer.record(n);
 
                     // Speed limit throttle (token-bucket style)
-                    if let Some(ref limit) = speed_limit_bps {
+                    if let Some(limit) = speed_limit_bps {
                         let bps = limit.load(std::sync::atomic::Ordering::Relaxed);
                         if bps > 0 {
                             let elapsed = file_start.elapsed().as_secs_f64();
@@ -1362,7 +1362,7 @@ impl SftpSession {
 
                     // Per-chunk progress for large files (throttled to 200ms)
                     if last_file_progress.elapsed().as_millis() >= 200 {
-                        if let Some(ref tx) = progress_tx {
+                        if let Some(tx) = progress_tx {
                             let elapsed = file_start.elapsed().as_secs_f64();
                             let speed = if elapsed > 0.0 {
                                 (file_transferred as f64 / elapsed) as u64
@@ -1399,7 +1399,7 @@ impl SftpSession {
                 count += 1;
 
                 // Final file progress (ensure 100%)
-                if let Some(ref tx) = progress_tx {
+                if let Some(tx) = progress_tx {
                     let elapsed = file_start.elapsed().as_secs_f64();
                     let speed = if elapsed > 0.0 {
                         (file_transferred as f64 / elapsed) as u64

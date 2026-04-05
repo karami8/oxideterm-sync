@@ -84,22 +84,22 @@ use windows_timer::{disable_high_precision_timer, enable_high_precision_timer};
 
 use agent::AgentRegistry;
 use bridge::BridgeManager;
+use commands::HealthRegistry;
 use commands::config::ConfigState;
 use commands::plugin_server::PluginFileServer;
 use commands::session_tree::SessionTreeState;
-use commands::HealthRegistry;
 use session::{AutoReconnectService, SessionRegistry};
 use sftp::session::SftpRegistry;
 use sftp::{ProgressStore, RedbProgressStore, TransferManager};
 use ssh::SshConnectionRegistry;
+use state::StateStore;
 use state::agent_history::AgentHistoryStore;
 use state::ai_chat::AiChatStore;
-use state::StateStore;
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::sync::Arc;
 use tauri::Manager;
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
+use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
 
 /// Write startup log to file (useful for debugging Windows startup issues)
 fn write_startup_log(message: &str) {

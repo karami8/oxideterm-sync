@@ -16,8 +16,8 @@ use dashmap::DashMap;
 use serde::Serialize;
 use std::collections::HashMap;
 use std::sync::Arc;
-use tauri::ipc::Channel;
 use tauri::State;
+use tauri::ipc::Channel;
 use tokio_util::sync::CancellationToken;
 
 /// Maximum response body size for non-streaming requests (10 MB)

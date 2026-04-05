@@ -23,7 +23,7 @@
   <img src="https://img.shields.io/badge/version-1.0.13-blue" alt="Version">
   <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-blue" alt="Platform">
   <img src="https://img.shields.io/badge/license-GPL--3.0-blue" alt="License">
-  <img src="https://img.shields.io/badge/rust-1.75+-orange" alt="Rust">
+  <img src="https://img.shields.io/badge/rust-1.85+-orange" alt="Rust">
   <img src="https://img.shields.io/badge/tauri-2.0-purple" alt="Tauri">
 </p>
 
@@ -62,9 +62,9 @@ https://github.com/user-attachments/assets/4ba033aa-94b5-4ed4-980c-5c3f9f21db7e
 |---|---|
 | SSH clients that can't do local shells | **Hybrid engine**: local PTY (zsh/bash/fish/pwsh/WSL2) + remote SSH in one window |
 | Reconnect = lose everything | **Grace Period reconnect**: probes old connection 30s before killing it — your vim/htop/yazi survive |
-| Remote file editing needs VS Code Remote | **Built-in IDE**: CodeMirror 6 over SFTP with 30+ languages, optional ~1 MB remote agent on Linux |
+| Remote file editing needs VS Code Remote | **Built-in IDE**: CodeMirror 6 over SFTP with 24 languages, optional ~1 MB remote agent on Linux |
 | No SSH connection reuse | **Multiplexing**: terminal, SFTP, forwards, IDE share one SSH connection via reference-counted pool |
-| SSH libraries depend on OpenSSL | **russh 0.54**: pure Rust SSH compiled against `ring` — zero C dependencies |
+| SSH libraries depend on OpenSSL | **russh 0.59**: pure Rust SSH compiled against `ring` — zero C dependencies |
 | 100+ MB Electron apps | **Tauri 2.0**: native Rust backend, 25–40 MB binary |
 | AI locked to one provider | **OxideSens**: 40+ tools, MCP protocol, RAG knowledge base — works with OpenAI/Ollama/DeepSeek/any compatible API |
 | Credentials stored in plain-text configs | **OS keychain only**: passwords and API keys never touch disk; `.oxide` files use ChaCha20-Poly1305 + Argon2id encryption |
@@ -94,10 +94,10 @@ https://github.com/user-attachments/assets/4ba033aa-94b5-4ed4-980c-5c3f9f21db7e
 | **Terminal** | Local PTY (zsh/bash/fish/pwsh/WSL2), SSH remote, split panes, broadcast input, session recording/playback (asciicast v2), WebGL rendering, 30+ themes + custom editor, command palette (`⌘K`), zen mode |
 | **SSH & Auth** | Connection pooling & multiplexing, ProxyJump (unlimited hops) with topology graph, auto-reconnect with Grace Period. Auth: password, SSH key (RSA/Ed25519/ECDSA), SSH Agent, certificates, keyboard-interactive 2FA, Known Hosts TOFU |
 | **SFTP** | Dual-pane browser, drag-and-drop, smart preview (images/video/audio/code/PDF/hex/fonts), transfer queue with progress & ETA, bookmarks, archive extraction |
-| **IDE Mode** | CodeMirror 6 with 30+ languages, file tree + Git status, multi-tab, conflict resolution, integrated terminal. Optional remote agent for Linux (10+ architectures) |
+| **IDE Mode** | CodeMirror 6 with 24 languages, file tree + Git status, multi-tab, conflict resolution, integrated terminal. Optional remote agent for Linux (9 extra architectures) |
 | **Port Forwarding** | Local (-L), Remote (-R), Dynamic SOCKS5 (-D), lock-free message-passing I/O, auto-restore on reconnect, death reporting, idle timeout |
 | **AI (OxideSens)** | Inline panel (`⌘I`) + sidebar chat, terminal buffer capture (single/all panes), multi-source context (IDE/SFTP/Git), 40+ autonomous tools, MCP server integration, RAG knowledge base (BM25 + vector hybrid search), streaming SSE |
-| **Plugins** | Runtime ESM loading, 8 API namespaces, 24 UI Kit components, frozen API + Proxy ACL, circuit breaker, auto-disable on errors |
+| **Plugins** | Runtime ESM loading, 18 API namespaces, 24 UI Kit components, frozen API + Proxy ACL, circuit breaker, auto-disable on errors |
 | **CLI** | `oxt` companion: JSON-RPC 2.0 over Unix Socket / Named Pipe, `status`/`list`/`ping`, human + JSON output |
 | **Security** | .oxide encrypted export (ChaCha20-Poly1305 + Argon2id 256 MB), OS keychain, Touch ID (macOS), host key TOFU, `zeroize` memory clearing |
 | **i18n** | 11 languages: EN, 简体中文, 繁體中文, 日本語, 한국어, FR, DE, ES, IT, PT-BR, VI |
@@ -113,7 +113,7 @@ OxideTerm separates terminal data from control commands into two independent pla
 ```
 ┌─────────────────────────────────────┐
 │        Frontend (React 19)          │
-│  xterm.js 6 (WebGL) + 18 stores    │
+│  xterm.js 6 (WebGL) + 19 stores    │
 └──────────┬──────────────┬───────────┘
            │ Tauri IPC    │ WebSocket (binary)
            │ (JSON)       │ per-session port
@@ -129,14 +129,14 @@ OxideTerm separates terminal data from control commands into two independent pla
 - **Control plane (Tauri IPC)**: connection management, SFTP ops, forwarding, config — structured JSON, but off the critical path.
 - **Node-first addressing**: the frontend never touches `sessionId` or `connectionId`. Everything is addressed by `nodeId`, resolved atomically server-side by the `NodeRouter`. SSH reconnect changes the underlying `connectionId` — but SFTP, IDE, and forwards are completely unaffected.
 
-### 🔩 Pure Rust SSH — russh 0.54
+### 🔩 Pure Rust SSH — russh 0.59
 
-The entire SSH stack is **russh 0.54** compiled against the **`ring`** crypto backend:
+The entire SSH stack is **russh 0.59** compiled against the **`ring`** crypto backend:
 
 - **Zero C/OpenSSL dependencies** — the full crypto stack is Rust. No more "which OpenSSL version?" debugging.
 - Full SSH2 protocol: key exchange, channels, SFTP subsystem, port forwarding
 - ChaCha20-Poly1305 and AES-GCM cipher suites, Ed25519/RSA/ECDSA keys
-- Custom **`AgentSigner`**: wraps system SSH Agent and satisfies russh's `Signer` trait, solving RPITIT `Send` bound issues in russh 0.54 by cloning `&PublicKey` to an owned value before crossing `.await`
+- Custom **`AgentSigner`**: wraps system SSH Agent and satisfies russh's `Signer` trait, solving RPITIT `Send` bound issues by cloning `&AgentIdentity` to an owned value before crossing `.await`
 
 ```rust
 pub struct AgentSigner { /* wraps system SSH Agent */ }
@@ -190,11 +190,11 @@ Privacy-first AI assistant with dual interaction modes:
 CodeMirror 6 editor operating over SFTP — no server-side installation required by default:
 
 - **File tree**: lazy-loaded directories with Git status indicators (modified/untracked/added)
-- **30+ language modes**: 16 native CodeMirror + legacy modes via `@codemirror/legacy-modes`
+- **24 language modes**: 14 native CodeMirror + 10 legacy modes via `@codemirror/legacy-modes`
 - **Conflict resolution**: optimistic mtime locking — detects remote changes before overwriting
 - **Event-driven Git**: auto-refresh on save, create, delete, rename, and terminal Enter keypress
 - **State Gating**: all IO blocked when `readiness !== 'ready'`, Key-Driven Reset forces full remount on reconnect
-- **Remote agent** (optional): ~1 MB Rust binary, auto-deployed on x86_64/aarch64 Linux. 10+ extra architectures (ARMv7, RISC-V64, LoongArch64, s390x, mips64, Power64LE…) in `agents/extra/` for manual upload. Enables enhanced file tree, symbol search, and file watching.
+- **Remote agent** (optional): ~1 MB Rust binary, auto-deployed on x86_64/aarch64 Linux. 9 extra architectures (ARMv7, RISC-V64, LoongArch64, s390x, Power64LE, i686, ARM, Android aarch64, FreeBSD x86_64) in `agents/extra/` for manual upload. Enables enhanced file tree, symbol search, and file watching.
 
 ### 🔀 Port Forwarding — Lock-Free I/O
 
@@ -259,10 +259,10 @@ Cross-platform local shell via `portable-pty 0.8`, feature-gated behind `local-t
 ### And More
 
 - **Resource profiler**: live CPU/memory/network via persistent SSH channel reading `/proc/stat`, delta-based calculation, auto-degrades to RTT-only on non-Linux
-- **Custom theme engine**: 30+ built-in themes, visual editor with live preview, 22 xterm.js fields + 19 CSS variables, auto-derive UI colors from terminal palette
+- **Custom theme engine**: 31 built-in themes, visual editor with live preview, 20 xterm.js fields + 24 UI color variables, auto-derive UI colors from terminal palette
 - **Session recording**: asciicast v2 format, full record and playback
 - **Broadcast input**: type once, send to all split panes — batch server operations
-- **Background gallery**: per-tab background images, 13 tab types, opacity/blur/fit control
+- **Background gallery**: per-tab background images, 16 tab types, opacity/blur/fit control
 - **CLI companion** (`oxt`): ~1 MB binary, JSON-RPC 2.0 over Unix Socket / Named Pipe, `status`/`list`/`ping` with human or `--json` output
 - **WSL Graphics** ⚠️ experimental: built-in VNC viewer — 9 desktop environments + single-app mode, WSLg detection, Xtigervnc + noVNC
 
@@ -299,7 +299,7 @@ Cross-platform local shell via `portable-pty 0.8`, feature-gated behind `local-t
 
 ### Prerequisites
 
-- **Rust** 1.75+
+- **Rust** 1.85+
 - **Node.js** 18+ (pnpm recommended)
 - **Platform tools**:
   - macOS: Xcode Command Line Tools
@@ -333,15 +333,15 @@ cd src-tauri && cargo build --no-default-features --release
 |---|---|---|
 | **Framework** | Tauri 2.0 | Native binary, 25–40 MB |
 | **Runtime** | Tokio + DashMap 6 | Full async, lock-free concurrent maps |
-| **SSH** | russh 0.54 (`ring`) | Pure Rust, zero C deps, SSH Agent |
+| **SSH** | russh 0.59 (`ring`) | Pure Rust, zero C deps, SSH Agent |
 | **Local PTY** | portable-pty 0.8 | Feature-gated, ConPTY on Windows |
 | **Frontend** | React 19.1 + TypeScript 5.8 | Vite 7, Tailwind CSS 4 |
-| **State** | Zustand 5 | 18 specialized stores |
+| **State** | Zustand 5 | 19 specialized stores |
 | **Terminal** | xterm.js 6 + WebGL | GPU-accelerated, 60fps+ |
-| **Editor** | CodeMirror 6 | 30+ language modes |
+| **Editor** | CodeMirror 6 | 24 language modes |
 | **Encryption** | ChaCha20-Poly1305 + Argon2id | AEAD + memory-hard KDF (256 MB) |
 | **Storage** | redb 2.1 | Embedded KV store |
-| **i18n** | i18next 25 | 11 languages × 21 namespaces |
+| **i18n** | i18next 25 | 11 languages × 22 namespaces |
 | **Plugins** | ESM Runtime | Frozen PluginContext + 24 UI Kit |
 | **CLI** | JSON-RPC 2.0 | Unix Socket / Named Pipe |
 
@@ -386,7 +386,7 @@ Full text: [GNU General Public License v3.0](https://www.gnu.org/licenses/gpl-3.
 ---
 
 <p align="center">
-  <sub>134,000+ lines of Rust & TypeScript — built with ⚡ and ☕</sub>
+  <sub>236,000+ lines of Rust & TypeScript — built with ⚡ and ☕</sub>
 </p>
 
 ## Star History

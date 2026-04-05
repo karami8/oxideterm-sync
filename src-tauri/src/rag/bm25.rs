@@ -4,11 +4,11 @@
 use crate::rag::chunker::estimate_tokens;
 use crate::rag::error::RagError;
 use crate::rag::store::RagStore;
-use crate::rag::types::{is_cjk, Bm25Stats, PostingEntry};
+use crate::rag::types::{Bm25Stats, PostingEntry, is_cjk};
 use rust_stemmers::{Algorithm, Stemmer};
 use std::collections::{HashMap, HashSet};
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::LazyLock;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 // ═══════════════════════════════════════════════════════════════════════════
 // BM25 Parameters
@@ -500,7 +500,7 @@ mod tests {
         assert!(tokens.contains(&"署指".to_string()));
         assert!(tokens.contains(&"指南".to_string()));
         assert!(tokens.contains(&"version".to_string())); // "version" stem = "version"
-                                                          // "2" and "0" are single-char non-stop tokens — kept
+        // "2" and "0" are single-char non-stop tokens — kept
         assert!(tokens.contains(&"2".to_string()));
         assert!(tokens.contains(&"0".to_string()));
     }

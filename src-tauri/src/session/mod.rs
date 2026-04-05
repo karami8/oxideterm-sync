@@ -29,22 +29,22 @@ pub mod topology_graph;
 pub mod tree;
 pub mod types;
 
-pub use auth::{load_private_key, KeyAuth};
+pub use auth::{KeyAuth, load_private_key};
 pub use auto_reconnect::AutoReconnectService;
 pub use env_detector::RemoteEnvInfo;
-pub use events::{event_names, NetworkStatusPayload};
+pub use events::{NetworkStatusPayload, event_names};
 pub use health::{
     HealthMetrics, HealthStatus, HealthThresholds, HealthTracker, MetricsSource, QuickHealthCheck,
     ResourceMetrics,
 };
-pub use parser::{parse_terminal_output, parse_terminal_output_simple, BatchParser};
+pub use parser::{BatchParser, parse_terminal_output, parse_terminal_output_simple};
 pub use profiler::{ProfilerState, ResourceProfiler};
 pub use reconnect::{
     ReconnectConfig, ReconnectError, ReconnectEvent, ReconnectState, SessionReconnector,
 };
 pub use registry::{RegistryError, SessionRegistry};
 pub use scroll_buffer::{BufferStats, ScrollBuffer, SerializedBuffer, TerminalLine};
-pub use search::{search_lines, SearchMatch, SearchOptions, SearchResult};
+pub use search::{SearchMatch, SearchOptions, SearchResult, search_lines};
 pub use state::{SessionState, SessionStateMachine};
 pub use topology_graph::{
     NetworkTopology, RouteResult, TopologyEdge, TopologyNodeConfig, TopologyNodeInfo,

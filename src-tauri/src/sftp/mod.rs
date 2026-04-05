@@ -19,7 +19,7 @@ pub use progress::{
     DummyProgressStore, ProgressStore, RedbProgressStore, StoredTransferProgress, TransferStatus,
     TransferType,
 };
-pub use retry::{calculate_backoff, is_retryable_error, transfer_with_retry, RetryConfig};
+pub use retry::{RetryConfig, calculate_backoff, is_retryable_error, transfer_with_retry};
 pub use session::{ResumeContext, SftpSession};
-pub use transfer::{check_transfer_control, TransferControl, TransferGuard, TransferManager};
+pub use transfer::{TransferControl, TransferGuard, TransferManager, check_transfer_control};
 pub use types::*;

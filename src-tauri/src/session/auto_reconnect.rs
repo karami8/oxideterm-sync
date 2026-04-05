@@ -13,8 +13,8 @@
 //! 2. 提供网络状态查询接口（只读）
 //! 3. 保留 cancel_reconnect 接口（前端可调用取消）
 
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use tauri::AppHandle;
 use tracing::info;

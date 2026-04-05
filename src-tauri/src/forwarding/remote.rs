@@ -17,13 +17,13 @@
 //! which the ClientHandler can look up when it receives a forwarded connection.
 
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
 use std::sync::LazyLock;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
-use tokio::sync::{broadcast, mpsc, RwLock};
+use tokio::sync::{RwLock, broadcast, mpsc};
 use tracing::{debug, info, warn};
 
 use super::events::ForwardEventEmitter;
@@ -354,7 +354,7 @@ pub async fn start_remote_forward_with_disconnect(
             .await;
 
         // Emit status event based on exit reason
-        if let (Some(ref emitter), Some(ref fwd_id)) = (&event_emitter, &forward_id) {
+        if let (Some(emitter), Some(fwd_id)) = (&event_emitter, &forward_id) {
             match exit_reason {
                 ExitReason::SshDisconnected => {
                     emitter.emit_status_changed(

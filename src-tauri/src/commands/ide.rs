@@ -251,7 +251,7 @@ pub(crate) async fn exec_command_inner(
     cwd: Option<String>,
     timeout_secs: Option<u64>,
 ) -> Result<ExecResult, String> {
-    use tokio::time::{timeout, Duration};
+    use tokio::time::{Duration, timeout};
     use tracing::{debug, warn};
 
     // Open a new session channel

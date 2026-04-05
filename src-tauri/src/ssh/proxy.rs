@@ -33,8 +33,8 @@ use russh::client::{self, Handle};
 use tracing::{debug, info};
 
 use super::auth::{
-    authenticate_password, build_client_config, ensure_auth_success,
-    load_certificate_auth_material, load_public_key_auth_material, DEFAULT_AUTH_TIMEOUT_SECS,
+    DEFAULT_AUTH_TIMEOUT_SECS, authenticate_password, build_client_config, ensure_auth_success,
+    load_certificate_auth_material, load_public_key_auth_material,
 };
 use super::client::ClientHandler;
 use super::config::AuthMethod;

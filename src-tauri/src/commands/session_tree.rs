@@ -11,9 +11,9 @@ use serde::{Deserialize, Serialize};
 use tauri::State;
 use tokio::sync::RwLock;
 
+use crate::session::AuthMethod;
 use crate::session::tree::{FlatNode, NodeConnection, NodeOrigin, NodeState, SessionTree};
 use crate::session::types::SessionConfig;
-use crate::session::AuthMethod;
 use crate::ssh::SshConnectionRegistry;
 
 /// Session Tree 状态（全局单例）
@@ -1523,7 +1523,9 @@ pub async fn destroy_node_sessions(
             {
                 tracing::warn!(
                     "[destroy_node_sessions] Failed to remove terminal {} from SSH connection {}: {}",
-                    terminal_id, ssh_id, e
+                    terminal_id,
+                    ssh_id,
+                    e
                 );
             }
         }
@@ -1583,7 +1585,10 @@ pub async fn destroy_node_sessions(
 
     tracing::info!(
         "[destroy_node_sessions] Completed for node {}: destroyed_terminals={:?}, ssh_disconnected={}, sftp_closed={}",
-        node_id, destroyed_terminals, ssh_disconnected, sftp_closed
+        node_id,
+        destroyed_terminals,
+        ssh_disconnected,
+        sftp_closed
     );
 
     Ok(DestroyNodeSessionsResponse {

@@ -34,8 +34,8 @@
 //! - 计时器到期：断开连接，释放资源
 //! - keep_alive=true：忽略空闲超时
 
-use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
 use std::time::Duration;
 
 use chrono::Utc;
@@ -47,8 +47,8 @@ use tokio::task::JoinHandle;
 use tracing::{debug, error, info, warn};
 
 use super::auth::{
-    authenticate_password, build_client_config, ensure_auth_success,
-    load_certificate_auth_material, load_public_key_auth_material, DEFAULT_AUTH_TIMEOUT_SECS,
+    DEFAULT_AUTH_TIMEOUT_SECS, authenticate_password, build_client_config, ensure_auth_success,
+    load_certificate_auth_material, load_public_key_auth_material,
 };
 use super::handle_owner::HandleController;
 use super::{AuthMethod as SshAuthMethod, SshClient, SshConfig};
@@ -2133,7 +2133,10 @@ impl SshConnectionRegistry {
                             state_after_delay,
                             ConnectionState::Disconnecting | ConnectionState::Disconnected
                         ) {
-                            info!("Connection {} already disconnecting/disconnected during probe delay, stopping heartbeat", connection_id);
+                            info!(
+                                "Connection {} already disconnecting/disconnected during probe delay, stopping heartbeat",
+                                connection_id
+                            );
                             break;
                         }
 
@@ -2141,7 +2144,10 @@ impl SshConnectionRegistry {
                         let probe_result = conn.handle_controller.ping().await;
                         match probe_result {
                             crate::ssh::handle_owner::PingResult::Ok => {
-                                info!("Connection {} quick probe succeeded — transient glitch, resuming heartbeat", connection_id);
+                                info!(
+                                    "Connection {} quick probe succeeded — transient glitch, resuming heartbeat",
+                                    connection_id
+                                );
                                 conn.reset_heartbeat_failures();
                                 conn.update_activity();
                                 continue;
@@ -2149,7 +2155,10 @@ impl SshConnectionRegistry {
                             _ => {
                                 // 二次探测也失败，确认链路断开
                                 // 🛑 后端禁止自动重连：只广播事件，等待前端指令
-                                error!("Connection {} quick probe also failed ({:?}), confirmed link_down", connection_id, probe_result);
+                                error!(
+                                    "Connection {} quick probe also failed ({:?}), confirmed link_down",
+                                    connection_id, probe_result
+                                );
                                 conn.set_state(ConnectionState::LinkDown).await;
                                 registry
                                     .emit_connection_status_changed(&connection_id, "link_down")

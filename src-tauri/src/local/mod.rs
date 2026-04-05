@@ -16,4 +16,4 @@ pub use registry::LocalTerminalRegistry;
 pub use session::{
     BackgroundSessionInfo, LocalTerminalInfo, LocalTerminalSession, SessionError, SessionEvent,
 };
-pub use shell::{default_shell, get_shell_args, scan_shells, ShellInfo};
+pub use shell::{ShellInfo, default_shell, get_shell_args, scan_shells};

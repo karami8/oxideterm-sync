@@ -4,15 +4,15 @@
 //! Cryptographic operations for .oxide file encryption/decryption
 
 use argon2::{Algorithm, Argon2, Params, Version};
-use chacha20poly1305::{aead::Aead, ChaCha20Poly1305, KeyInit, Nonce};
+use chacha20poly1305::{ChaCha20Poly1305, KeyInit, Nonce, aead::Aead};
 use rand::RngCore;
 use sha2::{Digest, Sha256};
 use zeroize::Zeroizing;
 
 use super::error::OxideFileError;
 use super::format::{
-    kdf_flags, EncryptedConnection, EncryptedPayload, OxideFile, OxideMetadata, NONCE_LEN,
-    SALT_LEN, TAG_LEN,
+    EncryptedConnection, EncryptedPayload, NONCE_LEN, OxideFile, OxideMetadata, SALT_LEN, TAG_LEN,
+    kdf_flags,
 };
 
 /// KDF parameters for different versions

@@ -6,8 +6,8 @@
 //! Tauri commands for managing saved connections and SSH config import.
 
 use crate::config::{
-    default_ssh_config_path, parse_ssh_config, AiProviderVault, ConfigFile, ConfigStorage,
-    Keychain, KeychainError, ProxyHopConfig, SavedAuth, SavedConnection, SshConfigHost,
+    AiProviderVault, ConfigFile, ConfigStorage, Keychain, KeychainError, ProxyHopConfig, SavedAuth,
+    SavedConnection, SshConfigHost, default_ssh_config_path, parse_ssh_config,
 };
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
@@ -404,7 +404,7 @@ pub async fn save_connection(
                         _ => {
                             return Err(
                                 "Jump host must use key authentication for proxy chain".to_string()
-                            )
+                            );
                         }
                     };
 

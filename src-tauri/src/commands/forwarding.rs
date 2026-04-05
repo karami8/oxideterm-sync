@@ -16,7 +16,7 @@ use tracing::{error, info, warn};
 use crate::forwarding::{
     ForwardRule, ForwardRuleUpdate, ForwardStats, ForwardStatus, ForwardType, ForwardingManager,
 };
-use crate::state::{forwarding::ForwardPersistence, PersistedForward, StateStore};
+use crate::state::{PersistedForward, StateStore, forwarding::ForwardPersistence};
 
 /// Global registry of forwarding managers (one per session)
 pub struct ForwardingRegistry {
@@ -347,7 +347,11 @@ pub async fn create_port_forward(
             Ok(false) => {
                 let error_msg = format!(
                     "Target port {}:{} is not reachable. Please ensure the service is running on the remote server.\n\nTroubleshooting:\n• Check if service is running: ss -tlnp | grep {}\n• Verify the port number is correct\n• Try connecting manually: nc -zv {} {}",
-                    request.target_host, request.target_port, request.target_port, request.target_host, request.target_port
+                    request.target_host,
+                    request.target_port,
+                    request.target_port,
+                    request.target_host,
+                    request.target_port
                 );
                 error!("Port health check failed: {}", error_msg);
                 return Ok(ForwardResponse {

@@ -12,12 +12,12 @@ use russh::*;
 use tracing::{debug, info, warn};
 
 use super::auth::{
-    authenticate_password, build_client_config, ensure_auth_success,
-    load_certificate_auth_material, load_public_key_auth_material, DEFAULT_AUTH_TIMEOUT_SECS,
+    DEFAULT_AUTH_TIMEOUT_SECS, authenticate_password, build_client_config, ensure_auth_success,
+    load_certificate_auth_material, load_public_key_auth_material,
 };
 use super::config::{AuthMethod, SshConfig};
 use super::error::SshError;
-use super::known_hosts::{get_known_hosts, HostKeyVerification};
+use super::known_hosts::{HostKeyVerification, get_known_hosts};
 use super::session::SshSession;
 
 /// SSH Client handler for russh

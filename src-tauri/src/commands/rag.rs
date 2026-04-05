@@ -15,8 +15,8 @@ use crate::rag::store::RagStore;
 use crate::rag::types::*;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::{AppHandle, Emitter, State};
 use tracing::info;
 

@@ -142,8 +142,7 @@ const DESKTOP_CANDIDATES: &[DesktopCandidate] = &[
     DesktopCandidate {
         detect_bin: "startplasma-x11",
         launch_cmd: "startplasma-x11",
-        extra_env:
-            "export QT_QPA_PLATFORM=xcb\nexport DESKTOP_SESSION=plasma\nexport KWIN_COMPOSE=N",
+        extra_env: "export QT_QPA_PLATFORM=xcb\nexport DESKTOP_SESSION=plasma\nexport KWIN_COMPOSE=N",
         display_name: "KDE Plasma",
     },
     DesktopCandidate {

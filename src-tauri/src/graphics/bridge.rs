@@ -22,8 +22,8 @@ use subtle::ConstantTimeEq;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::task::JoinHandle;
-use tokio_tungstenite::tungstenite::http::{Response, StatusCode};
 use tokio_tungstenite::tungstenite::Message;
+use tokio_tungstenite::tungstenite::http::{Response, StatusCode};
 
 /// Start the WebSocket ↔ VNC TCP proxy.
 ///

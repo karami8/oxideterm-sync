@@ -1261,10 +1261,11 @@ mod tests {
         assert_eq!(full.meta.message_count, 200);
         assert_eq!(full.messages.len(), 200);
         assert_eq!(stats.message_count, 200);
-        assert!(full
-            .messages
-            .windows(2)
-            .all(|window| window[0].timestamp <= window[1].timestamp));
+        assert!(
+            full.messages
+                .windows(2)
+                .all(|window| window[0].timestamp <= window[1].timestamp)
+        );
     }
 
     #[test]

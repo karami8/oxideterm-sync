@@ -36,7 +36,7 @@ use russh::{Channel, ChannelMsg};
 use serde::{Deserialize, Serialize};
 use tauri::Emitter;
 use tokio::sync::broadcast;
-use tokio::time::{timeout, Duration};
+use tokio::time::{Duration, timeout};
 use tracing::{debug, trace, warn};
 
 use crate::session::health::{MetricsSource, ResourceMetrics};

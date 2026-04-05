@@ -87,7 +87,7 @@ pub async fn upload_terminal_background(
             return Err(format!(
                 "Unsupported image type: {}. Use PNG, JPEG, WebP, or GIF.",
                 mime
-            ))
+            ));
         }
     }
 

@@ -1,8 +1,8 @@
 // Copyright (C) 2026 AnalyseDeCircuit
 // SPDX-License-Identifier: GPL-3.0-only
 
-use crate::rag::bm25::{search_bm25, Bm25Hit};
-use crate::rag::embedding::{search_vector, VectorHit};
+use crate::rag::bm25::{Bm25Hit, search_bm25};
+use crate::rag::embedding::{VectorHit, search_vector};
 use crate::rag::error::RagError;
 use crate::rag::store::RagStore;
 use crate::rag::types::{SearchResult, SearchSource};
@@ -256,11 +256,7 @@ fn cosine_sim(a: &[f32], b: &[f32]) -> f64 {
         nb += yf * yf;
     }
     let denom = na.sqrt() * nb.sqrt();
-    if denom == 0.0 {
-        0.0
-    } else {
-        dot / denom
-    }
+    if denom == 0.0 { 0.0 } else { dot / denom }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

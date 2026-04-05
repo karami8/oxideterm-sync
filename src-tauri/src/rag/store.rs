@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
 use crate::rag::error::RagError;
-use crate::rag::hnsw::{hnsw_index_path, PersistedHnswIndex};
+use crate::rag::hnsw::{PersistedHnswIndex, hnsw_index_path};
 use crate::rag::types::*;
 use redb::{Database, ReadableTable, TableDefinition};
 use std::collections::HashMap;

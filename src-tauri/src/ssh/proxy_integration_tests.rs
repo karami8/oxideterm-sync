@@ -3,8 +3,8 @@ use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use rand::rngs::OsRng;
-use russh::keys::ssh_key::certificate::{Builder as CertificateBuilder, CertType};
 use russh::keys::ssh_key::LineEnding;
+use russh::keys::ssh_key::certificate::{Builder as CertificateBuilder, CertType};
 use russh::keys::{Algorithm, Certificate, PrivateKey, PublicKey};
 use russh::server;
 use tempfile::TempDir;
@@ -15,7 +15,7 @@ use tokio::task::JoinHandle;
 
 use super::config::AuthMethod;
 use super::error::SshError;
-use super::proxy::{connect_via_proxy, ProxyChain, ProxyHop};
+use super::proxy::{ProxyChain, ProxyHop, connect_via_proxy};
 use crate::session::tree::MAX_CHAIN_DEPTH;
 
 const TEST_TIMEOUT_SECS: u64 = 10;
@@ -607,9 +607,11 @@ async fn test_proxy_rejects_keyboard_interactive_hops() {
         Err(error) => error,
     };
 
-    assert!(error
-        .to_string()
-        .contains("KeyboardInteractive authentication not supported for proxy chain hops"));
+    assert!(
+        error
+            .to_string()
+            .contains("KeyboardInteractive authentication not supported for proxy chain hops")
+    );
 }
 
 #[tokio::test]

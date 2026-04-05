@@ -10,7 +10,7 @@ use super::protocol::{self, Request, Response};
 use super::transport::IpcStream;
 use tauri::AppHandle;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
-use tokio::time::{timeout, Duration};
+use tokio::time::{Duration, timeout};
 
 /// Maximum line length for a single JSON-RPC request (1 MB).
 const MAX_LINE_LENGTH: usize = 1_048_576;

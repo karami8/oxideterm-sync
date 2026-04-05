@@ -9,11 +9,11 @@
 use base64::Engine as _;
 use futures_util::StreamExt;
 use minisign_verify::{PublicKey, Signature};
+use reqwest::StatusCode;
 use reqwest::header::{
-    HeaderValue, ACCEPT, ACCEPT_ENCODING, CONTENT_LENGTH, CONTENT_RANGE, ETAG, IF_RANGE,
+    ACCEPT, ACCEPT_ENCODING, CONTENT_LENGTH, CONTENT_RANGE, ETAG, HeaderValue, IF_RANGE,
     IF_UNMODIFIED_SINCE, LAST_MODIFIED, RANGE,
 };
-use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};

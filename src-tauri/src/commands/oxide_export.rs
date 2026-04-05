@@ -3,7 +3,7 @@
 
 //! Tauri commands for .oxide file export
 
-use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
+use base64::{Engine, engine::general_purpose::STANDARD as BASE64};
 use chrono::Utc;
 use serde::Serialize;
 use std::sync::Arc;
@@ -13,8 +13,8 @@ use tracing::info;
 use crate::commands::config::ConfigState;
 use crate::config::types::SavedAuth;
 use crate::oxide_file::{
-    compute_checksum, encrypt_oxide_file, EncryptedAuth, EncryptedConnection, EncryptedPayload,
-    EncryptedProxyHop, OxideMetadata,
+    EncryptedAuth, EncryptedConnection, EncryptedPayload, EncryptedProxyHop, OxideMetadata,
+    compute_checksum, encrypt_oxide_file,
 };
 
 /// Pre-flight check result for export

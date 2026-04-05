@@ -1,7 +1,7 @@
 // Copyright (C) 2026 AnalyseDeCircuit
 // SPDX-License-Identifier: GPL-3.0-only
 
-use crate::rag::types::{is_cjk, DocChunk, DocFormat};
+use crate::rag::types::{DocChunk, DocFormat, is_cjk};
 use uuid::Uuid;
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -333,9 +333,11 @@ mod tests {
         // Should have sections
         let paths: Vec<_> = chunks.iter().map(|c| c.section_path.clone()).collect();
         assert!(paths.iter().any(|p| p.as_deref() == Some("Introduction")));
-        assert!(paths
-            .iter()
-            .any(|p| p.as_deref() == Some("Introduction > Setup > Docker")));
+        assert!(
+            paths
+                .iter()
+                .any(|p| p.as_deref() == Some("Introduction > Setup > Docker"))
+        );
     }
 
     #[test]

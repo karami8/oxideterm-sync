@@ -16,7 +16,7 @@ mod transport;
 
 use std::sync::Arc;
 use tauri::AppHandle;
-use tokio::sync::{oneshot, Semaphore};
+use tokio::sync::{Semaphore, oneshot};
 
 pub use protocol::{Notification, Request, Response, RpcError};
 

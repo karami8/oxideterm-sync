@@ -7,7 +7,7 @@
 //! extracts the needed state via `app.state()`, and
 //! returns a JSON value or error tuple.
 
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::sync::Arc;
 use tauri::Manager;
 use tokio::io::AsyncWriteExt;
@@ -19,7 +19,7 @@ use crate::commands::config::ConfigState;
 use crate::commands::forwarding::ForwardingRegistry;
 use crate::commands::{HealthRegistry, ProfilerRegistry};
 use crate::config::ssh_config::parse_ssh_config;
-use crate::config::{SavedAuth, SavedConnection, CONFIG_VERSION};
+use crate::config::{CONFIG_VERSION, SavedAuth, SavedConnection};
 use crate::router::NodeRouter;
 use crate::session::SessionRegistry;
 use crate::sftp::progress::DummyProgressStore;

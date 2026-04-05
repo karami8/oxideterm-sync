@@ -10,7 +10,7 @@ use tracing::{debug, error, info};
 
 use super::client::ClientHandler;
 use super::error::SshError;
-use super::handle_owner::{spawn_handle_owner_task, HandleController};
+use super::handle_owner::{HandleController, spawn_handle_owner_task};
 
 /// Standard PTY modes matching OpenSSH client defaults.
 /// Ensures the remote PTY is correctly configured for interactive use

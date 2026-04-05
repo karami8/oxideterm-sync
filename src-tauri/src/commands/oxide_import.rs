@@ -3,7 +3,7 @@
 
 //! Tauri commands for .oxide file import
 
-use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
+use base64::{Engine, engine::general_purpose::STANDARD as BASE64};
 use chrono::Utc;
 use serde::Serialize;
 use std::collections::HashSet;
@@ -17,8 +17,8 @@ use tracing::info;
 use uuid::Uuid;
 
 use crate::commands::config::ConfigState;
-use crate::config::types::{ProxyHopConfig, SavedAuth, SavedConnection, CONFIG_VERSION};
-use crate::oxide_file::{decrypt_oxide_file, EncryptedAuth, EncryptedProxyHop, OxideMetadata};
+use crate::config::types::{CONFIG_VERSION, ProxyHopConfig, SavedAuth, SavedConnection};
+use crate::oxide_file::{EncryptedAuth, EncryptedProxyHop, OxideMetadata, decrypt_oxide_file};
 
 /// Result of importing connections from .oxide file
 #[derive(Debug, Serialize)]

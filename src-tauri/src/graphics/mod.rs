@@ -179,13 +179,19 @@ mod types {
     /// Errors specific to WSL Graphics operations
     #[derive(Debug, Error)]
     pub enum GraphicsError {
-        #[error("No VNC server found in WSL distro '{0}'. Install prerequisites:\nsudo apt update && sudo apt install tigervnc-standalone-server dbus-x11 -y\nThen install a desktop: sudo apt install xfce4 -y (recommended), ubuntu-desktop (GNOME), or kde-plasma-desktop (KDE Plasma)")]
+        #[error(
+            "No VNC server found in WSL distro '{0}'. Install prerequisites:\nsudo apt update && sudo apt install tigervnc-standalone-server dbus-x11 -y\nThen install a desktop: sudo apt install xfce4 -y (recommended), ubuntu-desktop (GNOME), or kde-plasma-desktop (KDE Plasma)"
+        )]
         NoVncServer(String),
 
-        #[error("No desktop environment found in WSL distro '{0}'. Install one:\nsudo apt install xfce4 -y  (lightweight, recommended)\nsudo apt install ubuntu-desktop -y  (GNOME, experimental)\nsudo apt install kde-plasma-desktop -y  (KDE Plasma, experimental)")]
+        #[error(
+            "No desktop environment found in WSL distro '{0}'. Install one:\nsudo apt install xfce4 -y  (lightweight, recommended)\nsudo apt install ubuntu-desktop -y  (GNOME, experimental)\nsudo apt install kde-plasma-desktop -y  (KDE Plasma, experimental)"
+        )]
         NoDesktop(String),
 
-        #[error("D-Bus is not available in WSL distro '{0}'. Install it:\nsudo apt update && sudo apt install dbus-x11 -y")]
+        #[error(
+            "D-Bus is not available in WSL distro '{0}'. Install it:\nsudo apt update && sudo apt install dbus-x11 -y"
+        )]
         NoDbus(String),
 
         #[error("VNC server failed to start within timeout")]

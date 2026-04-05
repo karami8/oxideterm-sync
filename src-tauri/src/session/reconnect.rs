@@ -7,7 +7,7 @@
 //! When a connection drops, the system will attempt to reconnect
 //! automatically while preserving the terminal state.
 
-use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU8, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU8, AtomicU32, Ordering};
 use std::time::Duration;
 
 use tokio::sync::mpsc;

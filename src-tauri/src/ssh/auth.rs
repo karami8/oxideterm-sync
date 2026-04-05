@@ -8,10 +8,9 @@ use std::future::Future;
 use std::sync::Arc;
 use std::time::Duration;
 
-use rand::rngs::OsRng;
 use russh::client;
 use russh::keys::key::PrivateKeyWithHashAlg;
-use russh::keys::{Algorithm, Certificate, PrivateKey};
+use russh::keys::{Certificate, PrivateKey};
 use tracing::debug;
 
 use super::client::ClientHandler;
@@ -164,8 +163,10 @@ pub(crate) fn load_certificate_auth_material(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use russh::keys::ssh_key::LineEnding;
+    use rand::rngs::OsRng;
     use russh::MethodSet;
+    use russh::keys::Algorithm;
+    use russh::keys::ssh_key::LineEnding;
     use tempfile::tempdir;
 
     fn write_test_key(path: &std::path::Path, passphrase: Option<&str>) {
@@ -269,9 +270,11 @@ mod tests {
         .unwrap_err();
 
         assert!(matches!(error, SshError::AuthenticationFailed(_)));
-        assert!(error
-            .to_string()
-            .contains("Authentication rejected by server"));
+        assert!(
+            error
+                .to_string()
+                .contains("Authentication rejected by server")
+        );
     }
 
     #[test]

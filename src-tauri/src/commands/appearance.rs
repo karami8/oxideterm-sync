@@ -26,7 +26,7 @@ pub async fn set_window_vibrancy(window: tauri::Window, mode: String) -> Result<
             let result: Result<(), String> = (|| {
                 #[cfg(target_os = "macos")]
                 if enabled {
-                    use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial};
+                    use window_vibrancy::{NSVisualEffectMaterial, apply_vibrancy};
                     apply_vibrancy(&window_inner, NSVisualEffectMaterial::Sidebar, None, None)
                         .map_err(|e| format!("Failed to apply vibrancy: {e}"))?;
                 }

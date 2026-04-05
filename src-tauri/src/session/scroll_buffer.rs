@@ -12,11 +12,11 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use tokio::sync::RwLock;
 
-use super::search::{search_lines, SearchOptions, SearchResult};
+use super::search::{SearchOptions, SearchResult, search_lines};
 
 /// Default maximum lines to keep in buffer
 /// 30K lines ≈ ~3.6 MB/session (vs 100K ≈ ~11 MB).

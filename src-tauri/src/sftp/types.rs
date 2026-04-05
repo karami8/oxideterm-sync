@@ -625,7 +625,7 @@ pub fn detect_and_decode(bytes: &[u8]) -> (String, String, f32, bool) {
 /// Check for Byte Order Mark (BOM) at the start of bytes
 /// Returns (has_bom, Option<encoding>)
 fn check_bom(bytes: &[u8]) -> (bool, Option<&'static encoding_rs::Encoding>) {
-    use encoding_rs::{UTF_16BE, UTF_16LE, UTF_8};
+    use encoding_rs::{UTF_8, UTF_16BE, UTF_16LE};
 
     if bytes.len() >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF {
         return (true, Some(UTF_8));

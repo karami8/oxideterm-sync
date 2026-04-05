@@ -29,26 +29,27 @@
 //! 2. Request identity list from agent ([`AgentClient::request_identities`])
 //! 3. For each key, attempt [`Handle::authenticate_publickey_with`] with [`AgentSigner`]
 //! 4. Server sends `Reply::SignRequest { key, data }` → russh calls
-//!    [`Signer::auth_publickey_sign`] → agent signs → response completes auth
+//!    [`Signer::auth_sign`] → agent signs → response completes auth
 //!
 //! # The `AgentSigner` Workaround (Send + RPITIT)
 //!
-//! russh 0.54's built-in `impl Signer for AgentClient` returns `impl Future + Send`
+//! russh's built-in `impl Signer for AgentClient` returns `impl Future + Send`
 //! via RPITIT. Inside [`Handle::authenticate_publickey_with`], the call
-//! `signer.auth_publickey_sign(&key, ...)` captures `&key` where `key` is a local
-//! `PublicKey` from `Reply::SignRequest`. The Rust compiler cannot prove `Send` for
+//! `signer.auth_sign(&key, ...)` captures `&key` where `key` is a local
+//! `AgentIdentity` from `Reply::SignRequest`. The Rust compiler cannot prove `Send` for
 //! this borrow's lifetime through RPITIT (related: rust-lang/rust#100013).
 //!
-//! `AgentSigner` solves this by cloning `&PublicKey` → owned before the async block,
+//! `AgentSigner` solves this by cloning `&AgentIdentity` → owned before the async block,
 //! eliminating the problematic cross-`.await` reference. This pattern is stable across
 //! russh versions because it depends only on the `Signer` trait shape, not internals.
 
 use std::future::Future;
 
 use russh::client::Handle;
+use russh::keys::HashAlg;
+use russh::keys::agent::AgentIdentity;
 use russh::keys::agent::client::{AgentClient, AgentStream};
-use russh::keys::ssh_key;
-use russh::{AgentAuthError, CryptoVec, Signer};
+use russh::{AgentAuthError, Signer};
 use tracing::{debug, info, warn};
 
 use crate::ssh::error::SshError;
@@ -62,9 +63,9 @@ use crate::ssh::error::SshError;
 ///
 /// ```ignore
 /// Some(Reply::SignRequest { key, data }) => {
-///     //  ↓ `key` is a local `PublicKey` from the `Reply` variant
-///     let result = signer.auth_publickey_sign(&key, hash_alg, data).await;
-///     //                                      ^^^^ borrow of local across .await
+///     //  ↓ `key` is a local `AgentIdentity` from the `Reply` variant
+///     let result = signer.auth_sign(&key, hash_alg, data).await;
+///     //                             ^^^^ borrow of local across .await
 /// }
 /// ```
 ///
@@ -74,7 +75,7 @@ use crate::ssh::error::SshError;
 ///
 /// # Solution
 ///
-/// Clone `&PublicKey` → owned **before** the async block. The future then captures
+/// Clone `&AgentIdentity` → owned **before** the async block. The future then captures
 /// only owned values, making it trivially `Send`. The clone is cheap (~64 bytes for
 /// Ed25519 keys).
 ///
@@ -90,12 +91,12 @@ struct AgentSigner<'a> {
 impl Signer for AgentSigner<'_> {
     type Error = AgentAuthError;
 
-    fn auth_publickey_sign(
+    fn auth_sign(
         &mut self,
-        key: &ssh_key::PublicKey,
-        hash_alg: Option<ssh_key::HashAlg>,
-        to_sign: CryptoVec,
-    ) -> impl Future<Output = Result<CryptoVec, Self::Error>> + Send {
+        key: &AgentIdentity,
+        hash_alg: Option<HashAlg>,
+        to_sign: Vec<u8>,
+    ) -> impl Future<Output = Result<Vec<u8>, Self::Error>> + Send {
         let key_owned = key.clone();
         async move {
             self.agent
@@ -192,12 +193,16 @@ impl SshAgentClient {
         // 2. Try each key until one succeeds
         let mut last_error: Option<String> = None;
         for key in &keys {
-            debug!("Trying agent key: {} ({})", key.algorithm(), key.comment());
+            debug!(
+                "Trying agent key: {} ({})",
+                key.public_key().algorithm(),
+                key.comment()
+            );
 
             match handle
                 .authenticate_publickey_with(
                     &username,
-                    key.clone(),
+                    key.public_key().into_owned(),
                     None,
                     &mut AgentSigner {
                         agent: &mut self.agent,

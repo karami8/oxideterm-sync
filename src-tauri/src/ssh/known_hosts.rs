@@ -10,7 +10,7 @@ use std::fs::{self, OpenOptions};
 use std::io::{BufRead, BufReader, Write};
 use std::path::PathBuf;
 
-use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
+use base64::{Engine, engine::general_purpose::STANDARD as BASE64};
 use parking_lot::RwLock;
 use russh::keys::{PublicKey, PublicKeyBase64};
 use sha2::{Digest, Sha256};

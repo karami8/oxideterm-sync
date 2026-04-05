@@ -41,16 +41,13 @@ const MAX_OUTPUT_SIZE: usize = 8192;
 
 /// Phase A: Platform discrimination — single-line, busybox-safe command.
 /// Uses `$PSModulePath` to detect Windows (always set on Windows, never on Unix).
-const PHASE_A_CMD: &str =
-    "echo '===DETECT==='; if [ -n \"$PSModulePath\" ]; then echo 'PLATFORM=windows'; else echo \"PLATFORM=$(uname -s 2>/dev/null || echo unknown)\"; fi; echo '===END==='\n";
+const PHASE_A_CMD: &str = "echo '===DETECT==='; if [ -n \"$PSModulePath\" ]; then echo 'PLATFORM=windows'; else echo \"PLATFORM=$(uname -s 2>/dev/null || echo unknown)\"; fi; echo '===END==='\n";
 
 /// Phase B (Unix): Collect OS, arch, kernel, shell, and distro info.
-const PHASE_B_UNIX_CMD: &str =
-    "echo '===ENV==='; uname -s 2>/dev/null; echo '===ARCH==='; uname -m 2>/dev/null; echo '===KERNEL==='; uname -r 2>/dev/null; echo '===SHELL==='; echo $SHELL 2>/dev/null; echo '===DISTRO==='; cat /etc/os-release 2>/dev/null | grep -E '^(PRETTY_NAME|ID)=' | head -2; echo '===END==='\n";
+const PHASE_B_UNIX_CMD: &str = "echo '===ENV==='; uname -s 2>/dev/null; echo '===ARCH==='; uname -m 2>/dev/null; echo '===KERNEL==='; uname -r 2>/dev/null; echo '===SHELL==='; echo $SHELL 2>/dev/null; echo '===DISTRO==='; cat /etc/os-release 2>/dev/null | grep -E '^(PRETTY_NAME|ID)=' | head -2; echo '===END==='\n";
 
 /// Phase B (Windows/PowerShell): Collect version, arch, and shell info.
-const PHASE_B_WINDOWS_CMD: &str =
-    "echo '===ENV==='; [System.Environment]::OSVersion.VersionString; echo '===ARCH==='; $env:PROCESSOR_ARCHITECTURE; echo '===SHELL==='; \"PowerShell $($PSVersionTable.PSVersion)\"; echo '===END==='\n";
+const PHASE_B_WINDOWS_CMD: &str = "echo '===ENV==='; [System.Environment]::OSVersion.VersionString; echo '===ARCH==='; $env:PROCESSOR_ARCHITECTURE; echo '===SHELL==='; \"PowerShell $($PSVersionTable.PSVersion)\"; echo '===END==='\n";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Types

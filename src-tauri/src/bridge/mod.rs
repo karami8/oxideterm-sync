@@ -12,6 +12,6 @@ mod server;
 
 pub use manager::BridgeManager;
 pub use protocol::{
-    data_frame, error_frame, heartbeat_frame, resize_frame, Frame, FrameCodec, MessageType,
+    Frame, FrameCodec, MessageType, data_frame, error_frame, heartbeat_frame, resize_frame,
 };
 pub use server::{DisconnectReason, WsBridge};

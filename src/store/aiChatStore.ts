@@ -25,7 +25,6 @@ import { detectIntent } from '../lib/ai/intentDetector';
 import { sanitizeForAi, sanitizeApiMessages } from '../lib/ai/contextSanitizer';
 import {
   condenseToolMessages,
-  decodeAnchorContent,
   dtoToConversation,
   encodeAnchorContent,
   generateTitle,
