@@ -86,7 +86,7 @@ const FONT_OPTIONS: { value: FontFamily; label: string; bundled: boolean }[] = [
   { value: 'menlo', label: 'Menlo', bundled: false },
 ];
 
-const TOTAL_STEPS = 6; // 0..5
+const TOTAL_STEPS = 7; // 0..6
 
 /** Mini terminal preview for theme cards */
 const ThemeCard = ({
@@ -164,6 +164,8 @@ export const OnboardingModal = () => {
   const [importState, setImportState] = useState<'idle' | 'loading' | 'done'>('idle');
   const [importedCount, setImportedCount] = useState(0);
   const [disclaimerAccepted, setDisclaimerAccepted] = useState(false);
+  const [cliStatus, setCliStatus] = useState<{ bundled: boolean; installed: boolean; install_path: string | null; error?: boolean } | null>(null);
+  const [cliInstalling, setCliInstalling] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -181,6 +183,8 @@ export const OnboardingModal = () => {
       setImportState('idle');
       setImportedCount(0);
       setDisclaimerAccepted(false);
+      setCliStatus(null);
+      setCliInstalling(false);
     }
   }, [open]);
 
@@ -195,6 +199,14 @@ export const OnboardingModal = () => {
     api.listSshConfigHosts()
       .then((hosts) => setHostCount(hosts.filter((h) => h.alias !== '*').length))
       .catch(() => setHostCount(0));
+  }, [open, step]);
+
+  // Fetch CLI companion status when reaching the CLI step
+  useEffect(() => {
+    if (!open || step !== 5) return;
+    api.cliGetStatus()
+      .then((status) => setCliStatus(status))
+      .catch(() => setCliStatus({ bundled: false, installed: false, install_path: null, error: true }));
   }, [open, step]);
 
   const handleClose = useCallback(() => {
@@ -230,6 +242,17 @@ export const OnboardingModal = () => {
       setImportedCount(count);
     } catch { /* ignore */ }
     setImportState('done');
+  }, []);
+
+  const handleCliInstall = useCallback(async () => {
+    setCliInstalling(true);
+    try {
+      const path = await api.cliInstall();
+      setCliStatus({ bundled: true, installed: true, install_path: path });
+    } catch {
+      setCliStatus((prev) => prev ? { ...prev, error: true } : prev);
+    }
+    setCliInstalling(false);
   }, []);
 
   if (onboardingCompleted) return null;
@@ -588,7 +611,7 @@ export const OnboardingModal = () => {
           { icon: Waypoints, key: 'port_forwarding', shortcut: null, platform: null },
           { icon: RefreshCw, key: 'reconnect', shortcut: null, platform: null },
           { icon: Puzzle, key: 'plugin_system', shortcut: null, platform: null },
-          { icon: SquareTerminal, key: 'cli_companion', shortcut: null, platform: null },
+          { icon: FileCode, key: 'custom_themes', shortcut: null, platform: null },
           { icon: Rocket, key: 'launchpad', shortcut: null, platform: 'macOS' },
           { icon: Monitor, key: 'wsl_graphics', shortcut: null, platform: 'Windows' },
           { icon: ArrowUpDown, key: 'multiplexing', shortcut: null, platform: null },
@@ -618,7 +641,110 @@ export const OnboardingModal = () => {
     </div>
   );
 
-  /** Step 5 — Disclaimer */
+  /** Step 5 — CLI Companion */
+  const renderCliCompanion = () => (
+    <div className="px-8 pt-6 pb-6 space-y-4">
+      <div className="flex items-center gap-2">
+        <SquareTerminal className="h-5 w-5 text-[var(--theme-accent)]" />
+        <div>
+          <h3 className="text-lg font-semibold text-theme-text">{t('onboarding.cli_step_title')}</h3>
+          <p className="text-xs text-theme-text-muted">{t('onboarding.cli_step_desc')}</p>
+        </div>
+      </div>
+
+      {/* What is oxt? */}
+      <div className="flex gap-3 p-3.5 rounded-md border border-theme-border bg-theme-bg-panel">
+        <Terminal className="h-4 w-4 mt-0.5 shrink-0 text-[var(--theme-accent)]" />
+        <div className="min-w-0">
+          <span className="text-xs font-medium text-theme-text">{t('onboarding.cli_step_what')}</span>
+          <p className="text-[11px] text-theme-text-muted mt-0.5 leading-relaxed">{t('onboarding.cli_step_what_text')}</p>
+        </div>
+      </div>
+
+      {/* Capabilities */}
+      <div className="space-y-2">
+        <span className="text-xs font-medium text-theme-text-muted">{t('onboarding.cli_step_capabilities')}</span>
+        <div className="grid grid-cols-2 gap-2">
+          {([
+            { icon: Server, key: 'cli_step_cap_sessions' },
+            { icon: Waypoints, key: 'cli_step_cap_forward' },
+            { icon: Bot, key: 'cli_step_cap_ai' },
+            { icon: Cpu, key: 'cli_step_cap_status' },
+          ] as const).map((item) => (
+            <div key={item.key} className="flex gap-2 p-2.5 rounded-md bg-theme-bg-panel/50 border border-theme-border/50">
+              <item.icon className="h-3.5 w-3.5 mt-0.5 shrink-0 text-[var(--theme-accent)]" />
+              <span className="text-[11px] text-theme-text leading-snug">{t(`onboarding.${item.key}`)}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Install action */}
+      <div className="flex items-center gap-3 p-3.5 rounded-md border border-theme-border bg-theme-bg-panel">
+        <div className="flex-1 min-w-0">
+          {cliStatus?.installed ? (
+            <div className="flex items-center gap-2">
+              <Check className="h-4 w-4 text-emerald-400" />
+              <div>
+                <span className="text-xs font-medium text-emerald-400">{t('onboarding.cli_step_installed')}</span>
+                {cliStatus.install_path && (
+                  <p className="text-[11px] text-theme-text-muted mt-0.5 font-mono">{t('onboarding.cli_step_installed_at', { path: cliStatus.install_path })}</p>
+                )}
+              </div>
+            </div>
+          ) : cliStatus?.error ? (
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0" />
+              <span className="text-xs text-theme-text-muted flex-1">{t('onboarding.cli_step_install_error')}</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setCliStatus(null);
+                  api.cliGetStatus()
+                    .then((status) => setCliStatus(status))
+                    .catch(() => setCliStatus({ bundled: false, installed: false, install_path: null, error: true }));
+                }}
+                className="gap-1 shrink-0"
+              >
+                <RefreshCw className="h-3 w-3" />
+                {t('onboarding.cli_step_retry')}
+              </Button>
+            </div>
+          ) : !cliStatus?.bundled ? (
+            <span className="text-xs text-theme-text-muted">{t('onboarding.cli_step_not_bundled')}</span>
+          ) : (
+            <Button
+              size="sm"
+              onClick={handleCliInstall}
+              disabled={cliInstalling}
+              className="gap-1.5"
+            >
+              {cliInstalling ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  {t('onboarding.cli_step_installing')}
+                </>
+              ) : (
+                <>
+                  <Download className="h-3.5 w-3.5" />
+                  {t('onboarding.cli_step_install')}
+                </>
+              )}
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Skip hint */}
+      <div className="flex gap-2.5 p-3 rounded-md bg-theme-bg-sunken border border-theme-border">
+        <Lightbulb className="h-3.5 w-3.5 mt-0.5 shrink-0 text-theme-text-muted" />
+        <p className="text-[11px] text-theme-text-muted leading-relaxed">{t('onboarding.cli_step_skip_hint')}</p>
+      </div>
+    </div>
+  );
+
+  /** Step 6 — Disclaimer */
   const renderDisclaimer = () => (
     <div className="px-8 pt-6 pb-6 space-y-4">
       <div className="flex items-center gap-2">
@@ -682,9 +808,9 @@ export const OnboardingModal = () => {
     </div>
   );
 
-  const STEP_ICONS = [Globe, Palette, Route, Sparkles, Shield, ScrollText];
-  const STEP_TITLE_KEYS = ['welcome', 'appearance_title', 'workflow_title', 'quick_start', 'features', 'disclaimer_title'];
-  const stepRenderers = [renderWelcome, renderAppearance, renderWorkflow, renderQuickStart, renderFeatures, renderDisclaimer];
+  const STEP_ICONS = [Globe, Palette, Route, Sparkles, Shield, SquareTerminal, ScrollText];
+  const STEP_TITLE_KEYS = ['welcome', 'appearance_title', 'workflow_title', 'quick_start', 'features', 'cli_step_title', 'disclaimer_title'];
+  const stepRenderers = [renderWelcome, renderAppearance, renderWorkflow, renderQuickStart, renderFeatures, renderCliCompanion, renderDisclaimer];
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v && disclaimerAccepted) handleClose(); }}>

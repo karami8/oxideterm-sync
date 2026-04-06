@@ -110,7 +110,7 @@ export const LocalShellLauncher: React.FC<LocalShellLauncherProps> = ({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
+        <div className="space-y-4 p-4">
           {/* Shell List */}
           <div className="space-y-2">
             <Label className="text-theme-text-muted text-xs uppercase tracking-wider">
@@ -177,7 +177,7 @@ export const LocalShellLauncher: React.FC<LocalShellLauncherProps> = ({
         </div>
 
         {/* Actions */}
-        <div className="flex items-center justify-between pt-2 border-t border-theme-border">
+        <div className="flex items-center justify-between px-4 py-3 border-t border-theme-border">
           <div>
             {selectedShell && !isDefault(selectedShell) && (
               <Button

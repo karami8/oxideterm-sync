@@ -844,7 +844,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ open, onOpenChan
     for (const id of mru) {
       const item = allItems.find((i) => i.id === id);
       if (item && recent.length < 5) {
-        recent.push({ ...item, section: 'recent' as const });
+        recent.push({ ...item, section: 'recent' as const, value: `recent:${item.value}` });
       }
     }
     return recent;
