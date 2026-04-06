@@ -32,16 +32,20 @@ function getAllLeafPaneIds(node: PaneNode): string[] {
   return node.children.flatMap(child => getAllLeafPaneIds(child));
 }
 
-export function useSplitPaneShortcuts({ enabled }: UseSplitPaneShortcutsOptions) {
+/**
+ * Hook that provides split pane action callbacks without keyboard handling.
+ * Used by useKeybindingDispatcher to wire split actions to the registry.
+ */
+export function useSplitPaneActions() {
   const tabs = useAppStore((s) => s.tabs);
   const activeTabId = useAppStore((s) => s.activeTabId);
   const splitPane = useAppStore((s) => s.splitPane);
   const closePane = useAppStore((s) => s.closePane);
   const setActivePaneId = useAppStore((s) => s.setActivePaneId);
   const getPaneCount = useAppStore((s) => s.getPaneCount);
-  
+
   const createTerminal = useLocalTerminalStore((s) => s.createTerminal);
-  
+
   // Use ref to avoid stale closures
   const stateRef = useRef({ tabs, activeTabId });
   stateRef.current = { tabs, activeTabId };
@@ -71,8 +75,6 @@ export function useSplitPaneShortcuts({ enabled }: UseSplitPaneShortcutsOptions)
       } else if (currentTab.type === 'terminal') {
         // SSH terminal split - TODO: implement session cloning
         console.log('[SplitPane] SSH terminal split not yet implemented');
-        // Would need: const clonedSession = await cloneSession(currentTab.sessionId);
-        // splitPane(activeTabId, direction, clonedSession.id, 'terminal');
       }
     } catch (err) {
       console.error('[SplitPane] Failed to split pane:', err);
@@ -112,7 +114,6 @@ export function useSplitPaneShortcuts({ enabled }: UseSplitPaneShortcutsOptions)
     let newIndex: number;
     
     // Simple navigation: left/up = previous, right/down = next
-    // TODO: Could implement 2D spatial navigation based on actual pane positions
     if (direction === 'left' || direction === 'up') {
       newIndex = currentIndex > 0 ? currentIndex - 1 : allPaneIds.length - 1;
     } else {
@@ -121,10 +122,18 @@ export function useSplitPaneShortcuts({ enabled }: UseSplitPaneShortcutsOptions)
     
     const newPaneId = allPaneIds[newIndex];
     setActivePaneId(activeTabId, newPaneId);
-    
-    // Focus the terminal in the new pane
-    // The focus will happen automatically via the TerminalPane component
   }, [setActivePaneId]);
+
+  return { handleSplit, handleClosePane, handleNavigate, getPaneCount };
+}
+
+/**
+ * @deprecated Use useSplitPaneActions() + useKeybindingDispatcher instead.
+ * Kept for backward compatibility — the keyboard listener is now redundant
+ * when the dispatcher is active.
+ */
+export function useSplitPaneShortcuts({ enabled }: UseSplitPaneShortcutsOptions) {
+  const { handleSplit, handleClosePane, handleNavigate } = useSplitPaneActions();
 
   useEffect(() => {
     if (!enabled) return;

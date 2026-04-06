@@ -47,6 +47,7 @@ export function getShortcutCategories(t: TFunction): ShortcutCategory[] {
         fromRegistry('app.newTerminal', t('settings_view.help.shortcut_new_tab')),
         fromRegistry('app.shellLauncher', t('settings_view.help.shortcut_shell_launcher')),
         fromRegistry('app.closeTab', t('settings_view.help.shortcut_close_tab')),
+        fromRegistry('app.closeOtherTabs', t('settings_view.help.shortcut_close_other_tabs')),
         fromRegistry('app.nextTab', t('settings_view.help.shortcut_next_tab')),
         fromRegistry('app.prevTab', t('settings_view.help.shortcut_prev_tab')),
         // goToTab is a range (1-9); show the base binding with "1-9" suffix
@@ -59,11 +60,16 @@ export function getShortcutCategories(t: TFunction): ShortcutCategory[] {
           };
         })(),
         fromRegistry('app.newConnection', t('settings_view.help.shortcut_new_connection')),
+        fromRegistry('app.navBack', t('settings_view.help.shortcut_nav_back')),
+        fromRegistry('app.navForward', t('settings_view.help.shortcut_nav_forward')),
         fromRegistry('app.commandPalette', t('settings_view.help.shortcut_command_palette')),
         fromRegistry('app.toggleSidebar', t('settings_view.help.shortcut_toggle_sidebar')),
         fromRegistry('app.settings', t('settings_view.help.shortcut_settings')),
         fromRegistry('app.zenMode', t('settings_view.help.shortcut_zen_mode')),
         fromRegistry('app.showShortcuts', t('settings_view.help.shortcut_keyboard_shortcuts')),
+        fromRegistry('app.fontIncrease', t('settings_view.help.shortcut_font_increase')),
+        fromRegistry('app.fontDecrease', t('settings_view.help.shortcut_font_decrease')),
+        fromRegistry('app.fontReset', t('settings_view.help.shortcut_font_reset')),
       ],
     },
     {
@@ -72,6 +78,7 @@ export function getShortcutCategories(t: TFunction): ShortcutCategory[] {
       shortcuts: [
         fromRegistry('terminal.search', t('settings_view.help.shortcut_find')),
         fromRegistry('terminal.aiPanel', t('settings_view.help.shortcut_ai_panel')),
+        fromRegistry('terminal.recording', t('settings_view.help.shortcut_recording')),
         fromRegistry('terminal.closePanel', t('settings_view.help.shortcut_close_panel')),
       ],
     },
@@ -126,6 +133,15 @@ export function getShortcutCategories(t: TFunction): ShortcutCategory[] {
       shortcuts: [
         { label: t('settings_view.help.shortcut_save'), mac: '⌘S', other: 'Ctrl+S' },
         { label: t('settings_view.help.shortcut_close'), mac: 'Esc', other: 'Esc' },
+      ],
+    },
+    {
+      id: 'palette',
+      title: t('settings_view.help.category_palette'),
+      shortcuts: [
+        fromRegistry('palette.eventLog', t('settings_view.help.shortcut_event_log')),
+        fromRegistry('palette.aiSidebar', t('settings_view.help.shortcut_ai_sidebar')),
+        fromRegistry('palette.broadcast', t('settings_view.help.shortcut_broadcast')),
       ],
     },
   ];

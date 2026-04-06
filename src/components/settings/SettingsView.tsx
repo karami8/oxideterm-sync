@@ -48,6 +48,7 @@ import { platform } from '../../lib/platform';
 import { cn } from '../../lib/utils';
 import { getShortcutCategories } from '../../lib/shortcuts';
 import { getFontFamilyCSS } from '../fileManager/fontUtils';
+import { KeybindingEditorSection } from './KeybindingEditorSection';
 import { ThemeEditorModal } from './ThemeEditorModal';
 import { useToast } from '../../hooks/useToast';
 import { useConfirm } from '../../hooks/useConfirm';
@@ -1409,6 +1410,13 @@ export const SettingsView = () => {
                         onClick={() => setActiveTab('knowledge')}
                     >
                         <BookOpen className="h-4 w-4" /> {t('settings_view.tabs.knowledge')}
+                    </Button>
+                    <Button
+                        variant={activeTab === 'keybindings' ? 'secondary' : 'ghost'}
+                        className="w-full justify-start gap-3 h-10 font-normal rounded-md"
+                        onClick={() => setActiveTab('keybindings')}
+                    >
+                        <Keyboard className="h-4 w-4" /> {t('settings_view.tabs.keybindings')}
                     </Button>
 
                     <Separator className="!my-2" />
@@ -3098,6 +3106,14 @@ export const SettingsView = () => {
 
                     {activeTab === 'help' && (
                         <HelpAboutSection />
+                    )}
+
+                    {activeTab === 'keybindings' && (
+                        <KeybindingEditorSection
+                            onToastSuccess={toastSuccess}
+                            onToastError={toastError}
+                            onConfirm={confirmDialog}
+                        />
                     )}
 
                     {activeTab === 'sftp' && (

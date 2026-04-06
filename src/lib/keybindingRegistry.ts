@@ -235,11 +235,19 @@ export function getBindingBoth(id: ActionId): { mac: KeyCombo; other: KeyCombo }
 
 /**
  * Check if a KeyboardEvent matches a KeyCombo.
+ *
+ * For single-character non-alphanumeric keys (symbols like `}`, `{`, `+`),
+ * the shift check is skipped because the shift state is already encoded in
+ * the character itself (e.g. pressing Shift+] produces `}` in the event).
  */
 export function eventMatchesCombo(e: KeyboardEvent, combo: KeyCombo): boolean {
   if (e.key.toLowerCase() !== combo.key) return false;
   if (e.ctrlKey !== combo.ctrl) return false;
-  if (e.shiftKey !== combo.shift) return false;
+  // Skip shift check for symbol keys — their shift state is implicit in the character
+  const isSymbol = combo.key.length === 1 && !/^[a-z0-9]$/i.test(combo.key);
+  if (!isSymbol) {
+    if (e.shiftKey !== combo.shift) return false;
+  }
   if (e.altKey !== combo.alt) return false;
   if (e.metaKey !== combo.meta) return false;
   return true;

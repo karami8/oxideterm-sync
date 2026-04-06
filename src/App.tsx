@@ -15,8 +15,9 @@ import { setupTreeStoreSubscriptions, cleanupTreeStoreSubscriptions } from './st
 import { useLocalTerminalStore } from './store/localTerminalStore';
 import { useAppStore } from './store/appStore';
 import { useSettingsStore } from './store/settingsStore';
-import { useAppShortcuts, ShortcutDefinition, isTerminalReservedKey } from './hooks/useTerminalKeyboard';
-import { useSplitPaneShortcuts } from './hooks/useSplitPaneShortcuts';
+import { useSplitPaneActions } from './hooks/useSplitPaneShortcuts';
+import { useKeybindingDispatcher } from './hooks/useKeybindingDispatcher';
+import type { ActionId } from './lib/keybindingRegistry';
 import { preloadTerminalFonts } from './lib/fontLoader';
 import { initializePluginSystem } from './lib/plugin/pluginLoader';
 import { setupConnectionBridge, setupNodeStateBridge, setupTransferBridge, pluginEventBridge } from './lib/plugin/pluginEventBridge';
@@ -31,7 +32,6 @@ import { TooltipProvider } from './components/ui/tooltip';
 import { useFontSizeHUD } from './components/ui/FontSizeHUD';
 import { useRecordingStore } from './store/recordingStore';
 import { useCommandPaletteStore } from './store/commandPaletteStore';
-import { platform } from './lib/platform';
 
 function App() {
   // Initialize global event listeners
@@ -244,270 +244,98 @@ function App() {
     }
   }, [createTerminal, createTab]);
 
-  // Define app-level shortcuts using the unified keyboard manager
-  const appShortcuts: ShortcutDefinition[] = useMemo(() => [
-    {
-      key: 't',
-      ctrl: true,
-      shift: false,
-      action: handleCreateLocalTerminal,
-      description: 'Create new local terminal with default shell',
-      // 'never' when terminal is focused - allows Ctrl+T to reach vim/emacs
-      // But we still want Cmd+T to work on Mac, so we check platform
-      terminalBehavior: 'never' as const,
-    },
-    {
-      key: 't',
-      ctrl: true,
-      shift: true,
-      action: () => setShellLauncherOpen(true),
-      description: 'Open shell launcher',
-      terminalBehavior: 'always' as const,
-    },
-    {
-      key: 'w',
-      ctrl: true,
-      shift: false,
-      action: () => {
-        const id = useAppStore.getState().activeTabId;
-        if (id) useAppStore.getState().closeTab(id);
-      },
-      description: 'Close current tab',
-      // 'never' when terminal is focused — allows Ctrl+W to reach
-      // the shell for word-deletion (readline default binding).
-      // macOS Cmd+W still closes tabs via the native handler below.
-      terminalBehavior: 'never' as const,
-    },
-    {
-      key: 'n',
-      ctrl: true,
-      shift: false,
-      action: () => useAppStore.getState().toggleModal('newConnection', true),
-      description: 'New SSH connection',
-      terminalBehavior: 'always' as const,
-    },
-    {
-      key: ',',
-      ctrl: true,
-      shift: false,
-      action: () => useAppStore.getState().createTab('settings'),
-      description: 'Open settings',
-      terminalBehavior: 'always' as const,
-    },
-    {
-      key: '\\',
-      ctrl: true,
-      shift: false,
-      action: () => useSettingsStore.getState().toggleSidebar(),
-      description: 'Toggle sidebar',
-      terminalBehavior: 'always' as const,
-    },
-    {
-      key: 'k',
-      ctrl: true,
-      shift: false,
-      action: () => setCommandPaletteOpen(true),
-      description: 'Open command palette',
-      terminalBehavior: 'always' as const,
-    },
-    {
-      key: 'z',
-      ctrl: true,
-      shift: true,
-      action: () => useSettingsStore.getState().toggleZenMode(),
-      description: 'Toggle Zen Mode',
-      terminalBehavior: 'always' as const,
-    },
-    {
-      key: '=',
-      ctrl: true,
-      shift: false,
-      action: () => {
-        const s = useSettingsStore.getState();
-        const cur = s.settings.terminal.fontSize;
-        const next = Math.min(32, cur + 1);
-        if (cur < 32) { s.updateTerminal('fontSize', next); showFontSize(next); }
-      },
-      description: 'Increase font size',
-      terminalBehavior: 'always' as const,
-    },
-    {
-      key: '-',
-      ctrl: true,
-      shift: false,
-      action: () => {
-        const s = useSettingsStore.getState();
-        const cur = s.settings.terminal.fontSize;
-        const next = Math.max(8, cur - 1);
-        if (cur > 8) { s.updateTerminal('fontSize', next); showFontSize(next); }
-      },
-      description: 'Decrease font size',
-      terminalBehavior: 'always' as const,
-    },
-    {
-      key: '0',
-      ctrl: true,
-      shift: false,
-      action: () => {
-        useSettingsStore.getState().updateTerminal('fontSize', 14);
-        showFontSize(14);
-      },
-      description: 'Reset font size',
-      terminalBehavior: 'always' as const,
-    },
-    {
-      key: '/',
-      ctrl: true,
-      shift: false,
-      action: () => setShortcutsModalOpen(true),
-      description: 'Show keyboard shortcuts',
-      terminalBehavior: 'always' as const,
-    },
-  ], [handleCreateLocalTerminal]);
+  // ── Unified Keybinding Dispatcher ──
+  // Single capture-phase handler replacing useAppShortcuts + native fallback + useSplitPaneShortcuts.
+  // All key matching goes through keybindingRegistry.matchAction().
+  const { handleSplit, handleClosePane, handleNavigate, getPaneCount } = useSplitPaneActions();
 
-  // Use unified keyboard manager for app shortcuts
-  // Context: terminal is active, no panels open at app level
-  useAppShortcuts(appShortcuts, {
+  const actionHandlers = useMemo((): Partial<Record<ActionId, () => void>> => ({
+    // ── Global actions ──
+    'app.newTerminal': handleCreateLocalTerminal,
+    'app.shellLauncher': () => setShellLauncherOpen(true),
+    'app.closeTab': () => {
+      const id = useAppStore.getState().activeTabId;
+      if (id) useAppStore.getState().closeTab(id);
+    },
+    'app.closeOtherTabs': () => {
+      const { tabs, activeTabId } = useAppStore.getState();
+      if (!activeTabId) return;
+      const tab = tabs.find(t => t.id === activeTabId);
+      const isTermTab = tab?.type === 'terminal' || tab?.type === 'local_terminal';
+      if (isTermTab) {
+        // In terminal tab, this binding doubles as split pane close
+        if (getPaneCount(activeTabId) > 1) {
+          handleClosePane();
+        }
+        // Single pane terminal: do nothing (preserves existing behavior)
+        return;
+      }
+      // Non-terminal tab: close other tabs
+      const others = tabs.filter(t => t.id !== activeTabId);
+      const { closeTab } = useAppStore.getState();
+      (async () => {
+        for (const t of others) await closeTab(t.id);
+      })();
+    },
+    'app.newConnection': () => useAppStore.getState().toggleModal('newConnection', true),
+    'app.settings': () => useAppStore.getState().createTab('settings'),
+    'app.toggleSidebar': () => useSettingsStore.getState().toggleSidebar(),
+    'app.commandPalette': () => setCommandPaletteOpen(true),
+    'app.zenMode': () => useSettingsStore.getState().toggleZenMode(),
+    'app.fontIncrease': () => {
+      const s = useSettingsStore.getState();
+      const cur = s.settings.terminal.fontSize;
+      const next = Math.min(32, cur + 1);
+      if (cur < 32) { s.updateTerminal('fontSize', next); showFontSize(next); }
+    },
+    'app.fontDecrease': () => {
+      const s = useSettingsStore.getState();
+      const cur = s.settings.terminal.fontSize;
+      const next = Math.max(8, cur - 1);
+      if (cur > 8) { s.updateTerminal('fontSize', next); showFontSize(next); }
+    },
+    'app.fontReset': () => {
+      useSettingsStore.getState().updateTerminal('fontSize', 14);
+      showFontSize(14);
+    },
+    'app.showShortcuts': () => setShortcutsModalOpen(true),
+    'app.nextTab': () => useAppStore.getState().nextTab(),
+    'app.prevTab': () => useAppStore.getState().prevTab(),
+    'app.navBack': () => useAppStore.getState().navigateBack(),
+    'app.navForward': () => useAppStore.getState().navigateForward(),
+    'app.goToTab1': () => useAppStore.getState().goToTab(0),
+    'app.goToTab2': () => useAppStore.getState().goToTab(1),
+    'app.goToTab3': () => useAppStore.getState().goToTab(2),
+    'app.goToTab4': () => useAppStore.getState().goToTab(3),
+    'app.goToTab5': () => useAppStore.getState().goToTab(4),
+    'app.goToTab6': () => useAppStore.getState().goToTab(5),
+    'app.goToTab7': () => useAppStore.getState().goToTab(6),
+    'app.goToTab8': () => useAppStore.getState().goToTab(7),
+    'app.goToTab9': () => useAppStore.getState().goToTab(8),
+    // ── Split actions ──
+    'split.horizontal': () => handleSplit('horizontal'),
+    'split.vertical': () => handleSplit('vertical'),
+    'split.closePane': () => handleClosePane(),
+    'split.navLeft': () => handleNavigate('left'),
+    'split.navRight': () => handleNavigate('right'),
+  }), [handleCreateLocalTerminal, handleSplit, handleClosePane, handleNavigate, getPaneCount]);
+
+  useKeybindingDispatcher(actionHandlers, {
     isTerminalActive,
     isPanelOpen: shellLauncherOpen,
   });
 
-  // Split pane shortcuts (Cmd+Shift+E/D, Cmd+Option+Arrow)
-  useSplitPaneShortcuts({ enabled: isTerminalActive });
-
-  // Additional keyboard handling for terminal-reserved keys
+  // Listen for split commands dispatched by the Command Palette
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Skip if window lost OS-level focus
-      if (!document.hasFocus()) return;
-
-      // If terminal is active and this is a terminal-reserved key, don't interfere
-      if (isTerminalActive && isTerminalReservedKey(e)) {
-        // Let the event propagate to the terminal
-        return;
-      }
-      
-      // ─── Cross-platform Cmd/Ctrl+key shortcuts ───
-      // macOS: Cmd+key (metaKey)   Windows/Linux: Ctrl+key (ctrlKey)
-      // These are NOT standard terminal control sequences, so it's
-      // safe to intercept even when the terminal is focused.
-      const modKey = platform.isMac ? e.metaKey : e.ctrlKey;
-      const noExtraMod = platform.isMac ? !e.ctrlKey : !e.metaKey;
-      if (modKey && noExtraMod) {
-        const key = e.key.toLowerCase();
-
-        // Cmd+T — New local terminal
-        if (key === 't' && !e.shiftKey) {
-          e.preventDefault();
-          handleCreateLocalTerminal();
-          return;
-        }
-        // Cmd+Shift+T — Shell launcher
-        if (key === 't' && e.shiftKey) {
-          e.preventDefault();
-          setShellLauncherOpen(true);
-          return;
-        }
-        // Cmd+W — Close current tab
-        if (key === 'w' && !e.shiftKey) {
-          e.preventDefault();
-          const id = useAppStore.getState().activeTabId;
-          if (id) useAppStore.getState().closeTab(id);
-          return;
-        }
-        // Cmd+Shift+W — Close other tabs
-        if (key === 'w' && e.shiftKey) {
-          e.preventDefault();
-          const { tabs, activeTabId, closeTab } = useAppStore.getState();
-          if (!activeTabId) return;
-          const others = tabs.filter((tab) => tab.id !== activeTabId);
-          (async () => {
-            for (const tab of others) { await closeTab(tab.id); }
-          })();
-          return;
-        }
-        // Cmd+N — New SSH connection
-        if (key === 'n' && !e.shiftKey) {
-          e.preventDefault();
-          useAppStore.getState().toggleModal('newConnection', true);
-          return;
-        }
-        // Cmd+, — Open settings
-        if (key === ',' && !e.shiftKey) {
-          e.preventDefault();
-          useAppStore.getState().createTab('settings');
-          return;
-        }
-        // Cmd+\ — Toggle sidebar
-        if (e.key === '\\' && !e.shiftKey) {
-          e.preventDefault();
-          useSettingsStore.getState().toggleSidebar();
-          return;
-        }
-        // Cmd+= / Cmd+- — Font size zoom
-        if ((e.key === '=' || e.key === '+') && !e.shiftKey) {
-          e.preventDefault();
-          const s = useSettingsStore.getState();
-          const cur = s.settings.terminal.fontSize;
-          const next = Math.min(32, cur + 1);
-          if (cur < 32) { s.updateTerminal('fontSize', next); showFontSize(next); }
-          return;
-        }
-        if (e.key === '-' && !e.shiftKey) {
-          e.preventDefault();
-          const s = useSettingsStore.getState();
-          const cur = s.settings.terminal.fontSize;
-          const next = Math.max(8, cur - 1);
-          if (cur > 8) { s.updateTerminal('fontSize', next); showFontSize(next); }
-          return;
-        }
-        if (e.key === '0' && !e.shiftKey) {
-          e.preventDefault();
-          useSettingsStore.getState().updateTerminal('fontSize', 14);
-          showFontSize(14);
-          return;
-        }
-        // Cmd+Shift+Z — Zen Mode
-        if (key === 'z' && e.shiftKey) {
-          e.preventDefault();
-          useSettingsStore.getState().toggleZenMode();
-          return;
-        }
-        // Cmd+} / Cmd+{ — Next/Prev tab (Shift+]/Shift+[ on US layout)
-        if (e.key === '}') {
-          e.preventDefault();
-          useAppStore.getState().nextTab();
-          return;
-        }
-        if (e.key === '{') {
-          e.preventDefault();
-          useAppStore.getState().prevTab();
-          return;
-        }
-        // Cmd+[ — Navigate back
-        if (e.key === '[' && !e.shiftKey) {
-          e.preventDefault();
-          useAppStore.getState().navigateBack();
-          return;
-        }
-        // Cmd+] — Navigate forward
-        if (e.key === ']' && !e.shiftKey) {
-          e.preventDefault();
-          useAppStore.getState().navigateForward();
-          return;
-        }
-        // Cmd+1-9 — Go to tab N
-        if (key >= '1' && key <= '9') {
-          e.preventDefault();
-          useAppStore.getState().goToTab(parseInt(key, 10) - 1);
-          return;
-        }
+    const handleSplitEvent = (e: Event) => {
+      const detail = (e as CustomEvent<{ direction: 'horizontal' | 'vertical' }>).detail;
+      if (detail?.direction) {
+        handleSplit(detail.direction);
       }
     };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleCreateLocalTerminal, isTerminalActive]);
+    window.addEventListener('oxideterm:split', handleSplitEvent);
+    return () => window.removeEventListener('oxideterm:split', handleSplitEvent);
+  }, [handleSplit]);
 
   // Startup update check — silent, fires once after 8s
   useEffect(() => {
