@@ -363,7 +363,7 @@ pnpm run tauri build
 
 ## 로드맵
 
-- [ ] SSH Agent 포워딩
+- [x] SSH Agent 포워딩
 - [ ] 플러그인 마켓플레이스
 - [ ] 세션 검색 및 빠른 전환
 

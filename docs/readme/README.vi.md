@@ -363,7 +363,7 @@ pnpm run tauri build
 
 ## Lộ trình
 
-- [ ] Chuyển tiếp SSH Agent
+- [x] Chuyển tiếp SSH Agent
 - [ ] Marketplace plugin
 - [ ] Tìm kiếm phiên & chuyển đổi nhanh
 

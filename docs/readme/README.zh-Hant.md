@@ -363,7 +363,7 @@ pnpm run tauri build
 
 ## 路線圖
 
-- [ ] SSH Agent 轉發
+- [x] SSH Agent 轉發
 - [ ] 外掛市集
 - [ ] 工作階段搜尋與快速切換
 

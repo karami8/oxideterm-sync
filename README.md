@@ -363,7 +363,7 @@ pnpm run tauri build
 
 ## Roadmap
 
-- [ ] SSH Agent forwarding
+- [x] SSH Agent forwarding
 - [ ] Plugin marketplace
 - [ ] Session search & quick-switch
 

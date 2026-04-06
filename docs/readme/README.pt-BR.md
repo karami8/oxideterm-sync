@@ -363,7 +363,7 @@ pnpm run tauri build
 
 ## Roteiro
 
-- [ ] Encaminhamento de agente SSH
+- [x] Encaminhamento de agente SSH
 - [ ] Marketplace de plugins
 - [ ] Busca de sessões e troca rápida
 

@@ -363,7 +363,7 @@ pnpm run tauri build
 
 ## Hoja de ruta
 
-- [ ] Reenvío de agente SSH
+- [x] Reenvío de agente SSH
 - [ ] Marketplace de plugins
 - [ ] Búsqueda de sesiones y cambio rápido
 
