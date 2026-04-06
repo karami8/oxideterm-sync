@@ -16,6 +16,7 @@ use crate::oxide_file::{
     EncryptedAuth, EncryptedConnection, EncryptedPayload, EncryptedProxyHop, OxideMetadata,
     compute_checksum, encrypt_oxide_file,
 };
+use zeroize::Zeroizing;
 
 /// Pre-flight check result for export
 #[derive(Debug, Serialize)]
@@ -273,7 +274,9 @@ pub async fn export_to_oxide(
                         .transpose()
                         .map_err(|e| format!("Keychain error for {}: {}", context, e))?
                         .unwrap_or_default();
-                    Ok(EncryptedAuth::Password { password })
+                    Ok(EncryptedAuth::Password {
+                        password: Zeroizing::new(password),
+                    })
                 }
                 SavedAuth::Key {
                     key_path,
@@ -297,13 +300,14 @@ pub async fn export_to_oxide(
                     let embedded_key = if should_embed_keys {
                         read_and_embed_key(key_path)
                             .map_err(|e| format!("Failed to embed key for {}: {}", context, e))?
+                            .map(Zeroizing::new)
                     } else {
                         None
                     };
 
                     Ok(EncryptedAuth::Key {
                         key_path: key_path.clone(),
-                        passphrase,
+                        passphrase: passphrase.map(Zeroizing::new),
                         embedded_key,
                     })
                 }
@@ -329,12 +333,14 @@ pub async fn export_to_oxide(
                     // Optionally embed key and cert content
                     let (embedded_key, embedded_cert) = if should_embed_keys {
                         (
-                            read_and_embed_key(key_path).map_err(|e| {
-                                format!("Failed to embed key for {}: {}", context, e)
-                            })?,
-                            read_and_embed_key(cert_path).map_err(|e| {
-                                format!("Failed to embed cert for {}: {}", context, e)
-                            })?,
+                            read_and_embed_key(key_path)
+                                .map_err(|e| format!("Failed to embed key for {}: {}", context, e))?
+                                .map(Zeroizing::new),
+                            read_and_embed_key(cert_path)
+                                .map_err(|e| {
+                                    format!("Failed to embed cert for {}: {}", context, e)
+                                })?
+                                .map(Zeroizing::new),
                         )
                     } else {
                         (None, None)
@@ -343,7 +349,7 @@ pub async fn export_to_oxide(
                     Ok(EncryptedAuth::Certificate {
                         key_path: key_path.clone(),
                         cert_path: cert_path.clone(),
-                        passphrase,
+                        passphrase: passphrase.map(Zeroizing::new),
                         embedded_key,
                         embedded_cert,
                     })

@@ -27,6 +27,7 @@ use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use std::sync::LazyLock;
 use tokio::sync::oneshot;
+use zeroize::Zeroizing;
 
 /// Keyboard-Interactive prompt from server
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -80,7 +81,7 @@ pub struct KbiRespondRequest {
     /// Must match the auth_flow_id from KbiPromptEvent
     pub auth_flow_id: String,
     /// Responses in same order as prompts (length must match)
-    pub responses: Vec<String>,
+    pub responses: Vec<Zeroizing<String>>,
 }
 
 /// Command payload: Frontend → Backend
@@ -98,7 +99,7 @@ pub struct KbiCancelRequest {
 
 /// Internal: pending response channel for an auth flow
 struct PendingRequest {
-    sender: oneshot::Sender<Result<Vec<String>, KbiError>>,
+    sender: oneshot::Sender<Result<Vec<Zeroizing<String>>, KbiError>>,
 }
 
 /// Error types for KBI flow
@@ -134,7 +135,9 @@ static PENDING_REQUESTS: LazyLock<Mutex<std::collections::HashMap<String, Pendin
 /// Register a new pending request and return the receiver
 ///
 /// Called by backend when it needs to wait for frontend input
-pub fn register_pending(auth_flow_id: String) -> oneshot::Receiver<Result<Vec<String>, KbiError>> {
+pub fn register_pending(
+    auth_flow_id: String,
+) -> oneshot::Receiver<Result<Vec<Zeroizing<String>>, KbiError>> {
     let (tx, rx) = oneshot::channel();
     let mut pending = PENDING_REQUESTS.lock();
     pending.insert(auth_flow_id, PendingRequest { sender: tx });
@@ -144,7 +147,10 @@ pub fn register_pending(auth_flow_id: String) -> oneshot::Receiver<Result<Vec<St
 /// Complete a pending request with user responses
 ///
 /// Called by Tauri command when frontend submits responses
-pub fn complete_pending(auth_flow_id: &str, responses: Vec<String>) -> Result<(), KbiError> {
+pub fn complete_pending(
+    auth_flow_id: &str,
+    responses: Vec<Zeroizing<String>>,
+) -> Result<(), KbiError> {
     let mut pending = PENDING_REQUESTS.lock();
     let request = pending.remove(auth_flow_id).ok_or(KbiError::FlowNotFound)?;
 
@@ -203,10 +209,10 @@ mod tests {
         reset_pending_requests();
 
         let receiver = register_pending("flow-complete".to_string());
-        complete_pending("flow-complete", vec!["hunter2".to_string()]).unwrap();
+        complete_pending("flow-complete", vec![Zeroizing::new("hunter2".to_string())]).unwrap();
 
         let responses = receiver.await.unwrap().unwrap();
-        assert_eq!(responses, vec!["hunter2"]);
+        assert_eq!(responses, vec![Zeroizing::new("hunter2".to_string())]);
         assert_eq!(pending_count(), 0);
     }
 
@@ -228,7 +234,8 @@ mod tests {
         let _guard = TEST_MUTEX.lock().await;
         reset_pending_requests();
 
-        let error = complete_pending("missing-flow", vec!["otp".to_string()]).unwrap_err();
+        let error =
+            complete_pending("missing-flow", vec![Zeroizing::new("otp".to_string())]).unwrap_err();
 
         assert!(matches!(error, KbiError::FlowNotFound));
     }
@@ -264,13 +271,13 @@ mod tests {
         let receiver_a = register_pending("flow-a".to_string());
         let receiver_b = register_pending("flow-b".to_string());
 
-        complete_pending("flow-a", vec!["code-a".to_string()]).unwrap();
+        complete_pending("flow-a", vec![Zeroizing::new("code-a".to_string())]).unwrap();
         cancel_pending("flow-b").unwrap();
 
         let result_a = receiver_a.await.unwrap().unwrap();
         let result_b = receiver_b.await.unwrap();
 
-        assert_eq!(result_a, vec!["code-a"]);
+        assert_eq!(result_a, vec![Zeroizing::new("code-a".to_string())]);
         assert!(matches!(result_b, Err(KbiError::Cancelled)));
         assert_eq!(pending_count(), 0);
     }
@@ -283,7 +290,7 @@ mod tests {
         let receiver = register_pending("flow-drop".to_string());
         drop(receiver);
 
-        complete_pending("flow-drop", vec!["ignored".to_string()]).unwrap();
+        complete_pending("flow-drop", vec![Zeroizing::new("ignored".to_string())]).unwrap();
         assert_eq!(pending_count(), 0);
     }
 

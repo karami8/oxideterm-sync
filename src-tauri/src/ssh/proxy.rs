@@ -39,6 +39,7 @@ use super::auth::{
 use super::client::ClientHandler;
 use super::config::AuthMethod;
 use super::error::SshError;
+use zeroize::Zeroizing;
 
 use crate::session::tree::MAX_CHAIN_DEPTH;
 
@@ -67,7 +68,7 @@ impl ProxyHop {
             port: 22,
             username: username.into(),
             auth: AuthMethod::Password {
-                password: password.into(),
+                password: Zeroizing::new(password.into()),
             },
         }
     }
@@ -236,7 +237,7 @@ async fn direct_connect(
         } => handle
             .authenticate_publickey(
                 &hop.username,
-                load_public_key_auth_material(key_path, passphrase.as_deref())?,
+                load_public_key_auth_material(key_path, passphrase.as_ref().map(|p| p.as_str()))?,
             )
             .await
             .map_err(|e| SshError::AuthenticationFailed(e.to_string()))?,
@@ -249,8 +250,11 @@ async fn direct_connect(
                 "Authenticating to jump host with certificate: {}",
                 cert_path
             );
-            let (key, cert) =
-                load_certificate_auth_material(key_path, cert_path, passphrase.as_deref())?;
+            let (key, cert) = load_certificate_auth_material(
+                key_path,
+                cert_path,
+                passphrase.as_ref().map(|p| p.as_str()),
+            )?;
 
             handle
                 .authenticate_openssh_cert(&hop.username, key, cert)
@@ -357,7 +361,7 @@ async fn connect_via_stream(
         } => handle
             .authenticate_publickey(
                 &hop.username,
-                load_public_key_auth_material(key_path, passphrase.as_deref())?,
+                load_public_key_auth_material(key_path, passphrase.as_ref().map(|p| p.as_str()))?,
             )
             .await
             .map_err(|e| SshError::AuthenticationFailed(e.to_string()))?,
@@ -367,8 +371,11 @@ async fn connect_via_stream(
             passphrase,
         } => {
             info!("Authenticating via stream with certificate: {}", cert_path);
-            let (key, cert) =
-                load_certificate_auth_material(key_path, cert_path, passphrase.as_deref())?;
+            let (key, cert) = load_certificate_auth_material(
+                key_path,
+                cert_path,
+                passphrase.as_ref().map(|p| p.as_str()),
+            )?;
 
             handle
                 .authenticate_openssh_cert(&hop.username, key, cert)
@@ -616,7 +623,7 @@ mod tests {
         assert_eq!(hop.username, "admin");
         assert_eq!(hop.port, 22);
         match hop.auth {
-            AuthMethod::Password { password } => assert_eq!(password, "secret123"),
+            AuthMethod::Password { password } => assert_eq!(&*password, "secret123"),
             _ => panic!("Expected password auth"),
         }
     }

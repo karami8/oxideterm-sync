@@ -13,6 +13,7 @@ use russh::keys::PrivateKey as KeyPair;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
 use tracing::{debug, info};
+use zeroize::Zeroizing;
 
 /// Key authentication helper
 #[derive(Debug)]
@@ -110,11 +111,13 @@ pub async fn load_private_key_async(
     passphrase: Option<&str>,
 ) -> Result<KeyPair, KeyError> {
     let path = path.to_path_buf();
-    let passphrase = passphrase.map(|s| s.to_string());
+    let passphrase = passphrase.map(|s| Zeroizing::new(s.to_string()));
 
-    tokio::task::spawn_blocking(move || load_private_key_sync(&path, passphrase.as_deref()))
-        .await
-        .map_err(|e| KeyError::ParseError(format!("Task join error: {}", e)))?
+    tokio::task::spawn_blocking(move || {
+        load_private_key_sync(&path, passphrase.as_deref().map(|s| s.as_str()))
+    })
+    .await
+    .map_err(|e| KeyError::ParseError(format!("Task join error: {}", e)))?
 }
 
 /// Load a private key from file (sync version - use spawn_blocking in async contexts)
@@ -166,7 +169,7 @@ fn map_key_decode_error(err: russh::keys::Error, missing_passphrase: bool) -> Ke
 
 /// Internal sync implementation
 fn load_private_key_sync(path: &Path, passphrase: Option<&str>) -> Result<KeyPair, KeyError> {
-    let key_data = std::fs::read_to_string(path)?;
+    let key_data = Zeroizing::new(std::fs::read_to_string(path)?);
 
     // Check if key is encrypted
     let is_encrypted =

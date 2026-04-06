@@ -19,6 +19,7 @@ use uuid::Uuid;
 use crate::commands::config::ConfigState;
 use crate::config::types::{CONFIG_VERSION, ProxyHopConfig, SavedAuth, SavedConnection};
 use crate::oxide_file::{EncryptedAuth, EncryptedProxyHop, OxideMetadata, decrypt_oxide_file};
+use zeroize::Zeroizing;
 
 /// Result of importing connections from .oxide file
 #[derive(Debug, Serialize)]
@@ -142,7 +143,7 @@ fn extract_embedded_key(original_path: &str, base64_data: &str) -> Result<String
 /// Pending keychain entry to be written
 struct PendingKeychainEntry {
     id: String,
-    value: String,
+    value: Zeroizing<String>,
 }
 
 /// Pending connection with all resolved auth data

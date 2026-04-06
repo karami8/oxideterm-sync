@@ -15,6 +15,7 @@ use crate::session::AuthMethod;
 use crate::session::tree::{FlatNode, NodeConnection, NodeOrigin, NodeState, SessionTree};
 use crate::session::types::SessionConfig;
 use crate::ssh::SshConnectionRegistry;
+use zeroize::Zeroizing;
 
 /// Session Tree 状态（全局单例）
 pub struct SessionTreeState {
@@ -130,13 +131,15 @@ fn build_auth(
     match auth_type {
         "password" => {
             let pwd = password.ok_or("Password required for password authentication")?;
-            Ok(AuthMethod::Password { password: pwd })
+            Ok(AuthMethod::Password {
+                password: Zeroizing::new(pwd),
+            })
         }
         "key" => {
             let path = key_path.ok_or("Key path required for key authentication")?;
             Ok(AuthMethod::Key {
                 key_path: path,
-                passphrase,
+                passphrase: passphrase.map(Zeroizing::new),
             })
         }
         "certificate" => {
@@ -145,7 +148,7 @@ fn build_auth(
             Ok(AuthMethod::Certificate {
                 key_path: kp,
                 cert_path: cp,
-                passphrase,
+                passphrase: passphrase.map(Zeroizing::new),
             })
         }
         "agent" => Ok(AuthMethod::Agent),
@@ -637,7 +640,7 @@ mod tests {
 
         assert!(matches!(
             auth,
-            AuthMethod::Password { password } if password == "secret"
+            AuthMethod::Password { password } if &*password == "secret"
         ));
     }
 
@@ -655,7 +658,7 @@ mod tests {
         assert!(matches!(
             auth,
             AuthMethod::Key { key_path, passphrase }
-                if key_path == "/tmp/id_ed25519" && passphrase.as_deref() == Some("pp")
+                if key_path == "/tmp/id_ed25519" && passphrase.as_ref().map(|p| p.as_str()) == Some("pp")
         ));
     }
 
@@ -678,7 +681,7 @@ mod tests {
                 passphrase,
             } if key_path == "/tmp/id_ed25519"
                 && cert_path == "/tmp/id_ed25519-cert.pub"
-                && passphrase.as_deref() == Some("pp")
+                && passphrase.as_ref().map(|p| p.as_str()) == Some("pp")
         ));
     }
 

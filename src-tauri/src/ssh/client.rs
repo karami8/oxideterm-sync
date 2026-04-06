@@ -89,7 +89,10 @@ impl SshClient {
             } => handle
                 .authenticate_publickey(
                     &self.config.username,
-                    load_public_key_auth_material(key_path, passphrase.as_deref())?,
+                    load_public_key_auth_material(
+                        key_path,
+                        passphrase.as_ref().map(|p| p.as_str()),
+                    )?,
                 )
                 .await
                 .map_err(|e| SshError::AuthenticationFailed(e.to_string()))?,
@@ -106,8 +109,11 @@ impl SshClient {
                 cert_path,
                 passphrase,
             } => {
-                let (key, cert) =
-                    load_certificate_auth_material(key_path, cert_path, passphrase.as_deref())?;
+                let (key, cert) = load_certificate_auth_material(
+                    key_path,
+                    cert_path,
+                    passphrase.as_ref().map(|p| p.as_str()),
+                )?;
 
                 // Authenticate with certificate
                 handle

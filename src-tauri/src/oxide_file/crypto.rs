@@ -93,7 +93,7 @@ pub fn encrypt_oxide_file(
     let key = derive_key(password, &salt, kdf_flags::CURRENT_KDF)?;
 
     // 3. Serialize payload with MessagePack (supports tagged enums)
-    let plaintext = rmp_serde::to_vec_named(payload)?;
+    let plaintext = Zeroizing::new(rmp_serde::to_vec_named(payload)?);
 
     // 4. Encrypt with ChaCha20-Poly1305
     let cipher =
@@ -146,9 +146,11 @@ pub fn decrypt_oxide_file(
     ciphertext_with_tag.extend_from_slice(&oxide_file.tag);
 
     // 4. Decrypt and authenticate
-    let plaintext = cipher
-        .decrypt(nonce_obj, ciphertext_with_tag.as_ref())
-        .map_err(|_| OxideFileError::DecryptionFailed)?;
+    let plaintext = Zeroizing::new(
+        cipher
+            .decrypt(nonce_obj, ciphertext_with_tag.as_ref())
+            .map_err(|_| OxideFileError::DecryptionFailed)?,
+    );
 
     // 5. Deserialize payload with MessagePack
     let payload: EncryptedPayload = rmp_serde::from_slice(&plaintext)?;
@@ -197,7 +199,7 @@ mod tests {
             port: 22,
             username: "admin".to_string(),
             auth: EncryptedAuth::Password {
-                password: "secret123".to_string(),
+                password: Zeroizing::new("secret123".to_string()),
             },
             color: None,
             tags: vec![],

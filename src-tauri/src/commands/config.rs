@@ -14,6 +14,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use tauri::{Manager, State};
+use zeroize::Zeroizing;
 
 /// Service name for AI provider API keys in system keychain
 const AI_KEYCHAIN_SERVICE: &str = "com.oxideterm.ai";
@@ -200,10 +201,10 @@ pub struct SaveConnectionRequest {
     pub host: String,
     pub port: u16,
     pub username: String,
-    pub auth_type: String,         // "password", "key", "agent"
-    pub password: Option<String>,  // Only for password auth
-    pub key_path: Option<String>,  // Only for key auth
-    pub cert_path: Option<String>, // Only for certificate auth
+    pub auth_type: String,                   // "password", "key", "agent"
+    pub password: Option<Zeroizing<String>>, // Only for password auth
+    pub key_path: Option<String>,            // Only for key auth
+    pub cert_path: Option<String>,           // Only for certificate auth
     pub color: Option<String>,
     #[serde(default)]
     pub tags: Vec<String>,
@@ -219,10 +220,10 @@ pub struct ProxyHopRequest {
     pub host: String,
     pub port: u16,
     pub username: String,
-    pub auth_type: String,          // "password", "key", "agent", "default_key"
-    pub password: Option<String>,   // Only for password auth
-    pub key_path: Option<String>,   // Only for key auth
-    pub passphrase: Option<String>, // Passphrase for encrypted keys
+    pub auth_type: String, // "password", "key", "agent", "default_key"
+    pub password: Option<Zeroizing<String>>, // Only for password auth
+    pub key_path: Option<String>, // Only for key auth
+    pub passphrase: Option<Zeroizing<String>>, // Passphrase for encrypted keys
     #[serde(default)]
     pub agent_forwarding: Option<bool>,
 }
@@ -469,11 +470,10 @@ pub async fn save_connection(
                         }
                         "default_key" => {
                             use crate::session::KeyAuth;
-                            let key_auth =
-                                KeyAuth::from_default_locations(hop_req.passphrase.as_deref())
-                                    .map_err(|e| {
-                                        format!("No SSH key found for proxy hop: {}", e)
-                                    })?;
+                            let key_auth = KeyAuth::from_default_locations(
+                                hop_req.passphrase.as_ref().map(|p| p.as_str()),
+                            )
+                            .map_err(|e| format!("No SSH key found for proxy hop: {}", e))?;
 
                             SavedAuth::Key {
                                 key_path: key_auth.key_path.to_string_lossy().to_string(),
@@ -509,7 +509,7 @@ pub async fn save_connection(
 
             conn.auth = build_saved_auth(
                 &request.auth_type,
-                request.password.as_deref(),
+                request.password.as_ref().map(|s| s.as_str()),
                 request.key_path.as_deref(),
                 request.cert_path.as_deref(),
                 &state.keychain,
@@ -521,7 +521,7 @@ pub async fn save_connection(
         } else {
             let auth = build_saved_auth(
                 &request.auth_type,
-                request.password.as_deref(),
+                request.password.as_ref().map(|s| s.as_str()),
                 request.key_path.as_deref(),
                 request.cert_path.as_deref(),
                 &state.keychain,
@@ -571,11 +571,10 @@ pub async fn save_connection(
                         }
                         "default_key" => {
                             use crate::session::KeyAuth;
-                            let key_auth =
-                                KeyAuth::from_default_locations(hop_req.passphrase.as_deref())
-                                    .map_err(|e| {
-                                        format!("No SSH key found for proxy hop: {}", e)
-                                    })?;
+                            let key_auth = KeyAuth::from_default_locations(
+                                hop_req.passphrase.as_ref().map(|p| p.as_str()),
+                            )
+                            .map_err(|e| format!("No SSH key found for proxy hop: {}", e))?;
 
                             SavedAuth::Key {
                                 key_path: key_auth.key_path.to_string_lossy().to_string(),
@@ -1172,7 +1171,8 @@ fn try_migrate_vault_to_keychain(
                         "Successfully migrated AI key for provider {} to keychain",
                         provider_id
                     );
-                    Some(key)
+                    // Extract from Zeroizing for the cache (intentional)
+                    Some((*key).clone())
                 }
                 Err(e) => {
                     tracing::error!(
@@ -1181,7 +1181,7 @@ fn try_migrate_vault_to_keychain(
                         e
                     );
                     // Return the key anyway so the user isn't blocked
-                    Some(key)
+                    Some((*key).clone())
                 }
             }
         }

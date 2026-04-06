@@ -15,9 +15,9 @@ use tempfile::TempDir;
 use tokio::io::copy_bidirectional;
 #[cfg(unix)]
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::{TcpListener, TcpStream};
 #[cfg(unix)]
 use tokio::net::UnixListener;
+use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::watch;
 #[cfg(unix)]
 use tokio::sync::{Mutex, oneshot};
@@ -29,6 +29,7 @@ use super::config::SshConfig;
 use super::error::SshError;
 use super::proxy::{ProxyChain, ProxyHop, connect_via_proxy};
 use crate::session::tree::MAX_CHAIN_DEPTH;
+use zeroize::Zeroizing;
 
 const TEST_TIMEOUT_SECS: u64 = 10;
 
@@ -300,7 +301,10 @@ impl server::Handler for TestServerHandler {
                 }
             };
 
-            if let Err(error) = agent_channel.data(agent_forward_test.request.as_slice()).await {
+            if let Err(error) = agent_channel
+                .data(agent_forward_test.request.as_slice())
+                .await
+            {
                 agent_forward_test
                     .send_result(Err(format!("failed to write to agent channel: {error}")))
                     .await;
@@ -309,8 +313,11 @@ impl server::Handler for TestServerHandler {
 
             let mut received = Vec::new();
             loop {
-                match tokio::time::timeout(Duration::from_secs(TEST_TIMEOUT_SECS), agent_channel.wait())
-                    .await
+                match tokio::time::timeout(
+                    Duration::from_secs(TEST_TIMEOUT_SECS),
+                    agent_channel.wait(),
+                )
+                .await
                 {
                     Ok(Some(russh::ChannelMsg::Data { data })) => {
                         received.extend_from_slice(&data);
@@ -330,14 +337,18 @@ impl server::Handler for TestServerHandler {
                     }
                     Ok(Some(russh::ChannelMsg::Eof | russh::ChannelMsg::Close)) => {
                         agent_forward_test
-                            .send_result(Err("agent channel closed before response completed".to_string()))
+                            .send_result(Err(
+                                "agent channel closed before response completed".to_string()
+                            ))
                             .await;
                         return;
                     }
                     Ok(Some(_)) => {}
                     Ok(None) => {
                         agent_forward_test
-                            .send_result(Err("agent channel ended before response completed".to_string()))
+                            .send_result(Err(
+                                "agent channel ended before response completed".to_string()
+                            ))
                             .await;
                         return;
                     }
@@ -518,7 +529,7 @@ fn generate_certificate_files(username: &str) -> CertificateMaterialFiles {
 
 fn password_auth(password: &str) -> AuthMethod {
     AuthMethod::Password {
-        password: password.to_string(),
+        password: Zeroizing::new(password.to_string()),
     }
 }
 
@@ -961,15 +972,19 @@ async fn test_agent_forward_channel_relays_to_local_agent_socket() {
         ..
     } = fake_agent;
 
-    let server_received = tokio::time::timeout(Duration::from_secs(TEST_TIMEOUT_SECS), server_result_rx)
-        .await
-        .expect("server agent exchange timed out")
-        .expect("server agent exchange channel dropped")
-        .expect("server agent exchange failed");
-    let fake_agent_received = tokio::time::timeout(Duration::from_secs(TEST_TIMEOUT_SECS), fake_agent_received_rx)
-        .await
-        .expect("fake agent did not receive request in time")
-        .expect("fake agent receive channel dropped");
+    let server_received =
+        tokio::time::timeout(Duration::from_secs(TEST_TIMEOUT_SECS), server_result_rx)
+            .await
+            .expect("server agent exchange timed out")
+            .expect("server agent exchange channel dropped")
+            .expect("server agent exchange failed");
+    let fake_agent_received = tokio::time::timeout(
+        Duration::from_secs(TEST_TIMEOUT_SECS),
+        fake_agent_received_rx,
+    )
+    .await
+    .expect("fake agent did not receive request in time")
+    .expect("fake agent receive channel dropped");
     let _ = fake_agent_task.await;
 
     assert_eq!(fake_agent_received, request);

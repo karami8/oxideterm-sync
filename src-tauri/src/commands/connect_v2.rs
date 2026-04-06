@@ -33,6 +33,7 @@ use crate::session::{
 };
 use crate::sftp::session::SftpRegistry;
 use crate::ssh::SshConnectionRegistry;
+use zeroize::Zeroizing;
 
 /// Connect request from frontend
 #[derive(Debug, Deserialize)]
@@ -62,14 +63,14 @@ pub struct BufferConfigRequest {
 #[serde(tag = "auth_type", rename_all = "snake_case")]
 pub enum AuthRequest {
     Password {
-        password: String,
+        password: Zeroizing<String>,
     },
     Key {
         key_path: String,
-        passphrase: Option<String>,
+        passphrase: Option<Zeroizing<String>>,
     },
     DefaultKey {
-        passphrase: Option<String>,
+        passphrase: Option<Zeroizing<String>>,
     },
     Agent,
 }
@@ -112,7 +113,7 @@ where
             passphrase,
         }),
         AuthRequest::DefaultKey { passphrase } => {
-            let key_auth = default_key_loader(passphrase.as_deref())?;
+            let key_auth = default_key_loader(passphrase.as_deref().map(|s| s.as_str()))?;
             Ok(AuthMethod::Key {
                 key_path: key_auth.key_path.to_string_lossy().to_string(),
                 passphrase,
@@ -427,13 +428,13 @@ mod tests {
     #[test]
     fn test_build_session_auth_password() {
         let auth = build_session_auth(AuthRequest::Password {
-            password: "secret".to_string(),
+            password: Zeroizing::new("secret".to_string()),
         })
         .unwrap();
 
         assert!(matches!(
             auth,
-            AuthMethod::Password { password } if password == "secret"
+            AuthMethod::Password { password } if &*password == "secret"
         ));
     }
 
@@ -441,14 +442,14 @@ mod tests {
     fn test_build_session_auth_key() {
         let auth = build_session_auth(AuthRequest::Key {
             key_path: "/tmp/id_ed25519".to_string(),
-            passphrase: Some("pp".to_string()),
+            passphrase: Some(Zeroizing::new("pp".to_string())),
         })
         .unwrap();
 
         assert!(matches!(
             auth,
             AuthMethod::Key { key_path, passphrase }
-                if key_path == "/tmp/id_ed25519" && passphrase.as_deref() == Some("pp")
+                if key_path == "/tmp/id_ed25519" && passphrase.as_deref().map(|s| s.as_str()) == Some("pp")
         ));
     }
 
@@ -463,7 +464,7 @@ mod tests {
     fn test_build_session_auth_default_key_uses_resolved_key_path() {
         let auth = build_session_auth_with(
             AuthRequest::DefaultKey {
-                passphrase: Some("pp".to_string()),
+                passphrase: Some(Zeroizing::new("pp".to_string())),
             },
             |passphrase| {
                 assert_eq!(passphrase, Some("pp"));
@@ -475,7 +476,7 @@ mod tests {
         assert!(matches!(
             auth,
             AuthMethod::Key { key_path, passphrase }
-                if key_path == "/tmp/id_default" && passphrase.as_deref() == Some("pp")
+                if key_path == "/tmp/id_default" && passphrase.as_deref().map(|s| s.as_str()) == Some("pp")
         ));
     }
 

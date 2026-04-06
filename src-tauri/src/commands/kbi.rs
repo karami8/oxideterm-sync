@@ -270,8 +270,11 @@ async fn run_kbi_flow(
                 );
 
                 // Continue authentication with responses
+                // Convert Zeroizing<String> to String for russh API
+                // The Zeroizing copies will be zeroized on drop
+                let raw_responses: Vec<String> = responses.iter().map(|r| (**r).clone()).collect();
                 auth_result = handle
-                    .authenticate_keyboard_interactive_respond(responses)
+                    .authenticate_keyboard_interactive_respond(raw_responses)
                     .await
                     .map_err(|e| format!("KBI respond failed: {}", e))?;
             }

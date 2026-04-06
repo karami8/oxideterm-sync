@@ -28,6 +28,7 @@ use std::collections::HashMap;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+use zeroize::Zeroizing;
 
 use super::types::AuthMethod;
 
@@ -109,7 +110,7 @@ impl NodeConnection {
     /// 设置密码认证
     pub fn with_password(mut self, password: impl Into<String>) -> Self {
         self.auth = AuthMethod::Password {
-            password: password.into(),
+            password: Zeroizing::new(password.into()),
         };
         self
     }
@@ -118,7 +119,7 @@ impl NodeConnection {
     pub fn with_key(mut self, key_path: impl Into<String>, passphrase: Option<String>) -> Self {
         self.auth = AuthMethod::Key {
             key_path: key_path.into(),
-            passphrase,
+            passphrase: passphrase.map(Zeroizing::new),
         };
         self
     }

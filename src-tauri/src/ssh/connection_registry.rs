@@ -45,6 +45,7 @@ use tauri::AppHandle;
 use tokio::sync::{Mutex, RwLock};
 use tokio::task::JoinHandle;
 use tracing::{debug, error, info, warn};
+use zeroize::Zeroizing;
 
 use super::auth::{
     DEFAULT_AUTH_TIMEOUT_SECS, authenticate_password, build_client_config, ensure_auth_success,
@@ -1108,8 +1109,11 @@ impl SshConnectionRegistry {
             } => handle
                 .authenticate_publickey(
                     &target_config.username,
-                    load_public_key_auth_material(key_path, passphrase.as_deref())
-                        .map_err(|e| ConnectionRegistryError::ConnectionFailed(e.to_string()))?,
+                    load_public_key_auth_material(
+                        key_path,
+                        passphrase.as_ref().map(|p| p.as_str()),
+                    )
+                    .map_err(|e| ConnectionRegistryError::ConnectionFailed(e.to_string()))?,
                 )
                 .await
                 .map_err(|e| {
@@ -1123,9 +1127,12 @@ impl SshConnectionRegistry {
                 cert_path,
                 passphrase,
             } => {
-                let (key, cert) =
-                    load_certificate_auth_material(key_path, cert_path, passphrase.as_deref())
-                        .map_err(|e| ConnectionRegistryError::ConnectionFailed(e.to_string()))?;
+                let (key, cert) = load_certificate_auth_material(
+                    key_path,
+                    cert_path,
+                    passphrase.as_ref().map(|p| p.as_str()),
+                )
+                .map_err(|e| ConnectionRegistryError::ConnectionFailed(e.to_string()))?;
 
                 handle
                     .authenticate_openssh_cert(&target_config.username, key, cert)
@@ -2757,7 +2764,7 @@ mod tests {
                 port: 22,
                 username: "user".to_string(),
                 auth: AuthMethod::Password {
-                    password: "pass".to_string(),
+                    password: Zeroizing::new("pass".to_string()),
                 },
                 name: None,
                 color: None,
@@ -2808,7 +2815,7 @@ mod tests {
                 port: 22,
                 username: "user".to_string(),
                 auth: AuthMethod::Password {
-                    password: "pass".to_string(),
+                    password: Zeroizing::new("pass".to_string()),
                 },
                 name: None,
                 color: None,
@@ -2928,7 +2935,7 @@ mod tests {
         };
         let b = AuthMethod::Key {
             key_path: "/home/.ssh/id_ed25519".into(),
-            passphrase: Some("pass".into()),
+            passphrase: Some(Zeroizing::new("pass".to_string())),
         };
         let c = AuthMethod::Key {
             key_path: "/home/.ssh/id_rsa".into(),

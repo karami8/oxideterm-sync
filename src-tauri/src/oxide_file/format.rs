@@ -8,6 +8,7 @@ use crate::config::types::ConnectionOptions;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::io::{Cursor, Read};
+use zeroize::Zeroizing;
 
 /// Magic number identifying .oxide files
 pub const MAGIC: &[u8; 5] = b"OXIDE";
@@ -181,26 +182,26 @@ pub struct EncryptedProxyHop {
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum EncryptedAuth {
     Password {
-        password: String,
+        password: Zeroizing<String>,
     },
     Key {
         /// Original path to the key file (for reference)
         key_path: String,
-        passphrase: Option<String>,
+        passphrase: Option<Zeroizing<String>>,
         /// Embedded private key content (base64 encoded) for portable backups
         #[serde(default, skip_serializing_if = "Option::is_none")]
-        embedded_key: Option<String>,
+        embedded_key: Option<Zeroizing<String>>,
     },
     Certificate {
         key_path: String,
         cert_path: String,
-        passphrase: Option<String>,
+        passphrase: Option<Zeroizing<String>>,
         /// Embedded private key content (base64 encoded)
         #[serde(default, skip_serializing_if = "Option::is_none")]
-        embedded_key: Option<String>,
+        embedded_key: Option<Zeroizing<String>>,
         /// Embedded certificate content (base64 encoded)
         #[serde(default, skip_serializing_if = "Option::is_none")]
-        embedded_cert: Option<String>,
+        embedded_cert: Option<Zeroizing<String>>,
     },
     Agent,
 }

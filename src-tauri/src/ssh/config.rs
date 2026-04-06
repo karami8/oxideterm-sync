@@ -4,6 +4,7 @@
 //! SSH Configuration
 
 use serde::{Deserialize, Serialize};
+use zeroize::Zeroizing;
 
 /// SSH connection configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -76,14 +77,14 @@ pub struct ProxyHopConfig {
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum AuthMethod {
     /// Password authentication
-    Password { password: String },
+    Password { password: Zeroizing<String> },
 
     /// SSH key authentication
     Key {
         /// Path to private key file
         key_path: String,
         /// Optional passphrase for encrypted keys
-        passphrase: Option<String>,
+        passphrase: Option<Zeroizing<String>>,
     },
 
     /// SSH agent authentication
@@ -96,7 +97,7 @@ pub enum AuthMethod {
         /// Path to certificate file (*-cert.pub)
         cert_path: String,
         /// Optional passphrase for encrypted keys
-        passphrase: Option<String>,
+        passphrase: Option<Zeroizing<String>>,
     },
 
     /// Keyboard-Interactive authentication (2FA/TOTP)
@@ -107,14 +108,14 @@ pub enum AuthMethod {
 impl AuthMethod {
     pub fn password(password: impl Into<String>) -> Self {
         Self::Password {
-            password: password.into(),
+            password: Zeroizing::new(password.into()),
         }
     }
 
     pub fn key(key_path: impl Into<String>, passphrase: Option<String>) -> Self {
         Self::Key {
             key_path: key_path.into(),
-            passphrase,
+            passphrase: passphrase.map(Zeroizing::new),
         }
     }
 
@@ -126,7 +127,7 @@ impl AuthMethod {
         Self::Certificate {
             key_path: key_path.into(),
             cert_path: cert_path.into(),
-            passphrase,
+            passphrase: passphrase.map(Zeroizing::new),
         }
     }
 }
@@ -154,7 +155,7 @@ impl Default for SshConfig {
             port: 22,
             username: String::new(),
             auth: AuthMethod::Password {
-                password: String::new(),
+                password: Zeroizing::new(String::new()),
             },
             timeout_secs: 30,
             cols: 80,
@@ -175,12 +176,12 @@ mod tests {
     fn test_auth_method_helper_builders() {
         assert!(matches!(
             AuthMethod::password("secret"),
-            AuthMethod::Password { password } if password == "secret"
+            AuthMethod::Password { password } if &*password == "secret"
         ));
         assert!(matches!(
             AuthMethod::key("/tmp/id_ed25519", Some("pp".to_string())),
             AuthMethod::Key { key_path, passphrase }
-                if key_path == "/tmp/id_ed25519" && passphrase.as_deref() == Some("pp")
+                if key_path == "/tmp/id_ed25519" && passphrase.as_deref().map(|s| s.as_str()) == Some("pp")
         ));
         assert!(matches!(
             AuthMethod::certificate("/tmp/id_ed25519", "/tmp/id_ed25519-cert.pub", None),
@@ -195,11 +196,11 @@ mod tests {
     fn test_auth_method_serde_round_trips_all_variants() {
         let variants = vec![
             AuthMethod::Password {
-                password: "secret".to_string(),
+                password: Zeroizing::new("secret".to_string()),
             },
             AuthMethod::Key {
                 key_path: "/tmp/id_ed25519".to_string(),
-                passphrase: Some("pp".to_string()),
+                passphrase: Some(Zeroizing::new("pp".to_string())),
             },
             AuthMethod::Agent,
             AuthMethod::Certificate {
@@ -207,6 +208,7 @@ mod tests {
                 cert_path: "/tmp/id_ed25519-cert.pub".to_string(),
                 passphrase: None,
             },
+            AuthMethod::KeyboardInteractive,
             AuthMethod::KeyboardInteractive,
         ];
 

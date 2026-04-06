@@ -17,6 +17,7 @@
 use std::fs;
 use std::io::{Read, Write};
 use std::path::PathBuf;
+use zeroize::Zeroizing;
 
 /// Legacy vault file name (single key)
 const VAULT_FILENAME: &str = "ai.vault";
@@ -129,7 +130,7 @@ impl AiVault {
         }
 
         let plaintext = api_key.as_bytes();
-        let xor_key = derive_xor_key(&self.fingerprint, plaintext.len());
+        let xor_key = Zeroizing::new(derive_xor_key(&self.fingerprint, plaintext.len()));
         let encrypted = xor_cipher(plaintext, &xor_key);
 
         // Build vault file: MAGIC + length (4 bytes) + encrypted data
@@ -152,7 +153,7 @@ impl AiVault {
     }
 
     /// Load a key from the vault
-    pub fn load(&self) -> Result<String, VaultError> {
+    pub fn load(&self) -> Result<Zeroizing<String>, VaultError> {
         tracing::info!("Loading API key from vault");
 
         if !self.vault_path.exists() {
@@ -189,10 +190,10 @@ impl AiVault {
         }
 
         let encrypted = &file_data[data_start..data_start + data_len];
-        let xor_key = derive_xor_key(&self.fingerprint, encrypted.len());
-        let decrypted = xor_cipher(encrypted, &xor_key);
+        let xor_key = Zeroizing::new(derive_xor_key(&self.fingerprint, encrypted.len()));
+        let decrypted = Zeroizing::new(xor_cipher(encrypted, &xor_key));
 
-        let api_key = String::from_utf8(decrypted)?;
+        let api_key = Zeroizing::new(String::from_utf8(decrypted.to_vec())?);
 
         tracing::info!("API key loaded from vault (length: {})", api_key.len());
         Ok(api_key)
@@ -267,7 +268,7 @@ impl AiProviderVault {
 
         let vault_path = self.vault_path(provider_id);
         let plaintext = api_key.as_bytes();
-        let xor_key = derive_xor_key(&self.fingerprint, plaintext.len());
+        let xor_key = Zeroizing::new(derive_xor_key(&self.fingerprint, plaintext.len()));
         let encrypted = xor_cipher(plaintext, &xor_key);
 
         // Build vault file: MAGIC + length (4 bytes) + encrypted data
@@ -298,7 +299,7 @@ impl AiProviderVault {
     }
 
     /// Load a key for a specific provider
-    pub fn load(&self, provider_id: &str) -> Result<String, VaultError> {
+    pub fn load(&self, provider_id: &str) -> Result<Zeroizing<String>, VaultError> {
         tracing::debug!("Loading API key for provider {}", provider_id);
 
         let vault_path = self.vault_path(provider_id);
@@ -337,10 +338,10 @@ impl AiProviderVault {
         }
 
         let encrypted = &file_data[data_start..data_start + data_len];
-        let xor_key = derive_xor_key(&self.fingerprint, encrypted.len());
-        let decrypted = xor_cipher(encrypted, &xor_key);
+        let xor_key = Zeroizing::new(derive_xor_key(&self.fingerprint, encrypted.len()));
+        let decrypted = Zeroizing::new(xor_cipher(encrypted, &xor_key));
 
-        let api_key = String::from_utf8(decrypted)?;
+        let api_key = Zeroizing::new(String::from_utf8(decrypted.to_vec())?);
 
         tracing::debug!(
             "API key loaded for provider {} (length: {})",
@@ -415,7 +416,7 @@ mod tests {
         assert!(vault.exists());
 
         let loaded = vault.load().unwrap();
-        assert_eq!(loaded, api_key);
+        assert_eq!(&*loaded, api_key);
     }
 
     #[test]
