@@ -18,7 +18,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use tauri::State;
-use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+use tokio::io::{AsyncBufRead, AsyncBufReadExt, AsyncWrite, AsyncWriteExt, BufReader};
 use tokio::process::{Child, Command};
 use tokio::sync::{Mutex, oneshot};
 use tokio::task::JoinHandle;
@@ -89,11 +89,10 @@ impl McpProcessRegistry {
 /// ```
 ///
 /// Falls back to line-delimited JSON for servers that don't send headers.
-async fn stdout_reader_loop(
-    mut reader: BufReader<tokio::process::ChildStdout>,
-    pending: PendingMap,
-    server_id: String,
-) {
+async fn stdout_reader_loop<R>(mut reader: R, pending: PendingMap, server_id: String)
+where
+    R: AsyncBufRead + Unpin,
+{
     let mut header_line = String::new();
     loop {
         header_line.clear();
@@ -115,40 +114,57 @@ async fn stdout_reader_loop(
             continue; // skip blank lines between messages
         }
 
-        // Try Content-Length framing first
-        let body = if let Some(len_str) = trimmed
-            .strip_prefix("Content-Length:")
-            .or_else(|| trimmed.strip_prefix("content-length:"))
-        {
-            let content_length: usize = match len_str.trim().parse() {
-                Ok(n) if n > 0 && n <= 10 * 1024 * 1024 => n, // cap at 10 MB
-                Ok(n) => {
-                    tracing::warn!("[MCP:{}] Content-Length {} out of range", server_id, n);
-                    continue;
-                }
-                Err(_) => {
-                    tracing::debug!(
-                        "[MCP:{}] Invalid Content-Length value: {}",
-                        server_id,
-                        len_str.trim()
-                    );
-                    continue;
-                }
-            };
-
-            // Consume remaining headers until empty line (\r\n)
-            let mut discard = String::new();
+        // Try Content-Length framing first. We accept any header order and
+        // case-insensitive Content-Length, but only fall back to line-delimited
+        // JSON when the first non-empty line already looks like JSON.
+        let body = if trimmed.starts_with('{') || trimmed.starts_with('[') {
+            let _ = bytes_read;
+            trimmed.to_owned()
+        } else {
+            let mut headers = vec![trimmed.to_owned()];
+            let mut next_header = String::new();
             loop {
-                discard.clear();
-                match reader.read_line(&mut discard).await {
+                next_header.clear();
+                match reader.read_line(&mut next_header).await {
                     Ok(0) => break,
-                    Ok(_) if discard.trim().is_empty() => break,
-                    Ok(_) => continue, // skip other headers
-                    Err(_) => break,
+                    Ok(_) if next_header.trim().is_empty() => break,
+                    Ok(_) => headers.push(next_header.trim().to_owned()),
+                    Err(e) => {
+                        tracing::warn!("[MCP:{}] Failed to read MCP headers: {}", server_id, e);
+                        break;
+                    }
                 }
             }
 
-            // Read exactly content_length bytes
+            let content_length: usize = match headers.iter().find_map(|header| {
+                let (name, value) = header.split_once(':')?;
+                if name.trim().eq_ignore_ascii_case("content-length") {
+                    Some(value.trim())
+                } else {
+                    None
+                }
+            }) {
+                Some(value) => match value.parse() {
+                    Ok(n) if n > 0 && n <= 10 * 1024 * 1024 => n,
+                    Ok(n) => {
+                        tracing::warn!("[MCP:{}] Content-Length {} out of range", server_id, n);
+                        break;
+                    }
+                    Err(_) => {
+                        tracing::debug!(
+                            "[MCP:{}] Invalid Content-Length value: {}",
+                            server_id,
+                            value
+                        );
+                        break;
+                    }
+                },
+                None => {
+                    tracing::debug!("[MCP:{}] Missing Content-Length header", server_id);
+                    break;
+                }
+            };
+
             let mut body_buf = vec![0u8; content_length];
             match tokio::io::AsyncReadExt::read_exact(&mut reader, &mut body_buf).await {
                 Ok(_) => String::from_utf8_lossy(&body_buf).into_owned(),
@@ -159,13 +175,9 @@ async fn stdout_reader_loop(
                         content_length,
                         e
                     );
-                    continue;
+                    break;
                 }
             }
-        } else {
-            // Fallback: line-delimited JSON (for non-compliant servers)
-            let _ = bytes_read;
-            trimmed.to_owned()
         };
 
         let body_trimmed = body.trim();
@@ -188,9 +200,10 @@ async fn stdout_reader_loop(
                                 .and_then(|m| m.as_str())
                                 .unwrap_or("Unknown MCP error");
                             let _ = tx.send(Err(format!("MCP error: {}", msg)));
+                        } else if let Some(result) = val.get("result") {
+                            let _ = tx.send(Ok(result.clone()));
                         } else {
-                            let result = val.get("result").cloned().unwrap_or(Value::Null);
-                            let _ = tx.send(Ok(result));
+                            let _ = tx.send(Err("MCP response missing result".to_string()));
                         }
                     } else {
                         tracing::warn!(
@@ -224,6 +237,26 @@ async fn stdout_reader_loop(
     for (_, tx) in map.drain() {
         let _ = tx.send(Err("MCP server closed stdout".to_string()));
     }
+}
+
+async fn write_framed_message<W>(writer: &mut W, body: &str) -> Result<(), String>
+where
+    W: AsyncWrite + Unpin,
+{
+    let header = format!("Content-Length: {}\r\n\r\n", body.len());
+    writer
+        .write_all(header.as_bytes())
+        .await
+        .map_err(|e| format!("Failed to write header to MCP server: {}", e))?;
+    writer
+        .write_all(body.as_bytes())
+        .await
+        .map_err(|e| format!("Failed to write to MCP server: {}", e))?;
+    writer
+        .flush()
+        .await
+        .map_err(|e| format!("Failed to flush: {}", e))?;
+    Ok(())
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -429,22 +462,15 @@ pub async fn mcp_send_request(
         None
     };
 
-    // Write to stdin with Content-Length framing per MCP spec
+    // Write to stdin with Content-Length framing per MCP spec.
     {
         let mut stdin = proc.stdin.lock().await;
-        let header = format!("Content-Length: {}\r\n\r\n", request_str.len());
-        stdin
-            .write_all(header.as_bytes())
-            .await
-            .map_err(|e| format!("Failed to write header to MCP server: {}", e))?;
-        stdin
-            .write_all(request_str.as_bytes())
-            .await
-            .map_err(|e| format!("Failed to write to MCP server: {}", e))?;
-        stdin
-            .flush()
-            .await
-            .map_err(|e| format!("Failed to flush: {}", e))?;
+        if let Err(err) = write_framed_message(&mut *stdin, &request_str).await {
+            if !is_notification {
+                proc.pending.lock().await.remove(&request_id);
+            }
+            return Err(err);
+        }
     }
     // stdin lock released here — other requests can write immediately
 
@@ -482,35 +508,35 @@ pub async fn mcp_close_server(
     if let Some(proc) = proc {
         tracing::info!("[MCP] Closing server {}", server_id);
         // Send shutdown request (with id per JSON-RPC spec), then exit notification
-        {
+        let shutdown_rx = {
             let id = proc.next_id.fetch_add(1, Ordering::Relaxed);
-            let mut stdin = proc.stdin.lock().await;
-            // shutdown is a JSON-RPC request (expects response)
+            let (tx, rx) = oneshot::channel();
+            proc.pending.lock().await.insert(id, tx);
             let shutdown_body = format!(
                 "{{\"jsonrpc\":\"2.0\",\"id\":{},\"method\":\"shutdown\"}}",
                 id
             );
-            let shutdown_msg = format!(
-                "Content-Length: {}\r\n\r\n{}",
-                shutdown_body.len(),
-                shutdown_body
-            );
-            let _ = stdin.write_all(shutdown_msg.as_bytes()).await;
-            let _ = stdin.flush().await;
+            let write_result = {
+                let mut stdin = proc.stdin.lock().await;
+                write_framed_message(&mut *stdin, &shutdown_body).await
+            };
+            if write_result.is_err() {
+                proc.pending.lock().await.remove(&id);
+                None
+            } else {
+                Some(rx)
+            }
+        };
+
+        if let Some(rx) = shutdown_rx {
+            let _ = tokio::time::timeout(std::time::Duration::from_secs(3), rx).await;
         }
-        // Wait briefly for shutdown response, then send exit notification
-        let _ = tokio::time::timeout(
-            std::time::Duration::from_secs(3),
-            proc.child.lock().await.wait(),
-        )
-        .await;
+
         // Send exit notification (no id — it's a notification)
         {
             let mut stdin = proc.stdin.lock().await;
             let exit_body = "{\"jsonrpc\":\"2.0\",\"method\":\"exit\"}";
-            let exit_msg = format!("Content-Length: {}\r\n\r\n{}", exit_body.len(), exit_body);
-            let _ = stdin.write_all(exit_msg.as_bytes()).await;
-            let _ = stdin.flush().await;
+            let _ = write_framed_message(&mut *stdin, exit_body).await;
         }
         let _ = proc.child.lock().await.kill().await;
         proc.reader_task.abort();
@@ -524,4 +550,148 @@ pub async fn mcp_close_server(
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tokio::io::duplex;
+
+    #[tokio::test]
+    async fn stdout_reader_dispatches_content_length_framed_response() {
+        let (client, mut server) = duplex(1024);
+        let pending: PendingMap = Arc::new(Mutex::new(HashMap::new()));
+        let (tx, rx) = oneshot::channel();
+        pending.lock().await.insert(7, tx);
+
+        let reader_task = tokio::spawn(stdout_reader_loop(
+            BufReader::new(client),
+            Arc::clone(&pending),
+            "test-server".to_string(),
+        ));
+
+        let body = r#"{"jsonrpc":"2.0","id":7,"result":{"ok":true}}"#;
+        let msg = format!("Content-Length: {}\r\n\r\n{}", body.len(), body);
+        server.write_all(msg.as_bytes()).await.unwrap();
+
+        let result = rx.await.unwrap().unwrap();
+        assert_eq!(result.get("ok").and_then(|v| v.as_bool()), Some(true));
+
+        drop(server);
+        let _ = reader_task.await;
+    }
+
+    #[tokio::test]
+    async fn stdout_reader_rejects_pending_when_stdout_closes() {
+        let (client, server) = duplex(256);
+        let pending: PendingMap = Arc::new(Mutex::new(HashMap::new()));
+        let (tx, rx) = oneshot::channel();
+        pending.lock().await.insert(1, tx);
+
+        let reader_task = tokio::spawn(stdout_reader_loop(
+            BufReader::new(client),
+            Arc::clone(&pending),
+            "close-server".to_string(),
+        ));
+
+        drop(server);
+
+        let result = rx.await.unwrap();
+        assert_eq!(result.unwrap_err(), "MCP server closed stdout");
+        let _ = reader_task.await;
+    }
+
+    #[tokio::test]
+    async fn stdout_reader_treats_invalid_content_length_as_fatal_protocol_error() {
+        let (client, mut server) = duplex(1024);
+        let pending: PendingMap = Arc::new(Mutex::new(HashMap::new()));
+        let (tx, rx) = oneshot::channel();
+        pending.lock().await.insert(9, tx);
+
+        let reader_task = tokio::spawn(stdout_reader_loop(
+            BufReader::new(client),
+            Arc::clone(&pending),
+            "invalid-length".to_string(),
+        ));
+
+        server
+            .write_all(b"Content-Length: 999999999\r\n\r\n{}")
+            .await
+            .unwrap();
+        drop(server);
+
+        let result = rx.await.unwrap();
+        assert_eq!(result.unwrap_err(), "MCP server closed stdout");
+        let _ = reader_task.await;
+    }
+
+    #[tokio::test]
+    async fn stdout_reader_rejects_responses_without_result_or_error() {
+        let (client, mut server) = duplex(1024);
+        let pending: PendingMap = Arc::new(Mutex::new(HashMap::new()));
+        let (tx, rx) = oneshot::channel();
+        pending.lock().await.insert(11, tx);
+
+        let reader_task = tokio::spawn(stdout_reader_loop(
+            BufReader::new(client),
+            Arc::clone(&pending),
+            "missing-result".to_string(),
+        ));
+
+        let body = r#"{"jsonrpc":"2.0","id":11}"#;
+        let msg = format!("Content-Length: {}\r\n\r\n{}", body.len(), body);
+        server.write_all(msg.as_bytes()).await.unwrap();
+        drop(server);
+
+        let result = rx.await.unwrap();
+        assert_eq!(result.unwrap_err(), "MCP response missing result");
+        let _ = reader_task.await;
+    }
+
+    #[tokio::test]
+    async fn stdout_reader_accepts_content_length_after_other_headers() {
+        let (client, mut server) = duplex(1024);
+        let pending: PendingMap = Arc::new(Mutex::new(HashMap::new()));
+        let (tx, rx) = oneshot::channel();
+        pending.lock().await.insert(12, tx);
+
+        let reader_task = tokio::spawn(stdout_reader_loop(
+            BufReader::new(client),
+            Arc::clone(&pending),
+            "header-order".to_string(),
+        ));
+
+        let body = r#"{"jsonrpc":"2.0","id":12,"result":{"ok":true}}"#;
+        let msg = format!(
+            "Content-Type: application/json\r\nContent-length: {}\r\n\r\n{}",
+            body.len(),
+            body
+        );
+        server.write_all(msg.as_bytes()).await.unwrap();
+
+        let result = rx.await.unwrap().unwrap();
+        assert_eq!(result.get("ok").and_then(|v| v.as_bool()), Some(true));
+
+        drop(server);
+        let _ = reader_task.await;
+    }
+
+    #[test]
+    fn validate_mcp_command_rejects_paths_and_unknown_binaries() {
+        assert!(validate_mcp_command("npx").is_ok());
+        assert!(validate_mcp_command("../npx").is_err());
+        assert!(validate_mcp_command("/usr/bin/python3").is_err());
+        assert!(validate_mcp_command("bash").is_err());
+    }
+
+    #[test]
+    fn validate_mcp_env_blocks_injection_variables() {
+        let mut env = HashMap::new();
+        env.insert("LD_PRELOAD".to_string(), "evil.so".to_string());
+        assert!(validate_mcp_env(&env).is_err());
+
+        env.clear();
+        env.insert("SAFE".to_string(), "1".to_string());
+        assert!(validate_mcp_env(&env).is_ok());
+    }
 }

@@ -43,17 +43,19 @@ pub async fn cli_get_status(app_handle: tauri::AppHandle) -> Result<CliStatus, S
     let install_target = cli_install_path();
     let installed = cli_path_present(&install_target);
     let matches_bundled = match (bundle_path.as_ref(), installed) {
-        (Some(bundle_path), true) => match installed_cli_matches_bundle(&install_target, bundle_path) {
-            Ok(matches) => Some(matches),
-            Err(error) => {
-                tracing::warn!(
-                    "Failed to verify installed CLI against bundled binary at {}: {}",
-                    install_target.display(),
-                    error
-                );
-                None
+        (Some(bundle_path), true) => {
+            match installed_cli_matches_bundle(&install_target, bundle_path) {
+                Ok(matches) => Some(matches),
+                Err(error) => {
+                    tracing::warn!(
+                        "Failed to verify installed CLI against bundled binary at {}: {}",
+                        install_target.display(),
+                        error
+                    );
+                    None
+                }
             }
-        },
+        }
         _ => None,
     };
     let needs_reinstall = bundled && installed && matches_bundled == Some(false);
@@ -97,7 +99,8 @@ fn installed_cli_matches_bundle(install_path: &Path, bundle_path: &Path) -> Resu
 }
 
 fn file_sha256(path: &Path) -> Result<[u8; 32], String> {
-    let mut file = File::open(path).map_err(|e| format!("Failed to open {}: {e}", path.display()))?;
+    let mut file =
+        File::open(path).map_err(|e| format!("Failed to open {}: {e}", path.display()))?;
     let mut hasher = Sha256::new();
     let mut buf = [0u8; 8192];
 

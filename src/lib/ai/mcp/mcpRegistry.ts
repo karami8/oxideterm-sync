@@ -54,9 +54,24 @@ function getServerConfigs(): McpServerConfig[] {
   return useSettingsStore.getState().settings.ai.mcpServers ?? [];
 }
 
-function mcpToolToAiTool(tool: McpToolSchema, serverName: string): AiToolDefinition {
+function buildServerNameCounts(servers: Iterable<McpServerState>): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const server of servers) {
+    counts.set(server.config.name, (counts.get(server.config.name) ?? 0) + 1);
+  }
+  return counts;
+}
+
+function getServerToolNamespace(config: McpServerConfig, counts: Map<string, number>): string {
+  if ((counts.get(config.name) ?? 0) <= 1) {
+    return config.name;
+  }
+  return `${config.name}#${config.id}`;
+}
+
+function mcpToolToAiTool(tool: McpToolSchema, serverName: string, namespace: string): AiToolDefinition {
   return {
-    name: `mcp::${serverName}::${tool.name}`,
+    name: `mcp::${namespace}::${tool.name}`,
     description: `[MCP: ${serverName}] ${tool.description ?? tool.name}`,
     parameters: tool.inputSchema as Record<string, unknown>,
   };
@@ -69,37 +84,122 @@ function mcpToolToAiTool(tool: McpToolSchema, serverName: string): AiToolDefinit
 const MAX_RETRIES = 3;
 const RETRY_BASE_MS = 1000;
 const retryCounters = new Map<string, number>();
+const retryTimers = new Map<string, ReturnType<typeof setTimeout>>();
+const connectGenerations = new Map<string, number>();
+
+function clearRetryTimer(configId: string): void {
+  const timer = retryTimers.get(configId);
+  if (timer) {
+    clearTimeout(timer);
+    retryTimers.delete(configId);
+  }
+}
+
+function resetRetryState(configId: string): void {
+  clearRetryTimer(configId);
+  retryCounters.delete(configId);
+}
+
+function nextConnectGeneration(configId: string): number {
+  const generation = (connectGenerations.get(configId) ?? 0) + 1;
+  connectGenerations.set(configId, generation);
+  return generation;
+}
+
+function currentGeneration(configId: string): number {
+  return connectGenerations.get(configId) ?? 0;
+}
+
+function isCurrentGeneration(configId: string, generation: number): boolean {
+  return connectGenerations.get(configId) === generation;
+}
+
+function shouldRetry(configId: string): boolean {
+  const config = getServerConfigs().find(server => server.id === configId);
+  return Boolean(config?.enabled && config.transport === 'sse' && config.retryOnDisconnect);
+}
+
+async function applyRuntimeError(configId: string, generation: number, message: string): Promise<void> {
+  if (!isCurrentGeneration(configId, generation)) {
+    return;
+  }
+
+  const current = useMcpRegistry.getState().servers.get(configId);
+  if (current?.config.transport === 'stdio' && current.runtimeId) {
+    await disconnectMcpServer(current).catch(() => current);
+  }
+
+  if (!isCurrentGeneration(configId, generation)) {
+    return;
+  }
+
+  useMcpRegistry.setState((state) => {
+    const latest = state.servers.get(configId);
+    if (!latest) {
+      return state;
+    }
+
+    const servers = new Map(state.servers);
+    servers.set(configId, {
+      ...latest,
+      status: 'error',
+      error: message,
+      runtimeId: undefined,
+      tools: [],
+      resources: [],
+    });
+
+    return { servers, toolIndex: rebuildToolIndex(servers) };
+  });
+
+  if (isCurrentGeneration(configId, generation) && shouldRetry(configId)) {
+    scheduleRetry(configId, useMcpRegistry.getState().connect);
+  }
+}
 
 function scheduleRetry(configId: string, connectFn: (id: string) => Promise<void>): void {
+  clearRetryTimer(configId);
   const attempt = (retryCounters.get(configId) ?? 0) + 1;
   if (attempt > MAX_RETRIES) {
     console.warn(`[MCP] Giving up retry for ${configId} after ${MAX_RETRIES} attempts`);
-    retryCounters.delete(configId);
+    resetRetryState(configId);
     return;
   }
   retryCounters.set(configId, attempt);
   const delay = RETRY_BASE_MS * Math.pow(2, attempt - 1); // 1s, 2s, 4s
   console.info(`[MCP] Scheduling retry #${attempt} for ${configId} in ${delay}ms`);
-  setTimeout(() => {
+  const timer = setTimeout(() => {
+    retryTimers.delete(configId);
+    if (!shouldRetry(configId)) {
+      resetRetryState(configId);
+      return;
+    }
+    const current = useMcpRegistry.getState().servers.get(configId);
+    if (current?.status === 'connected' || current?.status === 'connecting') {
+      return;
+    }
     connectFn(configId).then(() => {
       // On success, reset counter
       const server = useMcpRegistry.getState().servers.get(configId);
       if (server?.status === 'connected') {
-        retryCounters.delete(configId);
+        resetRetryState(configId);
       }
     }).catch(() => {
       // connectFn already handles errors internally
     });
   }, delay);
+  retryTimers.set(configId, timer);
 }
 
 /** Rebuild the toolIndex from current server states */
 function rebuildToolIndex(servers: Map<string, McpServerState>): Map<string, { serverId: string; originalName: string }> {
   const index = new Map<string, { serverId: string; originalName: string }>();
+  const nameCounts = buildServerNameCounts(servers.values());
   for (const server of servers.values()) {
     if (server.status !== 'connected') continue;
+    const namespace = getServerToolNamespace(server.config, nameCounts);
     for (const tool of server.tools) {
-      const prefixed = `mcp::${server.config.name}::${tool.name}`;
+      const prefixed = `mcp::${namespace}::${tool.name}`;
       index.set(prefixed, { serverId: server.config.id, originalName: tool.name });
     }
   }
@@ -115,9 +215,13 @@ export const useMcpRegistry = create<McpRegistryState>((set, get) => ({
     const config = configs.find(c => c.id === configId);
     if (!config) return;
 
+    clearRetryTimer(configId);
+
     // Guard against double-connect
     const existing = get().servers.get(configId);
     if (existing?.status === 'connecting' || existing?.status === 'connected') return;
+
+    const generation = nextConnectGeneration(configId);
 
     // Set connecting state
     set(state => {
@@ -129,23 +233,54 @@ export const useMcpRegistry = create<McpRegistryState>((set, get) => ({
     const initial: McpServerState = { config, status: 'connecting', tools: [], resources: [] };
     const result = await connectMcpServer(initial);
 
+    if (!isCurrentGeneration(configId, generation)) {
+      if (result.runtimeId) {
+        await disconnectMcpServer(result).catch(() => result);
+      }
+      return;
+    }
+
     set(state => {
       const servers = new Map(state.servers);
       servers.set(configId, result);
       return { servers, toolIndex: rebuildToolIndex(servers) };
     });
 
+    if (result.status === 'connected') {
+      resetRetryState(configId);
+      return;
+    }
+
     // Schedule auto-retry on SSE connect failure if configured
-    if (result.status === 'error' && config.retryOnDisconnect && config.transport === 'sse') {
+    if (result.status === 'error' && shouldRetry(configId)) {
       scheduleRetry(configId, get().connect);
     }
   },
 
   disconnect: async (configId: string) => {
+    const generation = nextConnectGeneration(configId);
+    resetRetryState(configId);
     const current = get().servers.get(configId);
     if (!current) return;
 
+    set((state) => {
+      const servers = new Map(state.servers);
+      servers.set(configId, {
+        ...current,
+        status: 'disconnected',
+        runtimeId: undefined,
+        error: undefined,
+        tools: [],
+        resources: [],
+      });
+      return { servers, toolIndex: rebuildToolIndex(servers) };
+    });
+
     const result = await disconnectMcpServer(current);
+
+    if (!isCurrentGeneration(configId, generation)) {
+      return;
+    }
 
     set(state => {
       const servers = new Map(state.servers);
@@ -160,6 +295,9 @@ export const useMcpRegistry = create<McpRegistryState>((set, get) => ({
   },
 
   disconnectAll: async () => {
+    for (const serverId of Array.from(get().servers.keys())) {
+      resetRetryState(serverId);
+    }
     const serverIds = Array.from(get().servers.keys());
     await Promise.allSettled(serverIds.map(id => get().disconnect(id)));
   },
@@ -169,15 +307,24 @@ export const useMcpRegistry = create<McpRegistryState>((set, get) => ({
     if (!server || server.status !== 'connected') {
       throw new Error(`MCP server ${serverId} is not connected`);
     }
-    return callMcpTool(server, toolName, args);
+    const generation = currentGeneration(serverId);
+    try {
+      return await callMcpTool(server, toolName, args);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      await applyRuntimeError(serverId, generation, message);
+      throw error;
+    }
   },
 
   getAllMcpToolDefinitions: () => {
     const definitions: AiToolDefinition[] = [];
-    for (const server of get().servers.values()) {
-      if (server.status !== 'connected') continue;
+    const connectedServers = Array.from(get().servers.values()).filter((server) => server.status === 'connected');
+    const nameCounts = buildServerNameCounts(connectedServers);
+    for (const server of connectedServers) {
+      const namespace = getServerToolNamespace(server.config, nameCounts);
       for (const tool of server.tools) {
-        definitions.push(mcpToolToAiTool(tool, server.config.name));
+        definitions.push(mcpToolToAiTool(tool, server.config.name, namespace));
       }
     }
     return definitions;
@@ -194,11 +341,28 @@ export const useMcpRegistry = create<McpRegistryState>((set, get) => ({
   refreshTools: async (configId: string) => {
     const current = get().servers.get(configId);
     if (!current || current.status !== 'connected') return;
+    const generation = currentGeneration(configId);
 
-    const tools = await refreshMcpTools(current);
+    let tools: McpToolSchema[];
+    try {
+      tools = await refreshMcpTools(current);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      await applyRuntimeError(configId, generation, message);
+      throw error;
+    }
+
+    if (!isCurrentGeneration(configId, generation)) {
+      return;
+    }
+
     set(state => {
+      const latest = state.servers.get(configId);
+      if (!latest || latest.status !== 'connected') {
+        return state;
+      }
       const servers = new Map(state.servers);
-      servers.set(configId, { ...current, tools });
+      servers.set(configId, { ...latest, tools });
       return { servers, toolIndex: rebuildToolIndex(servers) };
     });
   },
@@ -219,6 +383,13 @@ export const useMcpRegistry = create<McpRegistryState>((set, get) => ({
     if (!server || server.status !== 'connected') {
       throw new Error(`MCP server ${serverId} is not connected`);
     }
-    return readMcpResource(server, uri);
+    const generation = currentGeneration(serverId);
+    try {
+      return await readMcpResource(server, uri);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      await applyRuntimeError(serverId, generation, message);
+      throw error;
+    }
   },
 }));

@@ -119,9 +119,14 @@ export type McpServerState = {
   config: McpServerConfig;
   status: McpServerStatus;
   error?: string;
+  capabilities?: McpServerCapabilities;
   tools: McpToolSchema[];
   /** Resources advertised by this server */
   resources: McpResource[];
   /** For stdio transport: server ID returned by Rust backend */
   runtimeId?: string;
+  /** For HTTP/SSE transports: resolved message endpoint URL */
+  endpointUrl?: string;
+  /** For streamable HTTP transports: sticky MCP session identifier */
+  sessionId?: string;
 };
