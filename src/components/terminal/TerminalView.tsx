@@ -19,7 +19,7 @@ import { getFontFamily } from '../../lib/fontFamily';
 import { useTerminalViewShortcuts } from '../../hooks/useTerminalKeyboard';
 import { SearchBar, DeepSearchState } from './SearchBar';
 import { AiInlinePanel, type CursorPosition } from './AiInlinePanel';
-import { PasteConfirmOverlay, shouldConfirmPaste } from './PasteConfirmOverlay';
+import { PasteConfirmOverlay } from './PasteConfirmOverlay';
 import { getProtectedPasteDecision } from '../../lib/terminalPaste';
 import { terminalLinkHandler } from '../../lib/safeUrl';
 import { SearchMatch, SessionInfo } from '../../types';

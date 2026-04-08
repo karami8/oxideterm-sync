@@ -41,8 +41,8 @@ describe('useFileClipboard', () => {
 
   it('recursively copies Windows directories using normalized child paths', async () => {
     const directory = makeFile({ name: 'folder', path: 'C:\\src\\folder', file_type: 'Directory' });
-    vi.mocked(readDir).mockImplementation(async (path: string) => {
-      if (path === 'C:\\src\\folder') {
+    vi.mocked(readDir).mockImplementation(async (path: string | URL) => {
+      if (String(path) === 'C:\\src\\folder') {
         return [{ name: 'nested.txt', isDirectory: false }] as never;
       }
       return [] as never;
@@ -64,8 +64,8 @@ describe('useFileClipboard', () => {
 
   it('treats symlinked directories as leaf entries to avoid recursive loops', async () => {
     const directory = makeFile({ name: 'folder', path: 'C:\\src\\folder', file_type: 'Directory' });
-    vi.mocked(readDir).mockImplementation(async (path: string) => {
-      if (path === 'C:\\src\\folder') {
+    vi.mocked(readDir).mockImplementation(async (path: string | URL) => {
+      if (String(path) === 'C:\\src\\folder') {
         return [{ name: 'linked-dir', isDirectory: true, isSymlink: true }] as never;
       }
       return [] as never;

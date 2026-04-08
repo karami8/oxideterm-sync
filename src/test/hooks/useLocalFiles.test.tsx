@@ -65,11 +65,12 @@ describe('useLocalFiles', () => {
       rejectLocked = reject;
     });
 
-    vi.mocked(readDir).mockImplementation((targetPath: string) => {
-      if (targetPath === 'C:\\locked') {
+    vi.mocked(readDir).mockImplementation((targetPath: string | URL) => {
+      const resolvedPath = String(targetPath);
+      if (resolvedPath === 'C:\\locked') {
         return lockedPromise as never;
       }
-      if (targetPath === 'C:\\allowed') {
+      if (resolvedPath === 'C:\\allowed') {
         return Promise.resolve([{ name: 'ok.txt', isDirectory: false, isSymlink: false }]) as never;
       }
       return Promise.resolve([]) as never;

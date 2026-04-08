@@ -21,11 +21,11 @@ export function normalizeSftpTransferPath(path: string): string {
   return normalized || '/';
 }
 
-function findUniquePathCandidate(
-  transfers: ProgressMatchCandidate[],
+function findUniquePathCandidate<T extends ProgressMatchCandidate>(
+  transfers: T[],
   key: 'localPath' | 'remotePath',
   targetPath: string,
-): ProgressMatchCandidate | undefined {
+): T | undefined {
   const candidates = transfers.filter(
     (transfer) => normalizeSftpTransferPath(transfer[key]) === targetPath,
   );

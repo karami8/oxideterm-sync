@@ -18,7 +18,11 @@ const apiMocks = vi.hoisted(() => ({
 const forwardEventsMock = vi.hoisted(() => vi.fn());
 
 const nodeStateMock = vi.hoisted(() => ({
-  value: { state: { readiness: 'ready' as const }, ready: true, generation: 1 },
+  value: {
+    state: { readiness: 'ready' as 'ready' | 'connecting' },
+    ready: true,
+    generation: 1,
+  },
 }));
 
 const sessionTreeState = vi.hoisted(() => ({

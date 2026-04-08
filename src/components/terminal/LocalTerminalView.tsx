@@ -18,7 +18,7 @@ import { getFontFamily } from '../../lib/fontFamily';
 import { useTerminalViewShortcuts } from '../../hooks/useTerminalKeyboard';
 import { SearchBar } from './SearchBar';
 import { AiInlinePanel, type CursorPosition } from './AiInlinePanel';
-import { PasteConfirmOverlay, shouldConfirmPaste } from './PasteConfirmOverlay';
+import { PasteConfirmOverlay } from './PasteConfirmOverlay';
 import { getProtectedPasteDecision } from '../../lib/terminalPaste';
 import { terminalLinkHandler } from '../../lib/safeUrl';
 import { listen } from '@tauri-apps/api/event';

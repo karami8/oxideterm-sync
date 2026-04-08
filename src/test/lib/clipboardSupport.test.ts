@@ -16,6 +16,22 @@ vi.mock('@/store/settingsStore', () => ({
 }));
 
 type OscHandler = (data: string) => boolean;
+type ClipboardProvider = {
+  readText: (selection: string) => Promise<string>;
+  writeText: (selection: string, text: string) => Promise<void>;
+};
+type Base64Codec = {
+  encodeText: (data: string) => string;
+  decodeText: (data: string) => string;
+};
+type ClipboardAddonModule = {
+  ClipboardAddon?: new (base64: Base64Codec, provider: ClipboardProvider) => {
+    activate: () => void;
+    dispose: () => void;
+    base64?: Base64Codec;
+    provider?: ClipboardProvider;
+  };
+};
 
 function createTerminalMock() {
   let oscHandler: OscHandler | null = null;
@@ -34,7 +50,7 @@ function createTerminalMock() {
   };
 }
 
-async function importClipboardSupportWithAddon(mockFactory: () => unknown) {
+async function importClipboardSupportWithAddon(mockFactory: () => ClipboardAddonModule) {
   vi.resetModules();
   vi.doMock('@xterm/addon-clipboard', mockFactory);
   return import('@/lib/clipboardSupport');
@@ -53,24 +69,32 @@ describe('installTerminalClipboardSupport', () => {
   });
 
   it('uses the clipboard addon path to write OSC52 clipboard data when enabled', async () => {
-    const addonCtor = vi.fn().mockImplementation(function (base64, provider) {
-      this.activate = vi.fn();
-      this.dispose = vi.fn();
-      this.base64 = base64;
-      this.provider = provider;
-    });
+    const addonInstances: Array<{
+      activate: ReturnType<typeof vi.fn>;
+      dispose: ReturnType<typeof vi.fn>;
+      base64: Base64Codec;
+      provider: ClipboardProvider;
+    }> = [];
+    class MockClipboardAddon {
+      activate = vi.fn();
+      dispose = vi.fn();
+
+      constructor(
+        public base64: Base64Codec,
+        public provider: ClipboardProvider,
+      ) {
+        addonInstances.push(this);
+      }
+    }
     const { term } = createTerminalMock();
     const { installTerminalClipboardSupport } = await importClipboardSupportWithAddon(() => ({
-      ClipboardAddon: addonCtor,
+      ClipboardAddon: MockClipboardAddon,
     }));
 
     await installTerminalClipboardSupport(term);
 
     expect(term.loadAddon).toHaveBeenCalledTimes(1);
-    const [base64, provider] = addonCtor.mock.calls[0] as [
-      { encodeText: (data: string) => string; decodeText: (data: string) => string },
-      { readText: (selection: string) => Promise<string>; writeText: (selection: string, text: string) => Promise<void> },
-    ];
+    const [{ base64, provider }] = addonInstances;
 
     await provider.writeText('c', 'hello from nvim');
 
@@ -80,21 +104,27 @@ describe('installTerminalClipboardSupport', () => {
   });
 
   it('does not write through the addon provider when osc52 is disabled', async () => {
-    const addonCtor = vi.fn().mockImplementation(function (_base64, provider) {
-      this.activate = vi.fn();
-      this.dispose = vi.fn();
-      this.provider = provider;
-    });
+    const addonInstances: Array<{ provider: ClipboardProvider }> = [];
+    class MockClipboardAddon {
+      activate = vi.fn();
+      dispose = vi.fn();
+
+      constructor(
+        _base64: Base64Codec,
+        public provider: ClipboardProvider,
+      ) {
+        addonInstances.push(this);
+      }
+    }
     const { term } = createTerminalMock();
     const { installTerminalClipboardSupport } = await importClipboardSupportWithAddon(() => ({
-      ClipboardAddon: addonCtor,
+      ClipboardAddon: MockClipboardAddon,
     }));
 
     await installTerminalClipboardSupport(term);
     osc52State.enabled = false;
 
-    const [, provider] = addonCtor.mock.calls[0] as [unknown, { writeText: (selection: string, text: string) => Promise<void> }];
-    await provider.writeText('c', 'blocked');
+    await addonInstances[0].provider.writeText('c', 'blocked');
 
     expect(navigator.clipboard.writeText).not.toHaveBeenCalled();
   });
