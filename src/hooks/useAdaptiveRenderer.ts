@@ -392,8 +392,9 @@ export function useAdaptiveRenderer(opts: UseAdaptiveRendererOptions): AdaptiveR
       if (lastPending) {
         const partialStart = findTrailingPartialCursorControlStart(lastPending);
         if (partialStart >= 0) {
-          const pendingPrefix = lastPending.subarray(0, partialStart);
-          const pendingSuffix = lastPending.subarray(partialStart);
+          const mergeStart = findCursorControlBoundary(lastPending) === 0 ? 0 : partialStart;
+          const pendingPrefix = lastPending.subarray(0, mergeStart);
+          const pendingSuffix = lastPending.subarray(mergeStart);
           const merged = concatUint8Arrays(pendingSuffix, nextData);
 
           if (findCursorControlBoundary(merged) === 0) {

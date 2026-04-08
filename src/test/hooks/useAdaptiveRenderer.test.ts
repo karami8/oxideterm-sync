@@ -1,6 +1,7 @@
 import { renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { findCursorControlBoundary, useAdaptiveRenderer } from '@/hooks/useAdaptiveRenderer';
+import { adaptiveRendererIssue26Fixtures } from '@/test/fixtures/adaptiveRendererIssue26Fixtures';
 
 function textEncoder(input: string): Uint8Array {
   return new TextEncoder().encode(input);
@@ -109,62 +110,18 @@ describe('useAdaptiveRenderer', () => {
   });
 
   describe('Issue #26 async prompt redraw regression', () => {
-    it('preserves colored multiline output before same-chunk prompt redraw', () => {
+    it.each(adaptiveRendererIssue26Fixtures)('$name', (fixture) => {
       const { writes, scheduleWrite, flushRaf, hasPendingRaf } = createRendererHarness();
 
-      scheduleWrite(textEncoder('\x1b[32mfile1\x1b[0m\r\n\x1b[36mfile2\x1b[0m\r\n\x1b[2A\x1b[2Kprompt$ '));
-
-      expect(writes).toEqual(['\x1b[32mfile1\x1b[0m\r\n\x1b[36mfile2\x1b[0m\r\n']);
-      expect(hasPendingRaf()).toBe(true);
+      fixture.chunks.forEach((chunk, index) => {
+        scheduleWrite(textEncoder(chunk));
+        expect(writes).toEqual(fixture.writesAfterChunk[index]);
+        expect(hasPendingRaf()).toBe(true);
+      });
 
       flushRaf();
 
-      expect(writes).toEqual([
-        '\x1b[32mfile1\x1b[0m\r\n\x1b[36mfile2\x1b[0m\r\n',
-        '\x1b[2A\x1b[2Kprompt$ ',
-      ]);
-    });
-
-    it('preserves multiline output when the redraw CSI is split across network chunks', () => {
-      const { writes, scheduleWrite, flushRaf, hasPendingRaf } = createRendererHarness();
-
-      scheduleWrite(textEncoder('file1\r\nfile2\r\n\x1b['));
-
-      expect(writes).toEqual([]);
-      expect(hasPendingRaf()).toBe(true);
-
-      scheduleWrite(textEncoder('2A\x1b[2Kprompt$ '));
-
-      expect(writes).toEqual(['file1\r\nfile2\r\n']);
-      expect(hasPendingRaf()).toBe(true);
-
-      flushRaf();
-
-      expect(writes).toEqual([
-        'file1\r\nfile2\r\n',
-        '\x1b[2A\x1b[2Kprompt$ ',
-      ]);
-    });
-
-    it('flushes a pending multiline chunk immediately when the next chunk starts with prompt redraw', () => {
-      const { writes, scheduleWrite, flushRaf, hasPendingRaf } = createRendererHarness();
-
-      scheduleWrite(textEncoder('file1\r\nfile2\r\n'));
-
-      expect(writes).toEqual([]);
-      expect(hasPendingRaf()).toBe(true);
-
-      scheduleWrite(textEncoder('\x1b[2A\x1b[2Kprompt$ '));
-
-      expect(writes).toEqual(['file1\r\nfile2\r\n']);
-      expect(hasPendingRaf()).toBe(true);
-
-      flushRaf();
-
-      expect(writes).toEqual([
-        'file1\r\nfile2\r\n',
-        '\x1b[2A\x1b[2Kprompt$ ',
-      ]);
+      expect(writes).toEqual(fixture.finalWrites);
     });
 
   });
