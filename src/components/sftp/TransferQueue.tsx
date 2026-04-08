@@ -12,6 +12,26 @@ import { nodeSftpListIncompleteTransfers, nodeSftpResumeTransfer } from '../../l
 import { useNodeState } from '../../hooks/useNodeState';
 import { IncompleteTransferInfo } from '../../types';
 
+export type ResumedTransferSeed = Pick<
+  TransferItem,
+  'id' | 'nodeId' | 'name' | 'localPath' | 'remotePath' | 'direction' | 'size'
+>;
+
+export function createResumedTransferSeed(
+  nodeId: string,
+  transfer: IncompleteTransferInfo,
+): ResumedTransferSeed {
+  return {
+    id: transfer.transfer_id,
+    nodeId,
+    name: transfer.source_path.split('/').pop() || transfer.source_path,
+    localPath: transfer.transfer_type === 'Download' ? transfer.destination_path : transfer.source_path,
+    remotePath: transfer.transfer_type === 'Upload' ? transfer.destination_path : transfer.source_path,
+    direction: transfer.transfer_type === 'Upload' ? 'upload' : 'download',
+    size: transfer.total_bytes,
+  };
+}
+
 export const TransferQueue = ({ nodeId }: { nodeId: string }) => {
   const { t } = useTranslation();
   const { getAllTransfers, clearCompleted, cancelTransfer, removeTransfer, addTransfer, pauseTransfer, resumeTransfer } = useTransferStore();
@@ -95,17 +115,7 @@ export const TransferQueue = ({ nodeId }: { nodeId: string }) => {
     try {
       await nodeSftpResumeTransfer(nodeId, transfer.transfer_id);
 
-      // Add to active transfer queue
-      const fileName = transfer.source_path.split('/').pop() || transfer.source_path;
-      addTransfer({
-        id: transfer.transfer_id,
-        nodeId: transfer.session_id,
-        name: fileName,
-        localPath: transfer.transfer_type === 'Download' ? transfer.destination_path : transfer.source_path,
-        remotePath: transfer.transfer_type === 'Upload' ? transfer.destination_path : transfer.source_path,
-        direction: transfer.transfer_type.toLowerCase() as 'upload' | 'download',
-        size: transfer.total_bytes,
-      });
+      addTransfer(createResumedTransferSeed(nodeId, transfer));
 
       // Remove from incomplete list
       setIncompleteTransfers(prev => prev.filter(t => t.transfer_id !== transfer.transfer_id));

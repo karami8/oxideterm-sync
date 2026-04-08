@@ -95,7 +95,7 @@ interface TransferProgressEvent {
 
 interface TransferCompleteEvent {
     transfer_id: string;
-    session_id: string;
+  node_id: string;
     success: boolean;
     error?: string;
 }
@@ -1336,7 +1336,10 @@ export const SFTPView = ({ nodeId }: { nodeId: string }) => {
             refreshLocalFiles();
             nodeSftpListDir(nodeId, remotePath).then(setRemoteFiles);
         } else {
-            setTransferState(transfer_id, 'error', error || 'Transfer failed');
+            const transfer = getAllTransfers().find((item) => item.id === transfer_id);
+            if (transfer?.state !== 'cancelled') {
+              setTransferState(transfer_id, 'error', error || 'Transfer failed');
+            }
         }
       }).then((fn) => {
         if (mounted) {

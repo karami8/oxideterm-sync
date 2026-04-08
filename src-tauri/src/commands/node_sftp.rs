@@ -15,8 +15,98 @@ use tracing::info;
 
 use crate::router::{NodeRouter, NodeStateSnapshot, RouteError, TerminalEndpoint};
 use crate::sftp::error::SftpError;
+use crate::sftp::progress::{ProgressStore, StoredTransferProgress, TransferStatus, TransferType};
 use crate::sftp::types::*;
 use crate::ssh::SshConnectionRegistry;
+
+#[derive(Debug, Clone, serde::Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+struct TransferCompleteEvent {
+    transfer_id: String,
+    node_id: String,
+    success: bool,
+    error: Option<String>,
+}
+
+fn transfer_complete_event_name(node_id: &str) -> String {
+    format!("sftp:complete:{}", node_id)
+}
+
+fn build_transfer_complete_event(
+    node_id: &str,
+    transfer_id: &str,
+    success: bool,
+    error: Option<String>,
+) -> TransferCompleteEvent {
+    TransferCompleteEvent {
+        transfer_id: transfer_id.to_string(),
+        node_id: node_id.to_string(),
+        success,
+        error,
+    }
+}
+
+fn emit_transfer_complete(
+    app: &AppHandle,
+    node_id: &str,
+    transfer_id: &str,
+    success: bool,
+    error: Option<String>,
+) {
+    let _ = app.emit(
+        &transfer_complete_event_name(node_id),
+        &build_transfer_complete_event(node_id, transfer_id, success, error),
+    );
+}
+
+fn map_incomplete_transfer_info(
+    transfer: StoredTransferProgress,
+) -> crate::commands::sftp::IncompleteTransferInfo {
+    let progress_percent = if transfer.total_bytes > 0 {
+        (transfer.transferred_bytes as f64 / transfer.total_bytes as f64) * 100.0
+    } else {
+        0.0
+    };
+    let can_resume = matches!(transfer.status, TransferStatus::Paused | TransferStatus::Failed);
+
+    crate::commands::sftp::IncompleteTransferInfo {
+        transfer_id: transfer.transfer_id,
+        transfer_type: match transfer.transfer_type {
+            TransferType::Upload => "Upload",
+            TransferType::Download => "Download",
+        },
+        source_path: transfer.source_path.to_string_lossy().to_string(),
+        destination_path: transfer.destination_path.to_string_lossy().to_string(),
+        transferred_bytes: transfer.transferred_bytes,
+        total_bytes: transfer.total_bytes,
+        status: match transfer.status {
+            TransferStatus::Active => "Active",
+            TransferStatus::Paused => "Paused",
+            TransferStatus::Failed => "Failed",
+            TransferStatus::Completed => "Completed",
+            TransferStatus::Cancelled => "Cancelled",
+        },
+        session_id: transfer.session_id,
+        error: transfer.error,
+        progress_percent,
+        can_resume,
+    }
+}
+
+async fn load_incomplete_transfer_infos(
+    progress_store: &dyn ProgressStore,
+    connection_id: &str,
+) -> Result<Vec<crate::commands::sftp::IncompleteTransferInfo>, RouteError> {
+    let transfers = progress_store
+        .list_incomplete(connection_id)
+        .await
+        .map_err(RouteError::from)?;
+
+    Ok(transfers
+        .into_iter()
+        .map(map_incomplete_transfer_info)
+        .collect())
+}
 
 // ============================================================================
 // SFTP 静默重建辅助宏
@@ -231,6 +321,7 @@ pub async fn node_sftp_download(
     progress_store: State<'_, Arc<dyn crate::sftp::ProgressStore>>,
     transfer_manager: State<'_, Arc<crate::sftp::TransferManager>>,
 ) -> Result<(), RouteError> {
+    let tid = transfer_id.unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
     // Gate concurrency: acquire permit BEFORE opening SSH channel
     // to prevent MaxSessions exhaustion under parallel transfers.
     let _permit = transfer_manager.acquire_permit().await;
@@ -250,17 +341,28 @@ pub async fn node_sftp_download(
         }
     });
 
-    sftp.download_with_resume(
+    let result = sftp.download_with_resume(
         &remote_path,
         &local_path,
         (*progress_store).clone(),
         Some(tx),
         Some((*transfer_manager).clone()),
-        transfer_id,
+        Some(tid.clone()),
     )
-    .await
-    .map(|_| ())
-    .map_err(RouteError::from)
+    .await;
+
+    match &result {
+        Ok(_) => emit_transfer_complete(&app, &node_id, &tid, true, None),
+        Err(err) => emit_transfer_complete(
+            &app,
+            &node_id,
+            &tid,
+            false,
+            Some(err.to_string()),
+        ),
+    }
+
+    result.map(|_| ()).map_err(RouteError::from)
 }
 
 /// 上传文件
@@ -275,6 +377,7 @@ pub async fn node_sftp_upload(
     progress_store: State<'_, Arc<dyn crate::sftp::ProgressStore>>,
     transfer_manager: State<'_, Arc<crate::sftp::TransferManager>>,
 ) -> Result<(), RouteError> {
+    let tid = transfer_id.unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
     // Gate concurrency: acquire permit BEFORE opening SSH channel
     let _permit = transfer_manager.acquire_permit().await;
 
@@ -292,17 +395,28 @@ pub async fn node_sftp_upload(
         }
     });
 
-    sftp.upload_with_resume(
+    let result = sftp.upload_with_resume(
         &local_path,
         &remote_path,
         (*progress_store).clone(),
         Some(tx),
         Some((*transfer_manager).clone()),
-        transfer_id,
+        Some(tid.clone()),
     )
-    .await
-    .map(|_| ())
-    .map_err(RouteError::from)
+    .await;
+
+    match &result {
+        Ok(_) => emit_transfer_complete(&app, &node_id, &tid, true, None),
+        Err(err) => emit_transfer_complete(
+            &app,
+            &node_id,
+            &tid,
+            false,
+            Some(err.to_string()),
+        ),
+    }
+
+    result.map(|_| ()).map_err(RouteError::from)
 }
 
 /// 删除文件或目录
@@ -430,14 +544,20 @@ pub async fn node_sftp_download_dir(
         .download_dir(
             &remote_path,
             &local_path,
+            &tid,
             Some(tx),
             Some(cancel_flag),
             Some(transfer_manager.speed_limit_bps_ref()),
         )
-        .await
-        .map_err(RouteError::from);
+        .await;
     transfer_manager.unregister(&tid);
-    result
+
+    match &result {
+        Ok(_) => emit_transfer_complete(&app, &node_id, &tid, true, None),
+        Err(err) => emit_transfer_complete(&app, &node_id, &tid, false, Some(err.to_string())),
+    }
+
+    result.map_err(RouteError::from)
 }
 
 /// 递归上传目录
@@ -483,14 +603,20 @@ pub async fn node_sftp_upload_dir(
         .upload_dir(
             &local_path,
             &remote_path,
+            &tid,
             Some(tx),
             Some(cancel_flag),
             Some(transfer_manager.speed_limit_bps_ref()),
         )
-        .await
-        .map_err(RouteError::from);
+        .await;
     transfer_manager.unregister(&tid);
-    result
+
+    match &result {
+        Ok(_) => emit_transfer_complete(&app, &node_id, &tid, true, None),
+        Err(err) => emit_transfer_complete(&app, &node_id, &tid, false, Some(err.to_string())),
+    }
+
+    result.map_err(RouteError::from)
 }
 
 /// 十六进制预览（支持静默重建）
@@ -510,52 +636,11 @@ pub async fn node_sftp_preview_hex(
 #[tauri::command]
 pub async fn node_sftp_list_incomplete_transfers(
     node_id: String,
+    router: State<'_, Arc<NodeRouter>>,
     progress_store: State<'_, Arc<dyn crate::sftp::ProgressStore>>,
 ) -> Result<Vec<crate::commands::sftp::IncompleteTransferInfo>, RouteError> {
-    use crate::sftp::progress::{TransferStatus, TransferType};
-
-    // 使用 node_id 作为 key 查询（后端进度存储以 node_id 为前缀）
-    // 注意：传输进度可能以旧 session_id 或新 node_id 为 key 存储
-    let transfers = progress_store
-        .list_incomplete(&node_id)
-        .await
-        .map_err(RouteError::from)?;
-
-    let result: Vec<crate::commands::sftp::IncompleteTransferInfo> = transfers
-        .into_iter()
-        .map(|t| {
-            let progress_percent = if t.total_bytes > 0 {
-                (t.transferred_bytes as f64 / t.total_bytes as f64) * 100.0
-            } else {
-                0.0
-            };
-            let can_resume = matches!(t.status, TransferStatus::Paused | TransferStatus::Failed);
-            crate::commands::sftp::IncompleteTransferInfo {
-                transfer_id: t.transfer_id,
-                transfer_type: match t.transfer_type {
-                    TransferType::Upload => "Upload",
-                    TransferType::Download => "Download",
-                },
-                source_path: t.source_path.to_string_lossy().to_string(),
-                destination_path: t.destination_path.to_string_lossy().to_string(),
-                transferred_bytes: t.transferred_bytes,
-                total_bytes: t.total_bytes,
-                status: match t.status {
-                    TransferStatus::Active => "Active",
-                    TransferStatus::Paused => "Paused",
-                    TransferStatus::Failed => "Failed",
-                    TransferStatus::Completed => "Completed",
-                    TransferStatus::Cancelled => "Cancelled",
-                },
-                session_id: t.session_id,
-                error: t.error,
-                progress_percent,
-                can_resume,
-            }
-        })
-        .collect();
-
-    Ok(result)
+    let resolved = router.resolve_connection(&node_id).await?;
+    load_incomplete_transfer_infos(progress_store.inner().as_ref(), &resolved.connection_id).await
 }
 
 /// 恢复传输（带重试）
@@ -594,7 +679,7 @@ pub async fn node_sftp_resume_transfer(
     let progress_store_arc = (*progress_store).clone();
     let transfer_manager_arc = (*transfer_manager).clone();
 
-    match stored_progress.transfer_type {
+    let result = match stored_progress.transfer_type {
         TransferType::Download => {
             sftp.download_with_resume(
                 &stored_progress.source_path.to_string_lossy(),
@@ -606,7 +691,7 @@ pub async fn node_sftp_resume_transfer(
             )
             .await
             .map(|_| ())
-            .map_err(RouteError::from)?;
+            .map_err(RouteError::from)
         }
         TransferType::Upload => {
             sftp.upload_with_resume(
@@ -619,11 +704,22 @@ pub async fn node_sftp_resume_transfer(
             )
             .await
             .map(|_| ())
-            .map_err(RouteError::from)?;
+            .map_err(RouteError::from)
         }
+    };
+
+    match &result {
+        Ok(_) => emit_transfer_complete(&app, &node_id, &transfer_id, true, None),
+        Err(err) => emit_transfer_complete(
+            &app,
+            &node_id,
+            &transfer_id,
+            false,
+            Some(err.to_string()),
+        ),
     }
 
-    Ok(())
+    result
 }
 
 /// IDE: 打开项目（通过 nodeId 路由到 SFTP）
@@ -867,11 +963,16 @@ pub async fn node_sftp_tar_upload(
         compression,
         Some(transfer_manager.speed_limit_bps_ref()),
     )
-    .await
-    .map_err(RouteError::from);
+    .await;
 
     transfer_manager.unregister(&tid);
-    result
+
+    match &result {
+        Ok(_) => emit_transfer_complete(&app, &node_id, &tid, true, None),
+        Err(err) => emit_transfer_complete(&app, &node_id, &tid, false, Some(err.to_string())),
+    }
+
+    result.map_err(RouteError::from)
 }
 
 /// Download a remote directory to local via tar streaming.
@@ -922,9 +1023,109 @@ pub async fn node_sftp_tar_download(
         compression,
         Some(transfer_manager.speed_limit_bps_ref()),
     )
-    .await
-    .map_err(RouteError::from);
+    .await;
 
     transfer_manager.unregister(&tid);
-    result
+    match &result {
+        Ok(_) => emit_transfer_complete(&app, &node_id, &tid, true, None),
+        Err(err) => emit_transfer_complete(&app, &node_id, &tid, false, Some(err.to_string())),
+    }
+
+    result.map_err(RouteError::from)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use async_trait::async_trait;
+    use chrono::Utc;
+    use std::path::PathBuf;
+    use std::sync::Mutex;
+
+    struct RecordingProgressStore {
+        last_lookup: Mutex<Option<String>>,
+        transfers: Vec<StoredTransferProgress>,
+    }
+
+    #[async_trait]
+    impl ProgressStore for RecordingProgressStore {
+        async fn save(&self, _progress: &StoredTransferProgress) -> Result<(), SftpError> {
+            Ok(())
+        }
+
+        async fn load(&self, _transfer_id: &str) -> Result<Option<StoredTransferProgress>, SftpError> {
+            Ok(None)
+        }
+
+        async fn list_incomplete(
+            &self,
+            session_id: &str,
+        ) -> Result<Vec<StoredTransferProgress>, SftpError> {
+            *self.last_lookup.lock().unwrap() = Some(session_id.to_string());
+            Ok(self.transfers.clone())
+        }
+
+        async fn list_all_incomplete(&self) -> Result<Vec<StoredTransferProgress>, SftpError> {
+            Ok(self.transfers.clone())
+        }
+
+        async fn delete(&self, _transfer_id: &str) -> Result<(), SftpError> {
+            Ok(())
+        }
+
+        async fn delete_for_session(&self, _session_id: &str) -> Result<(), SftpError> {
+            Ok(())
+        }
+    }
+
+    fn make_progress() -> StoredTransferProgress {
+        StoredTransferProgress {
+            transfer_id: "transfer-1".to_string(),
+            transfer_type: TransferType::Download,
+            source_path: PathBuf::from("/remote/file.txt"),
+            destination_path: PathBuf::from("/local/file.txt"),
+            transferred_bytes: 5,
+            total_bytes: 10,
+            status: TransferStatus::Failed,
+            last_updated: Utc::now(),
+            session_id: "conn-1".to_string(),
+            error: Some("boom".to_string()),
+        }
+    }
+
+    #[tokio::test]
+    async fn load_incomplete_transfer_infos_uses_connection_id_lookup() {
+        let store = RecordingProgressStore {
+            last_lookup: Mutex::new(None),
+            transfers: vec![make_progress()],
+        };
+
+        let infos = load_incomplete_transfer_infos(&store, "conn-1").await.unwrap();
+
+        assert_eq!(store.last_lookup.lock().unwrap().as_deref(), Some("conn-1"));
+        assert_eq!(infos.len(), 1);
+        assert_eq!(infos[0].session_id, "conn-1");
+        assert!(infos[0].can_resume);
+    }
+
+    #[test]
+    fn build_transfer_complete_event_uses_node_scoped_payload() {
+        let event = build_transfer_complete_event(
+            "node-1",
+            "transfer-1",
+            false,
+            Some("failed".to_string()),
+        );
+
+        assert_eq!(transfer_complete_event_name("node-1"), "sftp:complete:node-1");
+        assert_eq!(
+            event,
+            TransferCompleteEvent {
+                transfer_id: "transfer-1".to_string(),
+                node_id: "node-1".to_string(),
+                success: false,
+                error: Some("failed".to_string()),
+            }
+        );
+    }
 }

@@ -887,14 +887,13 @@ impl SftpSession {
         &self,
         remote_path: &str,
         local_path: &str,
+        transfer_id: &str,
         progress_tx: Option<mpsc::Sender<TransferProgress>>,
         cancel_flag: Option<std::sync::Arc<std::sync::atomic::AtomicBool>>,
         speed_limit_bps: Option<std::sync::Arc<AtomicUsize>>,
     ) -> Result<u64, SftpError> {
         let canonical_path = self.resolve_path(remote_path).await?;
         info!("Downloading directory {} to {}", canonical_path, local_path);
-
-        let transfer_id = uuid::Uuid::new_v4().to_string();
         let start_time = std::time::Instant::now();
 
         // Create local directory
@@ -906,7 +905,7 @@ impl SftpSession {
             .download_dir_inner(
                 &canonical_path,
                 local_path,
-                &transfer_id,
+                transfer_id,
                 &progress_tx,
                 &start_time,
                 &cancel_flag,
@@ -1146,6 +1145,7 @@ impl SftpSession {
         &self,
         local_path: &str,
         remote_path: &str,
+        transfer_id: &str,
         progress_tx: Option<mpsc::Sender<TransferProgress>>,
         cancel_flag: Option<std::sync::Arc<std::sync::atomic::AtomicBool>>,
         speed_limit_bps: Option<std::sync::Arc<AtomicUsize>>,
@@ -1156,8 +1156,6 @@ impl SftpSession {
             join_remote_path(&self.cwd, remote_path)
         };
         info!("Uploading directory {} to {}", local_path, canonical_path);
-
-        let transfer_id = uuid::Uuid::new_v4().to_string();
         let start_time = std::time::Instant::now();
 
         // Phase 1: Pre-scan local directory tree and batch-create all remote directories.
@@ -1202,7 +1200,7 @@ impl SftpSession {
             .upload_dir_inner(
                 local_path,
                 &canonical_path,
-                &transfer_id,
+                transfer_id,
                 &progress_tx,
                 &start_time,
                 &cancel_flag,
