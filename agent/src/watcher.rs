@@ -7,12 +7,30 @@
 //! through a channel that the main loop consumes.
 
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
 use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
-use std::time::{Duration, Instant};
+use std::time::Duration;
+
+#[cfg(target_os = "linux")]
+use std::path::PathBuf;
+
+use std::path::Path;
+
+#[cfg(target_os = "linux")]
+use std::time::Instant;
 
 use crate::protocol::WatchEvent;
+
+fn should_ignore_entry(name: &str, ignore: &[String]) -> bool {
+    ignore.iter().any(|ig| ig == name)
+        || name.starts_with(".oxtmp.")
+        || name.ends_with(".oxswp")
+        || name == ".git"
+        || name == "node_modules"
+        || name == ".hg"
+        || name == "__pycache__"
+        || name == "target"
+}
 
 /// Watcher handle — manages background watch threads.
 pub struct Watcher {
@@ -128,13 +146,7 @@ fn watch_thread(
     let mut wd_to_path: HashMap<inotify::WatchDescriptor, PathBuf> = HashMap::new();
 
     // Add watchers recursively
-    add_watches_recursive(
-        Path::new(path),
-        ignore,
-        &mut inotify,
-        mask,
-        &mut wd_to_path,
-    );
+    add_watches_recursive(Path::new(path), ignore, &mut inotify, mask, &mut wd_to_path);
 
     let mut buffer = [0; 4096];
 
@@ -167,13 +179,9 @@ fn watch_thread(
 
                     let file_path_str = file_path.to_string_lossy().to_string();
 
-                    // Skip ignored patterns
                     if let Some(name) = file_path.file_name() {
                         let name_str = name.to_string_lossy();
-                        if ignore.iter().any(|ig| *ig == *name_str)
-                            || name_str.starts_with(".oxtmp.")
-                            || name_str.ends_with(".oxswp")
-                        {
+                        if should_ignore_entry(&name_str, ignore) {
                             continue;
                         }
                     }
@@ -253,11 +261,7 @@ fn add_watches_recursive(
             wd_map.insert(wd, dir.to_path_buf());
         }
         Err(e) => {
-            eprintln!(
-                "[agent] Failed to watch {}: {}",
-                dir.display(),
-                e
-            );
+            eprintln!("[agent] Failed to watch {}: {}", dir.display(), e);
             return;
         }
     }
@@ -269,13 +273,7 @@ fn add_watches_recursive(
             let name_str = name.to_string_lossy();
 
             // Skip ignored directories
-            if ignore.iter().any(|ig| *ig == *name_str)
-                || name_str == ".git"
-                || name_str == "node_modules"
-                || name_str == ".hg"
-                || name_str == "__pycache__"
-                || name_str == "target"
-            {
+            if should_ignore_entry(&name_str, ignore) {
                 continue;
             }
 
@@ -293,22 +291,173 @@ fn add_watches_recursive(
 // ═══════════════════════════════════════════════════════════════════════════
 
 #[cfg(not(target_os = "linux"))]
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct PollSnapshot {
+    is_dir: bool,
+    len: u64,
+    mtime_secs: u64,
+}
+
+#[cfg(not(target_os = "linux"))]
+fn metadata_mtime_secs(metadata: &std::fs::Metadata) -> u64 {
+    metadata
+        .modified()
+        .ok()
+        .and_then(|t| t.duration_since(std::time::SystemTime::UNIX_EPOCH).ok())
+        .map(|d| d.as_secs())
+        .unwrap_or(0)
+}
+
+#[cfg(not(target_os = "linux"))]
+fn collect_poll_snapshot(
+    dir: &Path,
+    ignore: &[String],
+    snapshot: &mut HashMap<String, PollSnapshot>,
+) {
+    let read_dir = match std::fs::read_dir(dir) {
+        Ok(entries) => entries,
+        Err(_) => return,
+    };
+
+    for entry in read_dir.flatten() {
+        let name = entry.file_name().to_string_lossy().to_string();
+        if should_ignore_entry(&name, ignore) {
+            continue;
+        }
+
+        let path = entry.path();
+        let metadata = match std::fs::symlink_metadata(&path) {
+            Ok(metadata) => metadata,
+            Err(_) => continue,
+        };
+
+        let path_string = path.to_string_lossy().to_string();
+        let is_dir = metadata.is_dir();
+        snapshot.insert(
+            path_string,
+            PollSnapshot {
+                is_dir,
+                len: metadata.len(),
+                mtime_secs: metadata_mtime_secs(&metadata),
+            },
+        );
+
+        if is_dir {
+            collect_poll_snapshot(&path, ignore, snapshot);
+        }
+    }
+}
+
+#[cfg(not(target_os = "linux"))]
+fn emit_poll_diffs(
+    previous: &HashMap<String, PollSnapshot>,
+    current: &HashMap<String, PollSnapshot>,
+    tx: &mpsc::Sender<WatchEvent>,
+) {
+    for (path, snapshot) in current {
+        match previous.get(path) {
+            None => {
+                let _ = tx.send(WatchEvent {
+                    path: path.clone(),
+                    kind: "create".to_string(),
+                });
+            }
+            Some(prev) => {
+                if prev != snapshot && (!snapshot.is_dir || prev.is_dir != snapshot.is_dir) {
+                    let _ = tx.send(WatchEvent {
+                        path: path.clone(),
+                        kind: "modify".to_string(),
+                    });
+                }
+            }
+        }
+    }
+
+    for path in previous.keys() {
+        if !current.contains_key(path) {
+            let _ = tx.send(WatchEvent {
+                path: path.clone(),
+                kind: "delete".to_string(),
+            });
+        }
+    }
+}
+
+#[cfg(not(target_os = "linux"))]
 fn watch_thread(
-    _path: &str,
-    _ignore: &[String],
-    _tx: &mpsc::Sender<WatchEvent>,
+    path: &str,
+    ignore: &[String],
+    tx: &mpsc::Sender<WatchEvent>,
     stop: &Arc<Mutex<bool>>,
 ) {
-    // On non-Linux platforms, the watcher is a no-op.
-    // File watching will rely on the polling-based approach
-    // already used in the SFTP fallback mode.
-    eprintln!("[agent] File watching not supported on this platform, using no-op watcher");
+    eprintln!("[agent] File watching uses polling fallback on this platform");
+
+    let root = Path::new(path);
+    let mut previous = HashMap::new();
+    collect_poll_snapshot(root, ignore, &mut previous);
+
     loop {
         if let Ok(s) = stop.lock() {
             if *s {
                 break;
             }
         }
-        std::thread::sleep(Duration::from_secs(5));
+
+        std::thread::sleep(Duration::from_secs(1));
+
+        let mut current = HashMap::new();
+        collect_poll_snapshot(root, ignore, &mut current);
+        emit_poll_diffs(&previous, &current, tx);
+        previous = current;
+    }
+}
+
+#[cfg(all(test, not(target_os = "linux")))]
+mod polling_tests {
+    use super::*;
+
+    #[test]
+    fn detects_create_modify_delete_diffs() {
+        let (tx, rx) = mpsc::channel();
+
+        let previous = HashMap::new();
+        let current = HashMap::from([(
+            "/tmp/demo.txt".to_string(),
+            PollSnapshot {
+                is_dir: false,
+                len: 3,
+                mtime_secs: 1,
+            },
+        )]);
+
+        emit_poll_diffs(&previous, &current, &tx);
+        assert_eq!(rx.recv().unwrap().kind, "create");
+
+        let previous = current.clone();
+        let current = HashMap::from([(
+            "/tmp/demo.txt".to_string(),
+            PollSnapshot {
+                is_dir: false,
+                len: 4,
+                mtime_secs: 2,
+            },
+        )]);
+
+        emit_poll_diffs(&previous, &current, &tx);
+        assert_eq!(rx.recv().unwrap().kind, "modify");
+
+        let previous = current;
+        let current = HashMap::new();
+        emit_poll_diffs(&previous, &current, &tx);
+        assert_eq!(rx.recv().unwrap().kind, "delete");
+    }
+
+    #[test]
+    fn ignores_configured_temp_patterns() {
+        assert!(should_ignore_entry(".oxtmp.123", &[]));
+        assert!(should_ignore_entry("demo.oxswp", &[]));
+        assert!(should_ignore_entry("node_modules", &[]));
+        assert!(should_ignore_entry("custom", &["custom".to_string()]));
+        assert!(!should_ignore_entry("src", &[]));
     }
 }

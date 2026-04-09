@@ -53,7 +53,15 @@ pub async fn node_agent_deploy(
 
     // Check if already deployed
     if let Some(session) = agent_registry.get(&resolved.connection_id) {
-        return Ok(session.status());
+        if session.is_alive() {
+            return Ok(session.status());
+        }
+
+        warn!(
+            "[node_agent_deploy] Removing stale agent session for node {} before redeploy",
+            node_id
+        );
+        agent_registry.remove(&resolved.connection_id).await;
     }
 
     // Need SFTP for binary upload

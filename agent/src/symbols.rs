@@ -81,7 +81,14 @@ fn language_patterns(lang: &str) -> Vec<SymbolPattern> {
         "rust" | "rs" => vec![
             SymbolPattern {
                 kind: SymbolKind::Function,
-                keywords: &["fn ", "pub fn ", "pub async fn ", "async fn ", "pub(crate) fn ", "pub(super) fn "],
+                keywords: &[
+                    "fn ",
+                    "pub fn ",
+                    "pub async fn ",
+                    "async fn ",
+                    "pub(crate) fn ",
+                    "pub(super) fn ",
+                ],
                 expect_name_after: true,
             },
             SymbolPattern {
@@ -142,7 +149,12 @@ fn language_patterns(lang: &str) -> Vec<SymbolPattern> {
         "c" | "cpp" | "h" | "hpp" | "cc" | "cxx" => vec![
             SymbolPattern {
                 kind: SymbolKind::Class,
-                keywords: &["class ", "template class ", "template<class T> class ", "template<typename T> class "],
+                keywords: &[
+                    "class ",
+                    "template class ",
+                    "template<class T> class ",
+                    "template<typename T> class ",
+                ],
                 expect_name_after: true,
             },
             SymbolPattern {
@@ -174,7 +186,15 @@ fn language_patterns(lang: &str) -> Vec<SymbolPattern> {
         "csharp" | "cs" => vec![
             SymbolPattern {
                 kind: SymbolKind::Class,
-                keywords: &["class ", "public class ", "internal class ", "abstract class ", "sealed class ", "partial class ", "static class "],
+                keywords: &[
+                    "class ",
+                    "public class ",
+                    "internal class ",
+                    "abstract class ",
+                    "sealed class ",
+                    "partial class ",
+                    "static class ",
+                ],
                 expect_name_after: true,
             },
             SymbolPattern {
@@ -206,7 +226,14 @@ fn language_patterns(lang: &str) -> Vec<SymbolPattern> {
         "swift" => vec![
             SymbolPattern {
                 kind: SymbolKind::Function,
-                keywords: &["func ", "public func ", "private func ", "internal func ", "static func ", "@objc func "],
+                keywords: &[
+                    "func ",
+                    "public func ",
+                    "private func ",
+                    "internal func ",
+                    "static func ",
+                    "@objc func ",
+                ],
                 expect_name_after: true,
             },
             SymbolPattern {
@@ -262,20 +289,16 @@ fn language_patterns(lang: &str) -> Vec<SymbolPattern> {
                 expect_name_after: true,
             },
         ],
-        "lua" => vec![
-            SymbolPattern {
-                kind: SymbolKind::Function,
-                keywords: &["function ", "local function "],
-                expect_name_after: true,
-            },
-        ],
-        "shell" | "bash" | "sh" | "zsh" => vec![
-            SymbolPattern {
-                kind: SymbolKind::Function,
-                keywords: &["function "],
-                expect_name_after: true,
-            },
-        ],
+        "lua" => vec![SymbolPattern {
+            kind: SymbolKind::Function,
+            keywords: &["function ", "local function "],
+            expect_name_after: true,
+        }],
+        "shell" | "bash" | "sh" | "zsh" => vec![SymbolPattern {
+            kind: SymbolKind::Function,
+            keywords: &["function "],
+            expect_name_after: true,
+        }],
         "zig" => vec![
             SymbolPattern {
                 kind: SymbolKind::Function,
@@ -365,7 +388,20 @@ fn extract_name(line: &str, start: usize) -> Option<&str> {
     }
     let name = &rest[..end];
     // Skip keywords that aren't real names
-    if matches!(name, "if" | "else" | "for" | "while" | "return" | "true" | "false" | "null" | "undefined" | "new" | "this" | "self") {
+    if matches!(
+        name,
+        "if" | "else"
+            | "for"
+            | "while"
+            | "return"
+            | "true"
+            | "false"
+            | "null"
+            | "undefined"
+            | "new"
+            | "this"
+            | "self"
+    ) {
         return None;
     }
     Some(name)
@@ -477,8 +513,18 @@ fn extract_symbols_from_file(path: &Path) -> Vec<SymbolInfo> {
 // ═══════════════════════════════════════════════════════════════════════════
 
 const IGNORED_DIRS: &[&str] = &[
-    ".git", "node_modules", ".hg", "__pycache__", "target", "dist",
-    "build", ".next", ".nuxt", "vendor", ".venv", "venv",
+    ".git",
+    "node_modules",
+    ".hg",
+    "__pycache__",
+    "target",
+    "dist",
+    "build",
+    ".next",
+    ".nuxt",
+    "vendor",
+    ".venv",
+    "venv",
 ];
 
 /// Index all symbols in a directory (recursive).
@@ -552,9 +598,5 @@ pub fn complete(symbols: &[SymbolInfo], prefix: &str, limit: u32) -> Vec<SymbolI
 
 /// Find definitions of a symbol by exact name match.
 pub fn find_definitions(symbols: &[SymbolInfo], name: &str) -> Vec<SymbolInfo> {
-    symbols
-        .iter()
-        .filter(|s| s.name == name)
-        .cloned()
-        .collect()
+    symbols.iter().filter(|s| s.name == name).cloned().collect()
 }

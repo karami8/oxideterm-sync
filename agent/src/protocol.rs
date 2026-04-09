@@ -365,7 +365,7 @@ pub struct GrepParams {
     pub pattern: String,
     pub path: String,
     #[serde(default)]
-    #[allow(dead_code)] // Parsed from JSON; full regex engine pending
+    /// Interpret `pattern` as a regular expression when true.
     pub is_regex: bool,
     #[serde(default)]
     pub case_sensitive: bool,

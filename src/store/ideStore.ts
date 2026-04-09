@@ -55,7 +55,7 @@ export function registerSearchCacheClearCallback(callback: () => void) {
 }
 
 /** 触发搜索缓存清除 */
-function triggerSearchCacheClear() {
+export function triggerSearchCacheClear() {
   onSearchCacheClear?.();
 }
 
@@ -286,16 +286,24 @@ export const useIdeStore = create<IdeState & IdeActions>()(
             expandedPaths: new Set([projectInfo.rootPath]), // 默认展开根目录
             cachedProjectPath: projectInfo.rootPath,
             cachedTabPaths: [],
+            cachedNodeId: nodeId,
+            lastClosedAt: null,
           });
         },
 
         closeProject: (force?: boolean) => {
-          const { tabs } = get();
+          const { tabs, nodeId } = get();
           const hasDirty = tabs.some(t => t.isDirty);
           
           if (hasDirty && !force) {
             throw new Error('IDE_DIRTY_TABS');
           }
+
+          if (nodeId) {
+            agentService.invalidateAgentCache(nodeId);
+          }
+
+          triggerSearchCacheClear();
           
           set({
             nodeId: null,
@@ -344,6 +352,9 @@ export const useIdeStore = create<IdeState & IdeActions>()(
             tabs: [],
             activeTabId: null,
             expandedPaths: new Set([projectInfo.rootPath]),
+            cachedProjectPath: projectInfo.rootPath,
+            cachedTabPaths: [],
+            cachedNodeId: nodeId,
           });
         },
 
@@ -519,6 +530,25 @@ export const useIdeStore = create<IdeState & IdeActions>()(
           // 否则回退到 SFTP stat + write
           try {
             const agentHash = tab.agentHash;
+            const agentReady = agentHash ? await agentService.isAgentReady(nodeId) : false;
+
+            if (!agentReady) {
+              const latestStat = await nodeSftpStat(nodeId, tab.path);
+              const remoteMtime = latestStat.modified ?? 0;
+              const localMtime = tab.serverMtime ?? 0;
+
+              if (tab.serverMtime !== undefined && remoteMtime !== localMtime) {
+                set({
+                  conflictState: {
+                    tabId,
+                    localMtime,
+                    remoteMtime,
+                  }
+                });
+                throw new Error('CONFLICT');
+              }
+            }
+
             const writeResult = await agentService.writeFile(
               nodeId,
               tab.path,
@@ -550,13 +580,16 @@ export const useIdeStore = create<IdeState & IdeActions>()(
             const msg = err instanceof Error ? err.message : String(err);
             // Agent hash 冲突 → 转为 UI 冲突状态
             if (msg.includes('CONFLICT') || msg.includes('hash mismatch') || msg.includes('File modified externally')) {
-              set({
-                conflictState: {
-                  tabId,
-                  localMtime: tab.serverMtime ?? 0,
-                  remoteMtime: 0, // SFTP stat 来获取精确时间
-                }
-              });
+              const existingConflict = get().conflictState;
+              if (!existingConflict || existingConflict.tabId !== tabId) {
+                set({
+                  conflictState: {
+                    tabId,
+                    localMtime: tab.serverMtime ?? 0,
+                    remoteMtime: 0,
+                  }
+                });
+              }
               throw new Error('CONFLICT');
             }
             throw err;
@@ -752,6 +785,9 @@ export const useIdeStore = create<IdeState & IdeActions>()(
           if (resolution === 'overwrite') {
             // 强制保存（忽略冲突，不传 expectHash）
             const writeResult = await agentService.writeFile(nodeId, tab.path, tab.content);
+
+            triggerSearchCacheClear();
+            triggerGitRefresh();
             
             set(state => ({
               tabs: state.tabs.map(t =>

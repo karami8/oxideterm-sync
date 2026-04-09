@@ -21,20 +21,70 @@
 //! - Single static binary, musl-linked
 //! - Self-cleans on parent connection close (stdin EOF)
 
-mod protocol;
 mod fs_ops;
+mod protocol;
 mod symbols;
 mod watcher;
 
+use std::collections::{HashMap, VecDeque};
 use std::io::{self, BufRead, Write};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{mpsc, Arc, Mutex};
-use std::collections::HashMap;
 
 use protocol::*;
 use watcher::Watcher;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
+const SYMBOL_CACHE_CAPACITY: usize = 16;
+
+struct SymbolCache {
+    entries: HashMap<String, Arc<Vec<SymbolInfo>>>,
+    access_order: VecDeque<String>,
+    capacity: usize,
+}
+
+impl SymbolCache {
+    fn new(capacity: usize) -> Self {
+        Self {
+            entries: HashMap::new(),
+            access_order: VecDeque::new(),
+            capacity: capacity.max(1),
+        }
+    }
+
+    fn get(&mut self, path: &str) -> Option<Arc<Vec<SymbolInfo>>> {
+        let symbols = self.entries.get(path).cloned();
+        if symbols.is_some() {
+            self.touch(path);
+        }
+        symbols
+    }
+
+    fn insert(&mut self, path: String, symbols: Vec<SymbolInfo>) -> Arc<Vec<SymbolInfo>> {
+        let symbols = Arc::new(symbols);
+        self.entries.insert(path.clone(), symbols.clone());
+        self.touch(&path);
+        self.evict_if_needed();
+        symbols
+    }
+
+    fn touch(&mut self, path: &str) {
+        if let Some(index) = self.access_order.iter().position(|entry| entry == path) {
+            self.access_order.remove(index);
+        }
+        self.access_order.push_back(path.to_string());
+    }
+
+    fn evict_if_needed(&mut self) {
+        while self.entries.len() > self.capacity {
+            if let Some(oldest) = self.access_order.pop_front() {
+                self.entries.remove(&oldest);
+            } else {
+                break;
+            }
+        }
+    }
+}
 
 fn main() {
     // Handle --version flag for deploy version check
@@ -45,14 +95,18 @@ fn main() {
     }
 
     // Stderr for agent logging (doesn't interfere with JSON-RPC on stdout)
-    eprintln!("[oxideterm-agent] v{} starting (pid: {})", VERSION, std::process::id());
+    eprintln!(
+        "[oxideterm-agent] v{} starting (pid: {})",
+        VERSION,
+        std::process::id()
+    );
 
     let watcher = Watcher::new();
     let shutdown_flag = Arc::new(AtomicBool::new(false));
-    
-    // Symbol index cache: root_path → Vec<SymbolInfo>
-    let symbol_cache: Arc<Mutex<HashMap<String, Vec<SymbolInfo>>>> =
-        Arc::new(Mutex::new(HashMap::new()));
+
+    // Symbol index cache: root_path → symbol index (bounded LRU-style cache)
+    let symbol_cache: Arc<Mutex<SymbolCache>> =
+        Arc::new(Mutex::new(SymbolCache::new(SYMBOL_CACHE_CAPACITY)));
 
     // Channel for serialized JSON responses/notifications → stdout writer thread
     let (out_tx, out_rx) = mpsc::channel::<String>();
@@ -169,7 +223,7 @@ fn dispatch(
     req: &Request,
     watcher: &Watcher,
     shutdown_flag: &Arc<AtomicBool>,
-    symbol_cache: &Arc<Mutex<HashMap<String, Vec<SymbolInfo>>>>,
+    symbol_cache: &Arc<Mutex<SymbolCache>>,
 ) -> Response {
     match req.method.as_str() {
         // ─── fs/* ────────────────────────────────────────────────────
@@ -299,46 +353,54 @@ fn dispatch(
             Err(e) => Response::err(req.id, ERR_INVALID_PARAMS, e.to_string()),
         },
 
-        "symbols/complete" => match serde_json::from_value::<SymbolCompleteParams>(req.params.clone()) {
-            Ok(params) => {
-                let cache = symbol_cache.lock().unwrap();
-                if let Some(syms) = cache.get(&params.path) {
-                    let completions = symbols::complete(syms, &params.prefix, params.limit);
-                    Response::ok(req.id, serde_json::to_value(completions).unwrap())
-                } else {
-                    // Not indexed yet — index on demand
-                    drop(cache);
-                    let root = fs_ops::resolve_path(&params.path);
-                    let syms = symbols::index_directory(&root, 500);
-                    let completions = symbols::complete(&syms, &params.prefix, params.limit);
-                    if let Ok(mut cache) = symbol_cache.lock() {
-                        cache.insert(params.path.clone(), syms);
+        "symbols/complete" => {
+            match serde_json::from_value::<SymbolCompleteParams>(req.params.clone()) {
+                Ok(params) => {
+                    let cached = symbol_cache
+                        .lock()
+                        .ok()
+                        .and_then(|mut cache| cache.get(&params.path));
+                    if let Some(syms) = cached {
+                        let completions =
+                            symbols::complete(syms.as_ref(), &params.prefix, params.limit);
+                        Response::ok(req.id, serde_json::to_value(completions).unwrap())
+                    } else {
+                        let root = fs_ops::resolve_path(&params.path);
+                        let syms = symbols::index_directory(&root, 500);
+                        let completions = symbols::complete(&syms, &params.prefix, params.limit);
+                        if let Ok(mut cache) = symbol_cache.lock() {
+                            cache.insert(params.path.clone(), syms);
+                        }
+                        Response::ok(req.id, serde_json::to_value(completions).unwrap())
                     }
-                    Response::ok(req.id, serde_json::to_value(completions).unwrap())
                 }
+                Err(e) => Response::err(req.id, ERR_INVALID_PARAMS, e.to_string()),
             }
-            Err(e) => Response::err(req.id, ERR_INVALID_PARAMS, e.to_string()),
-        },
+        }
 
-        "symbols/definitions" => match serde_json::from_value::<SymbolDefinitionsParams>(req.params.clone()) {
-            Ok(params) => {
-                let cache = symbol_cache.lock().unwrap();
-                if let Some(syms) = cache.get(&params.path) {
-                    let defs = symbols::find_definitions(syms, &params.name);
-                    Response::ok(req.id, serde_json::to_value(defs).unwrap())
-                } else {
-                    drop(cache);
-                    let root = fs_ops::resolve_path(&params.path);
-                    let syms = symbols::index_directory(&root, 500);
-                    let defs = symbols::find_definitions(&syms, &params.name);
-                    if let Ok(mut cache) = symbol_cache.lock() {
-                        cache.insert(params.path.clone(), syms);
+        "symbols/definitions" => {
+            match serde_json::from_value::<SymbolDefinitionsParams>(req.params.clone()) {
+                Ok(params) => {
+                    let cached = symbol_cache
+                        .lock()
+                        .ok()
+                        .and_then(|mut cache| cache.get(&params.path));
+                    if let Some(syms) = cached {
+                        let defs = symbols::find_definitions(syms.as_ref(), &params.name);
+                        Response::ok(req.id, serde_json::to_value(defs).unwrap())
+                    } else {
+                        let root = fs_ops::resolve_path(&params.path);
+                        let syms = symbols::index_directory(&root, 500);
+                        let defs = symbols::find_definitions(&syms, &params.name);
+                        if let Ok(mut cache) = symbol_cache.lock() {
+                            cache.insert(params.path.clone(), syms);
+                        }
+                        Response::ok(req.id, serde_json::to_value(defs).unwrap())
                     }
-                    Response::ok(req.id, serde_json::to_value(defs).unwrap())
                 }
+                Err(e) => Response::err(req.id, ERR_INVALID_PARAMS, e.to_string()),
             }
-            Err(e) => Response::err(req.id, ERR_INVALID_PARAMS, e.to_string()),
-        },
+        }
 
         // ─── sys/* ──────────────────────────────────────────────────
         "sys/info" => {
@@ -365,5 +427,47 @@ fn dispatch(
             ERR_METHOD_NOT_FOUND,
             format!("Unknown method: {}", req.method),
         ),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn symbol(name: &str) -> SymbolInfo {
+        SymbolInfo {
+            name: name.to_string(),
+            kind: SymbolKind::Function,
+            path: format!("/tmp/{name}.rs"),
+            line: 1,
+            column: 1,
+            container: None,
+        }
+    }
+
+    #[test]
+    fn symbol_cache_evicts_oldest_entry_when_capacity_is_exceeded() {
+        let mut cache = SymbolCache::new(2);
+        cache.insert("/a".to_string(), vec![symbol("a")]);
+        cache.insert("/b".to_string(), vec![symbol("b")]);
+        cache.insert("/c".to_string(), vec![symbol("c")]);
+
+        assert!(cache.get("/a").is_none());
+        assert!(cache.get("/b").is_some());
+        assert!(cache.get("/c").is_some());
+    }
+
+    #[test]
+    fn symbol_cache_touches_entries_on_read() {
+        let mut cache = SymbolCache::new(2);
+        cache.insert("/a".to_string(), vec![symbol("a")]);
+        cache.insert("/b".to_string(), vec![symbol("b")]);
+        assert!(cache.get("/a").is_some());
+
+        cache.insert("/c".to_string(), vec![symbol("c")]);
+
+        assert!(cache.get("/a").is_some());
+        assert!(cache.get("/b").is_none());
+        assert!(cache.get("/c").is_some());
     }
 }

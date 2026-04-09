@@ -17,6 +17,8 @@ import { IdeTerminal } from './IdeTerminal';
 import { IdeStatusBar } from './IdeStatusBar';
 import { IdeSearchPanel } from './IdeSearchPanel';
 import { IdeAgentOptInDialog } from './dialogs/IdeAgentOptInDialog';
+import { useAgentStatus } from './hooks/useAgentStatus';
+import { useIdeWatchEvents } from './hooks/useIdeWatchEvents';
 
 interface IdeWorkspaceProps {
   nodeId: string;
@@ -29,6 +31,7 @@ export function IdeWorkspace({ nodeId, rootPath }: IdeWorkspaceProps) {
   const isTabActive = useIsTabActive();
   const project = useIdeProject();
   const { state: nodeState } = useNodeState(nodeId);
+  const { mode: agentTransportMode } = useAgentStatus(project ? nodeId : undefined);
   const isDisconnected = nodeState.readiness !== 'ready' && nodeState.readiness !== 'connecting';
 
   const { 
@@ -48,6 +51,13 @@ export function IdeWorkspace({ nodeId, rootPath }: IdeWorkspaceProps) {
   const [retryTick, setRetryTick] = useState(0);
   // Agent opt-in 对话框
   const [agentOptInOpen, setAgentOptInOpen] = useState(false);
+
+  useIdeWatchEvents({
+    nodeId,
+    rootPath: project?.rootPath,
+    enabled: Boolean(project && nodeState.readiness === 'ready' && agentTransportMode === 'agent'),
+    mode: agentTransportMode,
+  });
   
   // 切换搜索面板
   const toggleSearch = useCallback(() => {

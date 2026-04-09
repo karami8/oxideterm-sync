@@ -51,6 +51,14 @@ const agentReadyCache = new Map<string, boolean>();
 /** Cache of deployment in-flight promises to prevent duplicate deploys */
 const deployPromises = new Map<string, Promise<AgentStatus>>();
 
+/** Nodes with an active backend watch relay already started. */
+const watchRelayReadyNodes = new Set<string>();
+
+function markAgentUnavailable(nodeId: string): void {
+  agentReadyCache.set(nodeId, false);
+  watchRelayReadyNodes.delete(nodeId);
+}
+
 /**
  * Check if the agent is available for a node (cached).
  * Returns `true` if the agent is deployed and ready.
@@ -62,10 +70,14 @@ export async function isAgentReady(nodeId: string): Promise<boolean> {
   try {
     const status = await nodeAgentStatus(nodeId);
     const ready = status.type === 'ready';
-    agentReadyCache.set(nodeId, ready);
+    if (ready) {
+      agentReadyCache.set(nodeId, true);
+    } else {
+      markAgentUnavailable(nodeId);
+    }
     return ready;
   } catch {
-    agentReadyCache.set(nodeId, false);
+    markAgentUnavailable(nodeId);
     return false;
   }
 }
@@ -86,12 +98,16 @@ export async function ensureAgent(nodeId: string): Promise<AgentStatus> {
 
   const promise = nodeAgentDeploy(nodeId)
     .then((status) => {
-      agentReadyCache.set(nodeId, status.type === 'ready');
+      if (status.type === 'ready') {
+        agentReadyCache.set(nodeId, true);
+      } else {
+        markAgentUnavailable(nodeId);
+      }
       deployPromises.delete(nodeId);
       return status;
     })
     .catch((err) => {
-      agentReadyCache.set(nodeId, false);
+      markAgentUnavailable(nodeId);
       deployPromises.delete(nodeId);
       return { type: 'failed', reason: String(err) } as AgentStatus;
     });
@@ -106,6 +122,7 @@ export async function ensureAgent(nodeId: string): Promise<AgentStatus> {
 export function invalidateAgentCache(nodeId: string): void {
   agentReadyCache.delete(nodeId);
   deployPromises.delete(nodeId);
+  watchRelayReadyNodes.delete(nodeId);
 }
 
 /**
@@ -140,7 +157,7 @@ export async function readFile(
       };
     } catch {
       // Agent failed — mark as unavailable and fallback
-      agentReadyCache.set(nodeId, false);
+      markAgentUnavailable(nodeId);
     }
   }
 
@@ -171,7 +188,7 @@ export async function writeFile(
       if (String(err).includes('CONFLICT') || String(err).includes('hash mismatch') || String(err).includes('File modified externally')) {
         throw err;
       }
-      agentReadyCache.set(nodeId, false);
+      markAgentUnavailable(nodeId);
     }
   }
 
@@ -199,7 +216,7 @@ export async function listDir(
       const result = await nodeAgentListTree(nodeId, path, 0, 5000);
       return agentEntriesToFileInfoList(result.entries);
     } catch {
-      agentReadyCache.set(nodeId, false);
+      markAgentUnavailable(nodeId);
     }
   }
 
@@ -221,7 +238,7 @@ export async function listTree(
     try {
       return await nodeAgentListTree(nodeId, path, maxDepth, maxEntries);
     } catch {
-      agentReadyCache.set(nodeId, false);
+      markAgentUnavailable(nodeId);
     }
   }
   return null;
@@ -250,7 +267,7 @@ export async function grep(
         opts?.maxResults,
       );
     } catch {
-      agentReadyCache.set(nodeId, false);
+      markAgentUnavailable(nodeId);
     }
   }
   // Return null to signal caller should use exec fallback
@@ -272,7 +289,7 @@ export async function gitStatus(
     try {
       return await nodeAgentGitStatus(nodeId, path);
     } catch {
-      agentReadyCache.set(nodeId, false);
+      markAgentUnavailable(nodeId);
     }
   }
   return null;
@@ -294,12 +311,24 @@ export async function watchDirectory(
 ): Promise<UnlistenFn | null> {
   if (!(await isAgentReady(nodeId))) return null;
 
+  let watchStarted = false;
   try {
     // Start the watch on the agent side
     await nodeAgentWatchStart(nodeId, path, ignore);
+    watchStarted = true;
 
-    // Start the relay (backend → frontend Tauri events)
-    await nodeAgentStartWatchRelay(nodeId);
+    // Start the relay (backend → frontend Tauri events) once per node.
+    if (!watchRelayReadyNodes.has(nodeId)) {
+      try {
+        await nodeAgentStartWatchRelay(nodeId);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        if (!message.includes('Watch relay already started')) {
+          throw error;
+        }
+      }
+      watchRelayReadyNodes.add(nodeId);
+    }
 
     // Subscribe to the Tauri event
     const unlisten = await listen<AgentWatchEvent>(
@@ -318,6 +347,13 @@ export async function watchDirectory(
       }
     };
   } catch {
+    if (watchStarted) {
+      try {
+        await nodeAgentWatchStop(nodeId, path);
+      } catch {
+        // Best effort cleanup only.
+      }
+    }
     return null;
   }
 }

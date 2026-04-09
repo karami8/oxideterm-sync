@@ -35,7 +35,12 @@ export function useAgentStatus(nodeId: string | undefined): AgentStatusInfo {
   const mountedRef = useRef(true);
 
   const refresh = useCallback(async () => {
-    if (!nodeId) return;
+    if (!nodeId) {
+      if (!mountedRef.current) return;
+      setStatus(null);
+      setMode('checking');
+      return;
+    }
 
     try {
       const s = await nodeAgentStatus(nodeId);
@@ -68,32 +73,24 @@ export function useAgentStatus(nodeId: string | undefined): AgentStatusInfo {
 
   useEffect(() => {
     mountedRef.current = true;
+    setStatus(null);
+    setMode('checking');
     if (nodeId) {
-      refresh();
+      void refresh();
     }
     return () => {
       mountedRef.current = false;
     };
   }, [nodeId, refresh]);
 
-  // Poll while the agent is not yet ready (checking, deploying, or sftp).
-  // Once deployed, the agent may become ready after the background deploy
-  // finishes. Stop polling once we reach the 'agent' state or 'manual-upload' state (requires user action).
+  // Poll continuously so we can detect agent recovery and agent loss while IDE stays open.
   useEffect(() => {
-    if (!nodeId || mode === 'agent' || mode === 'manual-upload') return;
+    if (!nodeId || mode === 'manual-upload') return;
 
-    // Poll more aggressively while deploying/checking, slower for sftp
     const interval = mode === 'deploying' || mode === 'checking' ? 2000 : 5000;
-    let attempts = 0;
-    const maxAttempts = mode === 'sftp' ? 6 : 15; // sftp: 30s max, deploying: 30s max
 
     const timer = setInterval(() => {
-      attempts++;
-      if (attempts >= maxAttempts) {
-        clearInterval(timer);
-        return;
-      }
-      refresh();
+      void refresh();
     }, interval);
 
     return () => clearInterval(timer);

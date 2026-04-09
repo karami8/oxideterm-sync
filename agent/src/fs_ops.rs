@@ -14,6 +14,8 @@ use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
+use regex::{Regex, RegexBuilder};
+
 use crate::protocol::*;
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -56,7 +58,10 @@ fn base64_decode(input: &str) -> Result<Vec<u8>, String> {
         t
     };
 
-    let bytes: Vec<u8> = input.bytes().filter(|&b| b != b'\n' && b != b'\r' && b != b' ').collect();
+    let bytes: Vec<u8> = input
+        .bytes()
+        .filter(|&b| b != b'\n' && b != b'\r' && b != b' ')
+        .collect();
     if bytes.len() % 4 != 0 {
         return Err("Invalid base64 length".into());
     }
@@ -77,10 +82,17 @@ fn base64_decode(input: &str) -> Result<Vec<u8>, String> {
                 buf[i] = val;
             }
         }
-        let triple = ((buf[0] as u32) << 18) | ((buf[1] as u32) << 12) | ((buf[2] as u32) << 6) | (buf[3] as u32);
+        let triple = ((buf[0] as u32) << 18)
+            | ((buf[1] as u32) << 12)
+            | ((buf[2] as u32) << 6)
+            | (buf[3] as u32);
         out.push((triple >> 16) as u8);
-        if pad < 2 { out.push((triple >> 8) as u8); }
-        if pad < 1 { out.push(triple as u8); }
+        if pad < 2 {
+            out.push((triple >> 8) as u8);
+        }
+        if pad < 1 {
+            out.push(triple as u8);
+        }
     }
     Ok(out)
 }
@@ -121,27 +133,21 @@ fn base64_encode(data: &[u8]) -> String {
 pub fn sha256_hex(data: &[u8]) -> String {
     // SHA-256 constants
     const K: [u32; 64] = [
-        0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5,
-        0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
-        0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3,
-        0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
-        0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc,
-        0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
-        0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7,
-        0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
-        0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13,
-        0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
-        0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3,
-        0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
-        0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5,
-        0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
-        0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208,
-        0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,
+        0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4,
+        0xab1c5ed5, 0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe,
+        0x9bdc06a7, 0xc19bf174, 0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f,
+        0x4a7484aa, 0x5cb0a9dc, 0x76f988da, 0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7,
+        0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967, 0x27b70a85, 0x2e1b2138, 0x4d2c6dfc,
+        0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85, 0xa2bfe8a1, 0xa81a664b,
+        0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070, 0x19a4c116,
+        0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+        0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7,
+        0xc67178f2,
     ];
 
     let mut h: [u32; 8] = [
-        0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,
-        0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19,
+        0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab,
+        0x5be0cd19,
     ];
 
     // Pre-processing: padding
@@ -560,7 +566,7 @@ fn list_tree_recursive(
                     // child dir's listing is incomplete.
                     let was_truncated = *count >= max_entries;
                     (Some(c), was_truncated)
-                },
+                }
                 Err(_) => (None, false), // Permission errors etc. — just omit children
             }
         } else {
@@ -653,13 +659,39 @@ pub fn chmod(params: ChmodParams) -> Result<(), (i32, String)> {
 pub fn grep(params: GrepParams) -> Result<Vec<GrepMatch>, (i32, String)> {
     let root = resolve_path(&params.path);
     let mut results = Vec::new();
-    grep_recursive(&root, &params, &mut results)?;
+    let matcher = GrepMatcher::compile(&params)?;
+    grep_recursive(&root, &params, &matcher, &mut results)?;
     Ok(results)
+}
+
+enum GrepMatcher {
+    Literal { pattern: String },
+    Regex(Regex),
+}
+
+impl GrepMatcher {
+    fn compile(params: &GrepParams) -> Result<Self, (i32, String)> {
+        if params.is_regex {
+            let regex = RegexBuilder::new(&params.pattern)
+                .case_insensitive(!params.case_sensitive)
+                .build()
+                .map_err(|err| (ERR_INVALID_PARAMS, format!("Invalid regex pattern: {err}")))?;
+            Ok(Self::Regex(regex))
+        } else {
+            let pattern = if params.case_sensitive {
+                params.pattern.clone()
+            } else {
+                params.pattern.to_lowercase()
+            };
+            Ok(Self::Literal { pattern })
+        }
+    }
 }
 
 fn grep_recursive(
     dir: &Path,
     params: &GrepParams,
+    matcher: &GrepMatcher,
     results: &mut Vec<GrepMatch>,
 ) -> Result<(), (i32, String)> {
     if results.len() >= params.max_results as usize {
@@ -701,30 +733,25 @@ fn grep_recursive(
         };
 
         if metadata.is_dir() {
-            grep_recursive(&path, params, results)?;
+            grep_recursive(&path, params, matcher, results)?;
         } else if metadata.is_file() && metadata.len() < 1_000_000 {
             // Only search files < 1MB
-            grep_file(&path, params, results);
+            grep_file(&path, params, matcher, results);
         }
     }
 
     Ok(())
 }
 
-fn grep_file(path: &Path, params: &GrepParams, results: &mut Vec<GrepMatch>) {
+fn grep_file(
+    path: &Path,
+    params: &GrepParams,
+    matcher: &GrepMatcher,
+    results: &mut Vec<GrepMatch>,
+) {
     let content = match fs::read_to_string(path) {
         Ok(c) => c,
         Err(_) => return, // Skip binary/unreadable files
-    };
-
-    // Note: is_regex field is parsed but full regex matching requires a regex crate.
-    // Currently we use simple string matching for all patterns.
-    // TODO: Add regex crate for true regex support.
-
-    let pattern = if params.case_sensitive {
-        params.pattern.clone()
-    } else {
-        params.pattern.to_lowercase()
     };
 
     for (line_idx, line) in content.lines().enumerate() {
@@ -732,29 +759,44 @@ fn grep_file(path: &Path, params: &GrepParams, results: &mut Vec<GrepMatch>) {
             return;
         }
 
-        let search_line = if params.case_sensitive {
-            line.to_string()
-        } else {
-            line.to_lowercase()
-        };
+        match matcher {
+            GrepMatcher::Literal { pattern } => {
+                let search_line = if params.case_sensitive {
+                    line.to_string()
+                } else {
+                    line.to_lowercase()
+                };
 
-        // Find all matches in line
-        let mut search_from = 0;
-        while search_from < search_line.len() {
-            if let Some(col) = search_line[search_from..].find(&pattern) {
-                results.push(GrepMatch {
-                    path: path.to_string_lossy().to_string(),
-                    line: (line_idx + 1) as u32,
-                    column: (search_from + col + 1) as u32,
-                    text: line.to_string(),
-                });
-                // Move past this match to find the next one
-                search_from += col + pattern.len().max(1);
-                if results.len() >= params.max_results as usize {
-                    return;
+                let mut search_from = 0;
+                while search_from < search_line.len() {
+                    if let Some(col) = search_line[search_from..].find(pattern) {
+                        results.push(GrepMatch {
+                            path: path.to_string_lossy().to_string(),
+                            line: (line_idx + 1) as u32,
+                            column: (search_from + col + 1) as u32,
+                            text: line.to_string(),
+                        });
+                        search_from += col + pattern.len().max(1);
+                        if results.len() >= params.max_results as usize {
+                            return;
+                        }
+                    } else {
+                        break;
+                    }
                 }
-            } else {
-                break;
+            }
+            GrepMatcher::Regex(regex) => {
+                for matched in regex.find_iter(line) {
+                    results.push(GrepMatch {
+                        path: path.to_string_lossy().to_string(),
+                        line: (line_idx + 1) as u32,
+                        column: (matched.start() + 1) as u32,
+                        text: line.to_string(),
+                    });
+                    if results.len() >= params.max_results as usize {
+                        return;
+                    }
+                }
             }
         }
     }
@@ -811,6 +853,21 @@ pub fn git_status(params: GitStatusParams) -> Result<GitStatusResult, (i32, Stri
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
+
+    fn create_temp_dir(label: &str) -> PathBuf {
+        let unique = format!(
+            "oxideterm-agent-{label}-{}-{}",
+            std::process::id(),
+            SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        );
+        let dir = std::env::temp_dir().join(unique);
+        fs::create_dir_all(&dir).unwrap();
+        dir
+    }
 
     #[test]
     fn test_sha256_empty() {
@@ -828,5 +885,39 @@ mod tests {
             hash,
             "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
         );
+    }
+
+    #[test]
+    fn test_grep_respects_regex_flag() {
+        let dir = create_temp_dir("grep-regex");
+        let file_path = dir.join("sample.txt");
+        fs::write(&file_path, "alpha\nfoo123\nfoo999\nfoo.bar\n").unwrap();
+
+        let literal = grep(GrepParams {
+            pattern: "foo\\d+".to_string(),
+            path: dir.to_string_lossy().to_string(),
+            is_regex: false,
+            case_sensitive: true,
+            max_results: 10,
+            ignore: Vec::new(),
+        })
+        .unwrap();
+
+        let regex = grep(GrepParams {
+            pattern: "foo\\d+".to_string(),
+            path: dir.to_string_lossy().to_string(),
+            is_regex: true,
+            case_sensitive: true,
+            max_results: 10,
+            ignore: Vec::new(),
+        })
+        .unwrap();
+
+        assert!(literal.is_empty());
+        assert_eq!(regex.len(), 2);
+        assert_eq!(regex[0].line, 2);
+        assert_eq!(regex[1].line, 3);
+
+        let _ = fs::remove_dir_all(dir);
     }
 }

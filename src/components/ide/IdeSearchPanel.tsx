@@ -17,6 +17,7 @@ import { cn } from '../../lib/utils';
 import { Input } from '../ui/input';
 import { nodeIdeExecCommand } from '../../lib/api';
 import * as agentService from '../../lib/agentService';
+import { joinPath, normalizePath } from '../../lib/pathUtils';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 搜索缓存（模块级别，组件卸载不会丢失）
@@ -70,7 +71,7 @@ export function clearSearchCacheForProject(rootPath: string) {
  * 单个匹配结果
  */
 interface SearchMatch {
-  /** 文件路径（相对于项目根目录） */
+  /** 文件路径（相对于项目根目录，或 agent 返回的绝对路径） */
   path: string;
   /** 行号（1-based） */
   line: number;
@@ -92,6 +93,17 @@ interface SearchResultGroup {
   path: string;
   /** 该文件中的所有匹配 */
   matches: SearchMatch[];
+}
+
+function isAbsoluteSearchPath(path: string): boolean {
+  return path.startsWith('/') || /^[A-Za-z]:[\\/]/.test(path);
+}
+
+function resolveSearchMatchPath(rootPath: string, matchPath: string): string {
+  if (isAbsoluteSearchPath(matchPath)) {
+    return normalizePath(matchPath);
+  }
+  return joinPath(rootPath, matchPath);
 }
 
 interface IdeSearchPanelProps {
@@ -335,8 +347,7 @@ export function IdeSearchPanel({ open, onClose }: IdeSearchPanelProps) {
   const handleMatchClick = useCallback((match: SearchMatch) => {
     if (!project) return;
     
-    // 构建完整路径
-    const fullPath = `${project.rootPath}/${match.path}`;
+    const fullPath = resolveSearchMatchPath(project.rootPath, match.path);
     
     openFile(fullPath).then(() => {
       // openFile 完成后 activeTabId 就是目标 tab
