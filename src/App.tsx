@@ -4,6 +4,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { AppLayout } from './components/layout/AppLayout';
 import { Toaster } from './components/ui/toaster';
+import { UpdateNotification } from './components/layout/UpdateNotification';
 import { AutoRouteModal } from './components/modals/AutoRouteModal';
 import { LocalShellLauncher } from './components/local/LocalShellLauncher';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -389,6 +390,7 @@ function App() {
       <TooltipProvider delayDuration={300} skipDelayDuration={100}>
         <AppLayout />
         <Toaster />
+        <UpdateNotification />
         <PluginProgressHost />
         <AutoRouteModal />
         <OnboardingModal />

@@ -335,5 +335,9 @@
     "no_results": "没有匹配的快捷键",
     "footer_hint": "按 Esc 关闭",
     "shortcut_count": "个快捷键"
+  },
+  "update_notification": {
+    "view_details": "查看详情",
+    "dismiss": "关闭"
   }
 }

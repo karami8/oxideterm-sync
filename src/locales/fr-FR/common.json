@@ -335,5 +335,9 @@
     "no_results": "Aucun raccourci correspondant",
     "footer_hint": "Appuyez sur Échap pour fermer",
     "shortcut_count": "raccourcis"
+  },
+  "update_notification": {
+    "view_details": "Détails",
+    "dismiss": "Fermer"
   }
 }

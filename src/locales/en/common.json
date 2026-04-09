@@ -335,5 +335,9 @@
     "no_results": "No shortcuts match your search",
     "footer_hint": "Press Esc to close",
     "shortcut_count": "shortcuts"
+  },
+  "update_notification": {
+    "view_details": "Details",
+    "dismiss": "Dismiss"
   }
 }

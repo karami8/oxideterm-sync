@@ -336,5 +336,9 @@
     "footer_hint": "Esc zum Schließen drücken",
     "shortcut_count": "Tastaturkürzel"
 
+  },
+  "update_notification": {
+    "view_details": "Details",
+    "dismiss": "Schließen"
   }
 }

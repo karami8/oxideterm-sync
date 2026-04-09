@@ -335,5 +335,9 @@
     "no_results": "Nessuna scorciatoia trovata",
     "footer_hint": "Premi Esc per chiudere",
     "shortcut_count": "scorciatoie"
+  },
+  "update_notification": {
+    "view_details": "Dettagli",
+    "dismiss": "Chiudi"
   }
 }

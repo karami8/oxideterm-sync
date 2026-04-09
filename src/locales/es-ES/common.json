@@ -335,5 +335,9 @@
     "no_results": "No se encontraron atajos",
     "footer_hint": "Presiona Esc para cerrar",
     "shortcut_count": "atajos"
+  },
+  "update_notification": {
+    "view_details": "Detalles",
+    "dismiss": "Cerrar"
   }
 }

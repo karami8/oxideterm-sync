@@ -336,5 +336,9 @@
     "footer_hint": "Esc를 눌러 닫기",
     "shortcut_count": "개의 단축키"
 
+  },
+  "update_notification": {
+    "view_details": "자세히 보기",
+    "dismiss": "닫기"
   }
 }

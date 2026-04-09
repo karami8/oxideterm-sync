@@ -335,5 +335,9 @@
     "no_results": "Không tìm thấy phím tắt nào",
     "footer_hint": "Nhấn Esc để đóng",
     "shortcut_count": "phím tắt"
+  },
+  "update_notification": {
+    "view_details": "Chi tiết",
+    "dismiss": "Đóng"
   }
 }

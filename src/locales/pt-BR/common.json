@@ -335,5 +335,9 @@
     "no_results": "Nenhum atalho encontrado",
     "footer_hint": "Pressione Esc para fechar",
     "shortcut_count": "atalhos"
+  },
+  "update_notification": {
+    "view_details": "Detalhes",
+    "dismiss": "Fechar"
   }
 }

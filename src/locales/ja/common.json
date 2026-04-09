@@ -336,5 +336,9 @@
     "footer_hint": "Escで閉じる",
     "shortcut_count": "件のショートカット"
 
+  },
+  "update_notification": {
+    "view_details": "詳細を見る",
+    "dismiss": "閉じる"
   }
 }

@@ -91,6 +91,8 @@ body:
     attributes:
       label: Checklist
       options:
+        - label: I have tested with the latest release and can still reproduce the issue / 我已使用最新正式版测试，问题仍然存在
+          required: true
         - label: I searched existing issues for duplicates / 我已搜索过是否已有相同 Issue
           required: true
         - label: I have provided the OxideTerm version, platform, and steps to reproduce / 我已提供版本号、平台及复现步骤
