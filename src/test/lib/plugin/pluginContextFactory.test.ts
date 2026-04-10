@@ -28,10 +28,12 @@ const appStoreState = vi.hoisted(() => ({
       last_used_at: null,
       color: null,
       tags: ['prod'],
+      agent_forwarding: true,
       proxy_chain: [],
     },
   ],
   loadSavedConnections: vi.fn(async () => undefined),
+  refreshConnections: vi.fn(async () => undefined),
 }));
 
 const sessionTreeState = vi.hoisted(() => ({
@@ -100,6 +102,48 @@ function createMockStore<T extends object>(state: T) {
 
 const appStoreMock = vi.hoisted(() => createMockStore(appStoreState));
 const sessionTreeStoreMock = vi.hoisted(() => createMockStore(sessionTreeState));
+const settingsStoreState = vi.hoisted(() => ({
+  settings: {
+    terminal: { theme: 'default', fontSize: 14 },
+    appearance: { uiDensity: 'comfortable' },
+    general: { language: 'en' },
+    reconnect: { enabled: true },
+    ai: { activeProviderId: null, providers: [] },
+  },
+  setLanguage: vi.fn(async (language: string) => {
+    settingsStoreMock.setState((state) => ({
+      settings: {
+        ...state.settings,
+        general: { ...state.settings.general, language },
+      },
+    }));
+  }),
+  updateTerminal: vi.fn((key: 'theme' | 'fontSize', value: string | number) => {
+    settingsStoreMock.setState((state) => ({
+      settings: {
+        ...state.settings,
+        terminal: { ...state.settings.terminal, [key]: value },
+      },
+    }));
+  }),
+  updateAppearance: vi.fn((key: 'uiDensity', value: string) => {
+    settingsStoreMock.setState((state) => ({
+      settings: {
+        ...state.settings,
+        appearance: { ...state.settings.appearance, [key]: value },
+      },
+    }));
+  }),
+  updateReconnect: vi.fn((key: 'enabled', value: boolean) => {
+    settingsStoreMock.setState((state) => ({
+      settings: {
+        ...state.settings,
+        reconnect: { ...state.settings.reconnect, [key]: value },
+      },
+    }));
+  }),
+}));
+const settingsStoreMock = vi.hoisted(() => createMockStore(settingsStoreState));
 
 const eventHandlers = vi.hoisted(() => new Map<string, Set<(payload: unknown) => void>>());
 const pluginEventBridgeMock = vi.hoisted(() => ({
@@ -137,7 +181,7 @@ vi.mock('@/store/profilerStore', () => ({ useProfilerStore: createMockStore({ co
 vi.mock('@/store/eventLogStore', () => ({ useEventLogStore: createMockStore({ entries: [] }) }));
 vi.mock('@/store/ideStore', () => ({ useIdeStore: createMockStore({ nodeId: null, project: null, tabs: [], activeTabId: null }) }));
 vi.mock('@/store/aiChatStore', () => ({ useAiChatStore: createMockStore({ conversations: [] }) }));
-vi.mock('@/store/settingsStore', () => ({ useSettingsStore: createMockStore({ settings: { terminal: { theme: 'default' }, general: { language: 'en' }, ai: { activeProviderId: null, providers: [] } } }) }));
+vi.mock('@/store/settingsStore', () => ({ useSettingsStore: settingsStoreMock }));
 
 import { usePluginStore } from '@/store/pluginStore';
 import { buildPluginContext, cleanupPluginAssets } from '@/lib/plugin/pluginContextFactory';
@@ -200,10 +244,19 @@ describe('pluginContextFactory', () => {
         last_used_at: null,
         color: null,
         tags: ['prod'],
+        agent_forwarding: true,
         proxy_chain: [],
       },
     ];
     appStoreState.loadSavedConnections.mockResolvedValue(undefined);
+    appStoreState.refreshConnections.mockResolvedValue(undefined);
+    settingsStoreState.settings = {
+      terminal: { theme: 'default', fontSize: 14 },
+      appearance: { uiDensity: 'comfortable' },
+      general: { language: 'en' },
+      reconnect: { enabled: true },
+      ai: { activeProviderId: null, providers: [] },
+    };
     document.head.innerHTML = '';
     (globalThis as typeof globalThis & { __blobCounter?: number }).__blobCounter = 0;
     vi.stubGlobal('URL', {
@@ -297,6 +350,52 @@ describe('pluginContextFactory', () => {
 
     invokeMock
       .mockResolvedValueOnce({
+        revision: 'snap-rev',
+        exportedAt: '2026-01-01T00:00:00Z',
+        records: [{
+          id: 'saved-1',
+          revision: 'rec-rev',
+          updatedAt: '2026-01-01T00:00:00Z',
+          deleted: false,
+          payload: {
+            ...appStoreState.savedConnections[0],
+            agent_forwarding: true,
+          },
+        }],
+      })
+      .mockResolvedValueOnce({
+        applied: 1,
+        skipped: 0,
+        conflicts: 0,
+      })
+      .mockResolvedValueOnce({
+        savedConnectionsRevision: 'local-rev',
+        savedConnectionsUpdatedAt: '2026-01-02T00:00:00Z',
+      })
+      .mockResolvedValueOnce({
+        revision: 'forward-rev',
+        exportedAt: '2026-01-03T00:00:00Z',
+        records: [{
+          id: 'forward-1',
+          revision: 'forward-rec-rev',
+          updatedAt: '2026-01-03T00:00:00Z',
+          deleted: false,
+          payload: {
+            id: 'forward-1',
+            session_id: '',
+            owner_connection_id: 'saved-1',
+            forward_type: 'local',
+            bind_address: '127.0.0.1',
+            bind_port: 8080,
+            target_host: 'localhost',
+            target_port: 80,
+            auto_start: true,
+            created_at: '2026-01-03T00:00:00Z',
+            description: 'web',
+          },
+        }],
+      })
+      .mockResolvedValueOnce({
         totalConnections: 1,
         missingKeys: [],
         connectionsWithKeys: 0,
@@ -333,9 +432,30 @@ describe('pluginContextFactory', () => {
     expect(appStoreState.loadSavedConnections).toHaveBeenCalledTimes(1);
     expect(refreshed[0].id).toBe('saved-1');
 
+    const snapshot = await context.sync.exportSavedConnectionsSnapshot();
+    expect(snapshot.records[0].payload?.agent_forwarding).toBe(true);
+    expect(invokeMock).toHaveBeenNthCalledWith(1, 'export_saved_connections_snapshot');
+
+    const applyResult = await context.sync.applySavedConnectionsSnapshot(snapshot, {
+      conflictStrategy: 'merge',
+    });
+    expect(applyResult.applied).toBe(1);
+    expect(invokeMock).toHaveBeenNthCalledWith(2, 'apply_saved_connections_snapshot', {
+      snapshot,
+      conflictStrategy: 'merge',
+    });
+    expect(appStoreState.refreshConnections).toHaveBeenCalledTimes(1);
+    expect(appStoreState.loadSavedConnections).toHaveBeenCalledTimes(2);
+
+    const metadata = await context.sync.getLocalSyncMetadata();
+    expect(metadata.savedConnectionsRevision).toBe('local-rev');
+    expect(metadata.savedForwardsRevision).toBe('forward-rev');
+    expect(invokeMock).toHaveBeenNthCalledWith(3, 'get_local_sync_metadata');
+    expect(invokeMock).toHaveBeenNthCalledWith(4, 'export_saved_forwards_snapshot');
+
     const preflight = await context.sync.preflightExport();
     expect(preflight.totalConnections).toBe(1);
-    expect(invokeMock).toHaveBeenNthCalledWith(1, 'preflight_export', {
+    expect(invokeMock).toHaveBeenNthCalledWith(5, 'preflight_export', {
       connectionIds: ['saved-1'],
       embedKeys: null,
     });
@@ -344,8 +464,8 @@ describe('pluginContextFactory', () => {
     expect(exported).toBeInstanceOf(Uint8Array);
     expect(Array.from(exported)).toEqual([1, 2, 3]);
 
-    const metadata = await context.sync.validateOxide(new Uint8Array([9, 8, 7]));
-    expect(metadata.connection_names).toEqual(['Prod']);
+    const oxideMetadata = await context.sync.validateOxide(new Uint8Array([9, 8, 7]));
+    expect(oxideMetadata.connection_names).toEqual(['Prod']);
 
     const preview = await context.sync.previewImport(new Uint8Array([4, 5, 6]), 'ImportPass!123');
     expect(preview.willRename).toEqual([['Staging', 'Staging (Copy)']]);
@@ -354,18 +474,98 @@ describe('pluginContextFactory', () => {
       conflictStrategy: 'skip',
     });
     expect(result.imported).toBe(1);
-    expect(invokeMock).toHaveBeenNthCalledWith(4, 'preview_oxide_import', {
+    expect(invokeMock).toHaveBeenNthCalledWith(8, 'preview_oxide_import', {
       fileData: [4, 5, 6],
       password: 'ImportPass!123',
       conflictStrategy: null,
     });
-    expect(invokeMock).toHaveBeenNthCalledWith(5, 'import_from_oxide', {
+    expect(invokeMock).toHaveBeenNthCalledWith(9, 'import_from_oxide', {
       fileData: [4, 5, 6],
       password: 'ImportPass!123',
       selectedNames: null,
       conflictStrategy: 'skip',
     });
-    expect(appStoreState.loadSavedConnections).toHaveBeenCalledTimes(2);
+    expect(appStoreState.loadSavedConnections).toHaveBeenCalledTimes(3);
+  });
+
+  it('exposes saved-forward sync helpers and syncable settings helpers', async () => {
+    const context = buildPluginContext(manifest());
+
+    invokeMock
+      .mockResolvedValueOnce({
+        revision: 'forward-rev',
+        exportedAt: '2026-01-03T00:00:00Z',
+        records: [{
+          id: 'forward-1',
+          revision: 'forward-rec-rev',
+          updatedAt: '2026-01-03T00:00:00Z',
+          deleted: false,
+          payload: {
+            id: 'forward-1',
+            session_id: '',
+            owner_connection_id: 'saved-1',
+            forward_type: 'local',
+            bind_address: '127.0.0.1',
+            bind_port: 8080,
+            target_host: 'localhost',
+            target_port: 80,
+            auto_start: true,
+            created_at: '2026-01-03T00:00:00Z',
+            description: 'web',
+          },
+        }],
+      })
+      .mockResolvedValueOnce({ applied: 1, skipped: 0 })
+      .mockResolvedValueOnce({
+        revision: 'forward-rev-2',
+        exportedAt: '2026-01-04T00:00:00Z',
+        records: [{
+          id: 'forward-2',
+          revision: 'forward-rec-rev-2',
+          updatedAt: '2026-01-04T00:00:00Z',
+          deleted: false,
+          payload: {
+            id: 'forward-2',
+            session_id: '',
+            owner_connection_id: 'saved-1',
+            forward_type: 'remote',
+            bind_address: '0.0.0.0',
+            bind_port: 3000,
+            target_host: 'localhost',
+            target_port: 3000,
+            auto_start: false,
+            created_at: '2026-01-04T00:00:00Z',
+            description: 'api',
+          },
+        }],
+      });
+
+    const snapshot = await context.forward.exportSavedForwardsSnapshot();
+    expect(snapshot.records).toHaveLength(1);
+    expect(context.forward.listSavedForwards()).toHaveLength(1);
+
+    const applyResult = await context.forward.applySavedForwardsSnapshot(snapshot);
+    expect(applyResult.applied).toBe(1);
+    expect(invokeMock).toHaveBeenNthCalledWith(1, 'export_saved_forwards_snapshot');
+    expect(invokeMock).toHaveBeenNthCalledWith(2, 'apply_saved_forwards_snapshot', { snapshot });
+    expect(invokeMock).toHaveBeenNthCalledWith(3, 'export_saved_forwards_snapshot');
+    expect(context.forward.listSavedForwards()[0].id).toBe('forward-2');
+
+    const exportedSettings = await context.settings.exportSyncableSettings();
+    expect(exportedSettings.payload.appearance?.language).toBe('en');
+    expect(exportedSettings.payload.terminal?.fontSize).toBe(14);
+
+    await context.settings.applySyncableSettings({
+      appearance: { language: 'ja', uiDensity: 'compact' },
+      terminal: { fontSize: 16, theme: 'solarized-dark' },
+      reconnect: { autoReconnect: false },
+    });
+
+    expect(settingsStoreState.setLanguage).toHaveBeenCalledWith('ja');
+    expect(settingsStoreState.updateAppearance).toHaveBeenCalledWith('uiDensity', 'compact');
+    expect(settingsStoreState.updateTerminal).toHaveBeenCalledWith('fontSize', 16);
+    expect(settingsStoreState.updateTerminal).toHaveBeenCalledWith('theme', 'solarized-dark');
+    expect(settingsStoreState.updateReconnect).toHaveBeenCalledWith('enabled', false);
   });
 
   it('passes merge conflict strategy through to preview and import', async () => {
@@ -447,6 +647,14 @@ describe('pluginContextFactory', () => {
     });
   });
 
+  it('refreshes app stores after external sync', async () => {
+    const context = buildPluginContext(manifest());
+    await context.app.refreshAfterExternalSync({ connections: true });
+
+    expect(appStoreState.refreshConnections).toHaveBeenCalledTimes(1);
+    expect(appStoreState.loadSavedConnections).toHaveBeenCalledTimes(1);
+  });
+
   it('notifies plugins when saved connections change', () => {
     const context = buildPluginContext(manifest());
     const handler = vi.fn();
@@ -469,6 +677,7 @@ describe('pluginContextFactory', () => {
           last_used_at: null,
           color: null,
           tags: ['stage'],
+          agent_forwarding: false,
           proxy_chain: [],
         },
       ],

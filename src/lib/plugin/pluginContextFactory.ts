@@ -36,6 +36,15 @@ import type {
   PluginForwardRule,
   ConnectionSnapshot,
   SavedConnectionSnapshot,
+  SavedConnectionSyncRecord,
+  SavedConnectionsSyncSnapshot,
+  ApplySavedConnectionsSyncSnapshotResult,
+  SavedForwardSnapshot,
+  SavedForwardSyncRecord,
+  SavedForwardsSyncSnapshot,
+  ApplySavedForwardsSyncSnapshotResult,
+  SyncableSettingsPayload,
+  LocalSyncMetadata,
   SessionTreeNodeSnapshot,
   TransferSnapshot,
   ProfilerMetricsSnapshot,
@@ -81,6 +90,7 @@ import {
 } from '../terminalRegistry';
 import { getDefaults, getBinding } from '../keybindingRegistry';
 import { invoke } from '@tauri-apps/api/core';
+import { emit, listen } from '@tauri-apps/api/event';
 
 // Lazy store imports — loaded on first use to avoid circular deps
 let _useTransferStore: typeof import('../../store/transferStore').useTransferStore | null = null;
@@ -217,12 +227,14 @@ function toSavedConnectionSnapshot(connection: {
   last_used_at: string | null;
   color: string | null;
   tags: string[];
+  agent_forwarding?: boolean;
   proxy_chain?: Array<{
     host: string;
     port: number;
     username: string;
     auth_type: 'password' | 'key' | 'agent';
     key_path?: string;
+    agent_forwarding?: boolean;
   }>;
 }): SavedConnectionSnapshot {
   return freezeSnapshot<SavedConnectionSnapshot>({
@@ -239,7 +251,117 @@ function toSavedConnectionSnapshot(connection: {
     last_used_at: connection.last_used_at,
     color: connection.color,
     tags: [...connection.tags],
-    proxy_chain: (connection.proxy_chain ?? []).map((hop) => ({ ...hop })),
+    agent_forwarding: connection.agent_forwarding ?? false,
+    proxy_chain: (connection.proxy_chain ?? []).map((hop) => ({
+      ...hop,
+      agent_forwarding: hop.agent_forwarding ?? false,
+    })),
+  });
+}
+
+function toFrozenSavedConnectionSyncRecord(record: SavedConnectionSyncRecord): SavedConnectionSyncRecord {
+  return freezeSnapshot<SavedConnectionSyncRecord>({
+    id: record.id,
+    revision: record.revision,
+    updatedAt: record.updatedAt,
+    deleted: record.deleted,
+    payload: record.payload ? toSavedConnectionSnapshot(record.payload) : undefined,
+  });
+}
+
+function toFrozenSavedConnectionsSyncSnapshot(
+  snapshot: SavedConnectionsSyncSnapshot,
+): SavedConnectionsSyncSnapshot {
+  return freezeSnapshot<SavedConnectionsSyncSnapshot>({
+    revision: snapshot.revision,
+    exportedAt: snapshot.exportedAt,
+    records: snapshot.records.map(toFrozenSavedConnectionSyncRecord),
+  });
+}
+
+function toFrozenApplySavedConnectionsSyncSnapshotResult(
+  result: ApplySavedConnectionsSyncSnapshotResult,
+): ApplySavedConnectionsSyncSnapshotResult {
+  return freezeSnapshot<ApplySavedConnectionsSyncSnapshotResult>({
+    applied: result.applied,
+    skipped: result.skipped,
+    conflicts: result.conflicts,
+  });
+}
+
+function toFrozenLocalSyncMetadata(metadata: LocalSyncMetadata): LocalSyncMetadata {
+  return freezeSnapshot<LocalSyncMetadata>({
+    savedConnectionsRevision: metadata.savedConnectionsRevision,
+    savedConnectionsUpdatedAt: metadata.savedConnectionsUpdatedAt,
+    savedForwardsRevision: metadata.savedForwardsRevision,
+    settingsRevision: metadata.settingsRevision,
+  });
+}
+
+function simpleStableHash(value: unknown): string {
+  const text = JSON.stringify(value);
+  let hash = 2166136261;
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= text.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return `fnv1a-${(hash >>> 0).toString(16)}`;
+}
+
+function toSavedForwardSnapshot(forward: {
+  id: string;
+  session_id: string;
+  owner_connection_id?: string;
+  forward_type: string;
+  bind_address: string;
+  bind_port: number;
+  target_host: string;
+  target_port: number;
+  auto_start: boolean;
+  created_at: string;
+  description?: string;
+}): SavedForwardSnapshot {
+  return freezeSnapshot<SavedForwardSnapshot>({
+    id: forward.id,
+    session_id: forward.session_id,
+    owner_connection_id: forward.owner_connection_id,
+    forward_type: forward.forward_type,
+    bind_address: forward.bind_address,
+    bind_port: forward.bind_port,
+    target_host: forward.target_host,
+    target_port: forward.target_port,
+    auto_start: forward.auto_start,
+    created_at: forward.created_at,
+    description: forward.description,
+  });
+}
+
+function toFrozenSavedForwardSyncRecord(record: SavedForwardSyncRecord): SavedForwardSyncRecord {
+  return freezeSnapshot<SavedForwardSyncRecord>({
+    id: record.id,
+    revision: record.revision,
+    updatedAt: record.updatedAt,
+    deleted: record.deleted,
+    payload: record.payload ? toSavedForwardSnapshot(record.payload) : undefined,
+  });
+}
+
+function toFrozenSavedForwardsSyncSnapshot(
+  snapshot: SavedForwardsSyncSnapshot,
+): SavedForwardsSyncSnapshot {
+  return freezeSnapshot<SavedForwardsSyncSnapshot>({
+    revision: snapshot.revision,
+    exportedAt: snapshot.exportedAt,
+    records: snapshot.records.map(toFrozenSavedForwardSyncRecord),
+  });
+}
+
+function toFrozenApplySavedForwardsSyncSnapshotResult(
+  result: ApplySavedForwardsSyncSnapshotResult,
+): ApplySavedForwardsSyncSnapshotResult {
+  return freezeSnapshot<ApplySavedForwardsSyncSnapshotResult>({
+    applied: result.applied,
+    skipped: result.skipped,
   });
 }
 
@@ -667,6 +789,27 @@ export function buildPluginContext(manifest: PluginManifest): PluginContext {
   });
 
   // ── ctx.settings ──────────────────────────────────────────────────
+  const getSyncableSettingsPayload = (): SyncableSettingsPayload => {
+    if (!_useSettingsStore) {
+      return freezeSnapshot<SyncableSettingsPayload>({});
+    }
+
+    const current = _useSettingsStore.getState().settings;
+    return freezeSnapshot<SyncableSettingsPayload>({
+      appearance: {
+        language: current.general.language,
+        uiDensity: current.appearance.uiDensity,
+      },
+      terminal: {
+        fontSize: current.terminal.fontSize,
+        theme: current.terminal.theme,
+      },
+      reconnect: current.reconnect
+        ? { autoReconnect: current.reconnect.enabled }
+        : undefined,
+    });
+  };
+
   const settings: PluginSettingsAPI = Object.freeze({
     get<T>(key: string): T {
       return settingsManager.get<T>(key);
@@ -677,6 +820,34 @@ export function buildPluginContext(manifest: PluginManifest): PluginContext {
     onChange(key: string, handler: (newValue: unknown) => void) {
       const unsub = settingsManager.onChange(key, handler);
       return createDisposable(pluginId, unsub);
+    },
+    async exportSyncableSettings() {
+      const payload = getSyncableSettingsPayload();
+      return freezeSnapshot({
+        revision: simpleStableHash(payload),
+        exportedAt: new Date().toISOString(),
+        payload,
+      });
+    },
+    async applySyncableSettings(payload: SyncableSettingsPayload): Promise<void> {
+      const store = await getSettingsStore();
+      const state = store.getState();
+
+      if (payload.appearance?.language) {
+        await state.setLanguage(payload.appearance.language as Parameters<typeof state.setLanguage>[0]);
+      }
+      if (payload.appearance?.uiDensity) {
+        state.updateAppearance('uiDensity', payload.appearance.uiDensity);
+      }
+      if (payload.terminal?.fontSize !== undefined) {
+        state.updateTerminal('fontSize', payload.terminal.fontSize);
+      }
+      if (payload.terminal?.theme) {
+        state.updateTerminal('theme', payload.terminal.theme);
+      }
+      if (payload.reconnect?.autoReconnect !== undefined) {
+        state.updateReconnect('enabled', payload.reconnect.autoReconnect);
+      }
     },
   });
 
@@ -716,6 +887,57 @@ export function buildPluginContext(manifest: PluginManifest): PluginContext {
     return getSavedConnectionSnapshots();
   };
 
+  let savedForwardSnapshotsCache: ReadonlyArray<SavedForwardSnapshot> = Object.freeze([]);
+
+  const updateSavedForwardSnapshotsCache = (snapshot: SavedForwardsSyncSnapshot): ReadonlyArray<SavedForwardSnapshot> => {
+    savedForwardSnapshotsCache = Object.freeze(
+      snapshot.records
+        .filter((record) => !record.deleted && record.payload)
+        .map((record) => toSavedForwardSnapshot(record.payload!)),
+    );
+    return savedForwardSnapshotsCache;
+  };
+
+  const exportSavedForwardsSnapshotInternal = async (): Promise<SavedForwardsSyncSnapshot> => {
+    const snapshot = await invoke<SavedForwardsSyncSnapshot>('export_saved_forwards_snapshot');
+    const frozen = toFrozenSavedForwardsSyncSnapshot(snapshot);
+    updateSavedForwardSnapshotsCache(frozen);
+    return frozen;
+  };
+
+  const refreshAfterExternalSyncInternal = async (options?: {
+    connections?: boolean;
+    savedForwards?: boolean;
+    settings?: boolean;
+  }): Promise<void> => {
+    const shouldRefreshConnections = options === undefined ? true : options.connections === true;
+    const shouldRefreshSavedForwards = options === undefined ? true : options.savedForwards === true;
+    const shouldRefreshSettings = options === undefined ? true : options.settings === true;
+
+    if (shouldRefreshConnections) {
+      await Promise.all([
+        useAppStore.getState().refreshConnections(),
+        useAppStore.getState().loadSavedConnections(),
+      ]);
+    }
+    if (shouldRefreshSavedForwards) {
+      await emit('saved-forwards:update');
+    }
+    if (shouldRefreshSettings) {
+      const store = await getSettingsStore();
+      const current = store.getState().settings;
+      store.setState({
+        settings: {
+          ...current,
+          general: { ...current.general },
+          terminal: { ...current.terminal },
+          appearance: { ...current.appearance },
+          reconnect: current.reconnect ? { ...current.reconnect } : current.reconnect,
+        },
+      });
+    }
+  };
+
   const resolveExportConnectionIds = async (connectionIds?: string[]): Promise<string[]> => {
     if (connectionIds && connectionIds.length > 0) {
       return [...connectionIds];
@@ -744,6 +966,31 @@ export function buildPluginContext(manifest: PluginManifest): PluginContext {
         }
       });
       return createDisposable(pluginId, unsub);
+    },
+    async exportSavedConnectionsSnapshot(): Promise<SavedConnectionsSyncSnapshot> {
+      const snapshot = await invoke<SavedConnectionsSyncSnapshot>('export_saved_connections_snapshot');
+      return toFrozenSavedConnectionsSyncSnapshot(snapshot);
+    },
+    async applySavedConnectionsSnapshot(snapshot, options): Promise<ApplySavedConnectionsSyncSnapshotResult> {
+      const result = await invoke<ApplySavedConnectionsSyncSnapshotResult>('apply_saved_connections_snapshot', {
+        snapshot,
+        conflictStrategy: options?.conflictStrategy ?? null,
+      });
+      await refreshAfterExternalSyncInternal({ connections: true });
+      return toFrozenApplySavedConnectionsSyncSnapshotResult(result);
+    },
+    async getLocalSyncMetadata(): Promise<LocalSyncMetadata> {
+      const [metadata, savedForwardsSnapshot, syncableSettings] = await Promise.all([
+        invoke<LocalSyncMetadata>('get_local_sync_metadata'),
+        exportSavedForwardsSnapshotInternal(),
+        settings.exportSyncableSettings(),
+      ]);
+
+      return toFrozenLocalSyncMetadata({
+        ...metadata,
+        savedForwardsRevision: savedForwardsSnapshot.revision,
+        settingsRevision: syncableSettings.revision,
+      });
     },
     async preflightExport(connectionIds?: string[], options?: { embedKeys?: boolean }): Promise<Readonly<ExportPreflightResult>> {
       const effectiveIds = await resolveExportConnectionIds(connectionIds);
@@ -930,6 +1177,57 @@ export function buildPluginContext(manifest: PluginManifest): PluginContext {
     async list(sessionId: string): Promise<ReadonlyArray<PluginForwardRule>> {
       const rules = await invoke<PluginForwardRule[]>('list_port_forwards', { sessionId });
       return Object.freeze(rules.map((r) => Object.freeze(r)));
+    },
+    listSavedForwards(): ReadonlyArray<SavedForwardSnapshot> {
+      return savedForwardSnapshotsCache;
+    },
+    onSavedForwardsChange(handler) {
+      let disposed = false;
+      let unlisten: (() => void) | null = null;
+
+      void exportSavedForwardsSnapshotInternal().then((snapshot) => {
+        if (disposed) return;
+        try {
+          handler(updateSavedForwardSnapshotsCache(snapshot));
+        } catch {
+          // swallow
+        }
+      }).catch(() => {
+        // swallow
+      });
+
+      void listen('saved-forwards:update', async () => {
+        if (disposed) return;
+        try {
+          const snapshot = await exportSavedForwardsSnapshotInternal();
+          handler(updateSavedForwardSnapshotsCache(snapshot));
+        } catch {
+          // swallow
+        }
+      }).then((fn) => {
+        if (disposed) {
+          fn();
+          return;
+        }
+        unlisten = fn;
+      }).catch(() => {
+        // swallow
+      });
+
+      return createDisposable(pluginId, () => {
+        disposed = true;
+        unlisten?.();
+      });
+    },
+    async exportSavedForwardsSnapshot(): Promise<SavedForwardsSyncSnapshot> {
+      return exportSavedForwardsSnapshotInternal();
+    },
+    async applySavedForwardsSnapshot(snapshot: SavedForwardsSyncSnapshot): Promise<ApplySavedForwardsSyncSnapshotResult> {
+      const result = await invoke<ApplySavedForwardsSyncSnapshotResult>('apply_saved_forwards_snapshot', {
+        snapshot,
+      });
+      await exportSavedForwardsSnapshotInternal();
+      return toFrozenApplySavedForwardsSyncSnapshotResult(result);
     },
     async create(request) {
       const backendRequest = {
@@ -1478,6 +1776,9 @@ export function buildPluginContext(manifest: PluginManifest): PluginContext {
       } catch {
         return Object.freeze({ activeConnections: 0, totalSessions: 0 });
       }
+    },
+    async refreshAfterExternalSync(options) {
+      await refreshAfterExternalSyncInternal(options);
     },
   });
 

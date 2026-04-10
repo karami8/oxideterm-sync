@@ -309,13 +309,89 @@ export type SavedConnectionSnapshot = Readonly<{
   last_used_at: string | null;
   color: string | null;
   tags: readonly string[];
+  agent_forwarding: boolean;
   proxy_chain: readonly Readonly<{
     host: string;
     port: number;
     username: string;
     auth_type: 'password' | 'key' | 'agent';
     key_path?: string;
+    agent_forwarding?: boolean;
   }>[];
+}>;
+
+export type SavedConnectionSyncRecord = Readonly<{
+  id: string;
+  revision: string;
+  updatedAt: string;
+  deleted: boolean;
+  payload?: SavedConnectionSnapshot;
+}>;
+
+export type SavedConnectionsSyncSnapshot = Readonly<{
+  revision: string;
+  exportedAt: string;
+  records: readonly SavedConnectionSyncRecord[];
+}>;
+
+export type ApplySavedConnectionsSyncSnapshotResult = Readonly<{
+  applied: number;
+  skipped: number;
+  conflicts: number;
+}>;
+
+export type SavedForwardSnapshot = Readonly<{
+  id: string;
+  session_id: string;
+  owner_connection_id?: string;
+  forward_type: string;
+  bind_address: string;
+  bind_port: number;
+  target_host: string;
+  target_port: number;
+  auto_start: boolean;
+  created_at: string;
+  description?: string;
+}>;
+
+export type SavedForwardSyncRecord = Readonly<{
+  id: string;
+  revision: string;
+  updatedAt: string;
+  deleted: boolean;
+  payload?: SavedForwardSnapshot;
+}>;
+
+export type SavedForwardsSyncSnapshot = Readonly<{
+  revision: string;
+  exportedAt: string;
+  records: readonly SavedForwardSyncRecord[];
+}>;
+
+export type ApplySavedForwardsSyncSnapshotResult = Readonly<{
+  applied: number;
+  skipped: number;
+}>;
+
+export type SyncableSettingsPayload = Readonly<{
+  appearance?: Readonly<{
+    language?: string;
+    uiDensity?: 'compact' | 'comfortable' | 'spacious';
+  }>;
+  terminal?: Readonly<{
+    fontSize?: number;
+    theme?: string;
+  }>;
+  reconnect?: Readonly<{
+    autoReconnect?: boolean;
+  }>;
+}>;
+
+export type LocalSyncMetadata = Readonly<{
+  savedConnectionsRevision: string;
+  savedConnectionsUpdatedAt: string;
+  savedForwardsRevision?: string;
+  settingsRevision?: string;
 }>;
 
 export type OxideMetadata = Readonly<{
@@ -423,6 +499,12 @@ export type PluginContext = Readonly<{
     get<T>(key: string): T;
     set<T>(key: string, value: T): void;
     onChange(key: string, handler: (newValue: unknown) => void): Disposable;
+    exportSyncableSettings(): Promise<Readonly<{
+      revision: string;
+      exportedAt: string;
+      payload: SyncableSettingsPayload;
+    }>>;
+    applySyncableSettings(payload: SyncableSettingsPayload): Promise<void>;
   };
 
   /** Plugin-scoped i18n */
@@ -444,6 +526,12 @@ export type PluginContext = Readonly<{
     listSavedConnections(): ReadonlyArray<SavedConnectionSnapshot>;
     refreshSavedConnections(): Promise<ReadonlyArray<SavedConnectionSnapshot>>;
     onSavedConnectionsChange(handler: (connections: ReadonlyArray<SavedConnectionSnapshot>) => void): Disposable;
+    exportSavedConnectionsSnapshot(): Promise<SavedConnectionsSyncSnapshot>;
+    applySavedConnectionsSnapshot(
+      snapshot: SavedConnectionsSyncSnapshot,
+      options?: { conflictStrategy?: Extract<PluginSyncConflictStrategy, 'skip' | 'replace' | 'merge'> },
+    ): Promise<ApplySavedConnectionsSyncSnapshotResult>;
+    getLocalSyncMetadata(): Promise<LocalSyncMetadata>;
     preflightExport(connectionIds?: string[], options?: { embedKeys?: boolean }): Promise<ExportPreflightResult>;
     exportOxide(request: {
       connectionIds?: string[];
@@ -498,6 +586,10 @@ export type PluginContext = Readonly<{
   /** Port forwarding management */
   forward: {
     list(sessionId: string): Promise<ReadonlyArray<PluginForwardRule>>;
+    listSavedForwards(): ReadonlyArray<SavedForwardSnapshot>;
+    onSavedForwardsChange(handler: (items: ReadonlyArray<SavedForwardSnapshot>) => void): Disposable;
+    exportSavedForwardsSnapshot(): Promise<SavedForwardsSyncSnapshot>;
+    applySavedForwardsSnapshot(snapshot: SavedForwardsSyncSnapshot): Promise<ApplySavedForwardsSyncSnapshotResult>;
     create(request: PluginForwardRequest): Promise<{ success: boolean; forward?: PluginForwardRule; error?: string }>;
     stop(sessionId: string, forwardId: string): Promise<void>;
     stopAll(sessionId: string): Promise<void>;
@@ -566,6 +658,11 @@ export type PluginContext = Readonly<{
     onThemeChange(handler: (theme: ThemeSnapshot) => void): Disposable;
     onSettingsChange(category: string, handler: (settings: Readonly<Record<string, unknown>>) => void): Disposable;
     getPoolStats(): Promise<PoolStatsSnapshot>;
+    refreshAfterExternalSync(options?: {
+      connections?: boolean;
+      savedForwards?: boolean;
+      settings?: boolean;
+    }): Promise<void>;
   };
 }>;
 

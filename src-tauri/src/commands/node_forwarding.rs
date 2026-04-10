@@ -11,7 +11,7 @@
 
 use std::sync::Arc;
 
-use tauri::State;
+use tauri::{Emitter, State};
 use tracing::{error, info, warn};
 
 use crate::commands::forwarding::{
@@ -37,6 +37,12 @@ fn build_unreachable_port_error(target_host: &str, target_port: u16) -> String {
         "Target port {}:{} is not reachable. Please ensure the service is running on the remote server.\n\nTroubleshooting:\n• Check if service is running: ss -tlnp | grep {}\n• Verify the port number is correct\n• Try connecting manually: nc -zv {} {}",
         target_host, target_port, target_port, target_host, target_port
     )
+}
+
+fn emit_saved_forwards_update(app_handle: &tauri::AppHandle) {
+    if let Err(e) = app_handle.emit("saved-forwards:update", ()) {
+        warn!("Failed to emit saved-forwards:update: {}", e);
+    }
 }
 
 fn build_health_check_error_message(error: &str) -> String {
@@ -126,6 +132,7 @@ pub async fn node_list_forwards(
 /// 创建端口转发
 #[tauri::command]
 pub async fn node_create_forward(
+    app_handle: tauri::AppHandle,
     node_id: String,
     forward_type: String,
     bind_address: String,
@@ -235,6 +242,8 @@ pub async fn node_create_forward(
                 );
             }
 
+            emit_saved_forwards_update(&app_handle);
+
             Ok(ForwardResponse {
                 success: true,
                 forward: Some(created.into()),
@@ -321,6 +330,7 @@ pub async fn node_stop_forward(
 /// 删除端口转发
 #[tauri::command]
 pub async fn node_delete_forward(
+    app_handle: tauri::AppHandle,
     node_id: String,
     forward_id: String,
     router: State<'_, Arc<NodeRouter>>,
@@ -336,6 +346,8 @@ pub async fn node_delete_forward(
         Ok(()) => {
             if let Err(e) = registry.delete_persisted_forward(forward_id.clone()).await {
                 warn!("Failed to delete persisted forward {}: {}", forward_id, e);
+            } else {
+                emit_saved_forwards_update(&app_handle);
             }
 
             // 从 ConnectionRegistry 移除 forward
@@ -362,6 +374,7 @@ pub async fn node_delete_forward(
 /// 重启已停止的端口转发
 #[tauri::command]
 pub async fn node_restart_forward(
+    app_handle: tauri::AppHandle,
     node_id: String,
     forward_id: String,
     router: State<'_, Arc<NodeRouter>>,
@@ -390,6 +403,8 @@ pub async fn node_restart_forward(
                 );
             }
 
+            emit_saved_forwards_update(&app_handle);
+
             Ok(ForwardResponse {
                 success: true,
                 forward: Some(rule.into()),
@@ -407,6 +422,7 @@ pub async fn node_restart_forward(
 /// 更新端口转发配置
 #[tauri::command]
 pub async fn node_update_forward(
+    app_handle: tauri::AppHandle,
     node_id: String,
     forward_id: String,
     bind_address: Option<String>,
@@ -447,6 +463,8 @@ pub async fn node_update_forward(
                     rule.id, e
                 );
             }
+
+            emit_saved_forwards_update(&app_handle);
 
             Ok(ForwardResponse {
                 success: true,
@@ -495,6 +513,7 @@ pub async fn node_stop_all_forwards(
 /// 快捷转发 Jupyter
 #[tauri::command]
 pub async fn node_forward_jupyter(
+    app_handle: tauri::AppHandle,
     node_id: String,
     local_port: u16,
     remote_port: u16,
@@ -521,6 +540,8 @@ pub async fn node_forward_jupyter(
                 warn!("Failed to persist Jupyter forward {}: {}", rule.id, e);
             }
 
+            emit_saved_forwards_update(&app_handle);
+
             Ok(ForwardResponse {
                 success: true,
                 forward: Some(rule.into()),
@@ -538,6 +559,7 @@ pub async fn node_forward_jupyter(
 /// 快捷转发 TensorBoard
 #[tauri::command]
 pub async fn node_forward_tensorboard(
+    app_handle: tauri::AppHandle,
     node_id: String,
     local_port: u16,
     remote_port: u16,
@@ -564,6 +586,8 @@ pub async fn node_forward_tensorboard(
                 warn!("Failed to persist TensorBoard forward {}: {}", rule.id, e);
             }
 
+            emit_saved_forwards_update(&app_handle);
+
             Ok(ForwardResponse {
                 success: true,
                 forward: Some(rule.into()),
@@ -581,6 +605,7 @@ pub async fn node_forward_tensorboard(
 /// 快捷转发 VS Code
 #[tauri::command]
 pub async fn node_forward_vscode(
+    app_handle: tauri::AppHandle,
     node_id: String,
     local_port: u16,
     remote_port: u16,
@@ -606,6 +631,8 @@ pub async fn node_forward_vscode(
             {
                 warn!("Failed to persist VS Code forward {}: {}", rule.id, e);
             }
+
+            emit_saved_forwards_update(&app_handle);
 
             Ok(ForwardResponse {
                 success: true,
@@ -650,6 +677,7 @@ pub async fn node_list_saved_forwards(
             target_port: f.rule.target_port,
             auto_start: f.auto_start,
             created_at: f.created_at.to_rfc3339(),
+            description: f.rule.description,
         })
         .collect())
 }

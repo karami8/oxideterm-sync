@@ -480,6 +480,7 @@ export interface ProxyHopInfo {
   username: string;
   auth_type: 'password' | 'key' | 'agent';
   key_path?: string;
+  agent_forwarding?: boolean;
 }
 
 export interface ConnectionInfo {
@@ -496,6 +497,7 @@ export interface ConnectionInfo {
   last_used_at: string | null;
   color: string | null;
   tags: string[];
+  agent_forwarding?: boolean;
   proxy_chain?: ProxyHopInfo[];
 }
 
@@ -684,6 +686,7 @@ export interface PersistedForwardInfo {
   target_port: number;
   auto_start: boolean;
   created_at: string;
+  description?: string;
 }
 
 export interface ForwardRule {

@@ -8,14 +8,17 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use chrono::Utc;
 use serde::{Deserialize, Serialize};
-use tauri::State;
+use sha2::{Digest, Sha256};
+use tauri::{AppHandle, Emitter, State};
 use tokio::sync::RwLock;
 use tracing::{error, info, warn};
 
 use crate::forwarding::{
     ForwardRule, ForwardRuleUpdate, ForwardStats, ForwardStatus, ForwardType, ForwardingManager,
 };
+use crate::commands::config::ConfigState;
 use crate::state::{PersistedForward, StateError, StateStore, forwarding::ForwardPersistence};
 
 /// Global registry of forwarding managers (one per session)
@@ -297,6 +300,23 @@ impl ForwardingRegistry {
         }
     }
 
+    /// Load all owner-bound persisted forwards eligible for sync.
+    pub async fn load_syncable_forwards(&self) -> Result<Vec<PersistedForward>, String> {
+        if let Some(persistence) = &self.persistence {
+            let all_forwards = persistence
+                .load_all_async()
+                .await
+                .map_err(|e| format!("Failed to load persisted forwards: {:?}", e))?;
+
+            Ok(all_forwards
+                .into_iter()
+                .filter(|f| f.owner_connection_id.is_some())
+                .collect())
+        } else {
+            Ok(Vec::new())
+        }
+    }
+
     /// Update auto-start flag for a forward
     pub async fn update_auto_start(
         &self,
@@ -314,6 +334,12 @@ impl ForwardingRegistry {
         }
         Ok(())
     }
+}
+
+fn emit_saved_forwards_update(app_handle: &AppHandle) -> Result<(), String> {
+    app_handle
+        .emit("saved-forwards:update", ())
+        .map_err(|e| format!("Failed to emit saved-forwards:update: {}", e))
 }
 
 impl Default for ForwardingRegistry {
@@ -939,24 +965,85 @@ pub async fn list_saved_forwards(
 
     Ok(forwards
         .into_iter()
-        .map(|f| PersistedForwardDto {
-            id: f.id,
-            session_id: f.session_id,
-            owner_connection_id: f.owner_connection_id,
-            forward_type: format!("{:?}", f.forward_type).to_lowercase(),
-            bind_address: f.rule.bind_address,
-            bind_port: f.rule.bind_port,
-            target_host: f.rule.target_host,
-            target_port: f.rule.target_port,
-            auto_start: f.auto_start,
-            created_at: f.created_at.to_rfc3339(),
-        })
+        .map(persisted_forward_to_dto)
         .collect())
+}
+
+/// Export a structured snapshot of owner-bound saved forwards for plugin-driven sync.
+#[tauri::command]
+pub async fn export_saved_forwards_snapshot(
+    registry: State<'_, Arc<ForwardingRegistry>>,
+) -> Result<SavedForwardsSyncSnapshot, String> {
+    let forwards = registry.load_syncable_forwards().await?;
+    build_saved_forwards_sync_snapshot(forwards)
+}
+
+/// Apply a structured snapshot of owner-bound saved forwards produced by a sync plugin.
+#[tauri::command]
+pub async fn apply_saved_forwards_snapshot(
+    app_handle: tauri::AppHandle,
+    registry: State<'_, Arc<ForwardingRegistry>>,
+    config_state: State<'_, Arc<ConfigState>>,
+    snapshot: SavedForwardsSyncSnapshot,
+) -> Result<ApplySavedForwardsSyncSnapshotResult, String> {
+    let existing_forwards = registry.load_syncable_forwards().await?;
+    let existing_ids: HashMap<String, PersistedForward> = existing_forwards
+        .into_iter()
+        .map(|forward| (forward.id.clone(), forward))
+        .collect();
+    let valid_owner_connection_ids = config_state
+        .get_config_snapshot()
+        .connections
+        .into_iter()
+        .map(|connection| connection.id)
+        .collect::<std::collections::HashSet<_>>();
+    let mut result = ApplySavedForwardsSyncSnapshotResult {
+        applied: 0,
+        skipped: 0,
+    };
+
+    for record in snapshot.records {
+        if record.deleted {
+            if existing_ids.contains_key(&record.id) {
+                registry.delete_persisted_forward(record.id).await?;
+                result.applied += 1;
+            } else {
+                result.skipped += 1;
+            }
+            continue;
+        }
+
+        let Some(payload) = record.payload else {
+            result.skipped += 1;
+            continue;
+        };
+
+        let Some(owner_connection_id) = payload.owner_connection_id.as_ref() else {
+            result.skipped += 1;
+            continue;
+        };
+
+        if !valid_owner_connection_ids.contains(owner_connection_id) {
+            result.skipped += 1;
+            continue;
+        }
+
+        let forward = persisted_forward_from_sync_payload(payload)?;
+        registry.persist_forward(forward).await?;
+        result.applied += 1;
+    }
+
+    if result.applied > 0 {
+        emit_saved_forwards_update(&app_handle)?;
+    }
+
+    Ok(result)
 }
 
 /// Set auto-start flag for a forward
 #[tauri::command]
 pub async fn set_forward_auto_start(
+    app_handle: tauri::AppHandle,
     registry: State<'_, Arc<ForwardingRegistry>>,
     forward_id: String,
     auto_start: bool,
@@ -965,21 +1052,26 @@ pub async fn set_forward_auto_start(
         "Setting auto_start={} for forward {}",
         auto_start, forward_id
     );
-    registry.update_auto_start(&forward_id, auto_start).await
+    registry.update_auto_start(&forward_id, auto_start).await?;
+    emit_saved_forwards_update(&app_handle)?;
+    Ok(())
 }
 
 /// Delete a persisted forward rule
 #[tauri::command]
 pub async fn delete_saved_forward(
+    app_handle: tauri::AppHandle,
     registry: State<'_, Arc<ForwardingRegistry>>,
     forward_id: String,
 ) -> Result<(), String> {
     info!("Deleting saved forward {}", forward_id);
-    registry.delete_persisted_forward(forward_id).await
+    registry.delete_persisted_forward(forward_id).await?;
+    emit_saved_forwards_update(&app_handle)?;
+    Ok(())
 }
 
 /// DTO for persisted forward info
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PersistedForwardDto {
     pub id: String,
     pub session_id: String,
@@ -991,4 +1083,183 @@ pub struct PersistedForwardDto {
     pub target_port: u16,
     pub auto_start: bool,
     pub created_at: String,
+    pub description: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SavedForwardSyncRecord {
+    pub id: String,
+    pub revision: String,
+    pub updated_at: String,
+    pub deleted: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub payload: Option<PersistedForwardDto>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SavedForwardsSyncSnapshot {
+    pub revision: String,
+    pub exported_at: String,
+    pub records: Vec<SavedForwardSyncRecord>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApplySavedForwardsSyncSnapshotResult {
+    pub applied: usize,
+    pub skipped: usize,
+}
+
+fn persisted_forward_to_dto(forward: PersistedForward) -> PersistedForwardDto {
+    PersistedForwardDto {
+        id: forward.id,
+        session_id: forward.session_id,
+        owner_connection_id: forward.owner_connection_id,
+        forward_type: format!("{:?}", forward.forward_type).to_lowercase(),
+        bind_address: forward.rule.bind_address,
+        bind_port: forward.rule.bind_port,
+        target_host: forward.rule.target_host,
+        target_port: forward.rule.target_port,
+        auto_start: forward.auto_start,
+        created_at: forward.created_at.to_rfc3339(),
+        description: forward.rule.description,
+    }
+}
+
+fn sha256_hex<T: Serialize>(value: &T) -> Result<String, String> {
+    let bytes = serde_json::to_vec(value)
+        .map_err(|e| format!("Failed to serialize forward sync payload: {}", e))?;
+    Ok(format!("{:x}", Sha256::digest(bytes)))
+}
+
+fn build_saved_forward_sync_record(
+    forward: PersistedForward,
+) -> Result<SavedForwardSyncRecord, String> {
+    let payload = persisted_forward_to_dto(forward);
+    let revision = sha256_hex(&payload)?;
+
+    Ok(SavedForwardSyncRecord {
+        id: payload.id.clone(),
+        revision,
+        updated_at: payload.created_at.clone(),
+        deleted: false,
+        payload: Some(payload),
+    })
+}
+
+fn build_saved_forwards_sync_snapshot(
+    forwards: Vec<PersistedForward>,
+) -> Result<SavedForwardsSyncSnapshot, String> {
+    let mut records: Vec<SavedForwardSyncRecord> = forwards
+        .into_iter()
+        .map(build_saved_forward_sync_record)
+        .collect::<Result<_, _>>()?;
+    records.sort_by(|left, right| left.id.cmp(&right.id));
+
+    let revision = sha256_hex(
+        &records
+            .iter()
+            .map(|record| (&record.id, &record.revision, record.deleted))
+            .collect::<Vec<_>>(),
+    )?;
+
+    Ok(SavedForwardsSyncSnapshot {
+        revision,
+        exported_at: Utc::now().to_rfc3339(),
+        records,
+    })
+}
+
+fn persisted_forward_from_sync_payload(payload: PersistedForwardDto) -> Result<PersistedForward, String> {
+    let forward_type = crate::state::forwarding::ForwardType::try_from(payload.forward_type.as_str())?;
+    let created_at = chrono::DateTime::parse_from_rfc3339(&payload.created_at)
+        .map_err(|e| format!("Invalid forward created_at '{}': {}", payload.created_at, e))?
+        .with_timezone(&Utc);
+
+    Ok(PersistedForward {
+        id: payload.id.clone(),
+        session_id: String::new(),
+        owner_connection_id: payload.owner_connection_id.clone(),
+        forward_type: forward_type.clone(),
+        rule: ForwardRule {
+            id: payload.id,
+            forward_type: forward_type.to_runtime(),
+            bind_address: payload.bind_address,
+            bind_port: payload.bind_port,
+            target_host: payload.target_host,
+            target_port: payload.target_port,
+            status: ForwardStatus::Stopped,
+            description: payload.description,
+        },
+        created_at,
+        auto_start: payload.auto_start,
+        version: 1,
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn sample_persisted_forward(id: &str, owner_connection_id: Option<&str>) -> PersistedForward {
+        PersistedForward {
+            id: id.to_string(),
+            session_id: "runtime-session".to_string(),
+            owner_connection_id: owner_connection_id.map(str::to_string),
+            forward_type: crate::state::forwarding::ForwardType::Local,
+            rule: ForwardRule {
+                id: id.to_string(),
+                forward_type: crate::forwarding::ForwardType::Local,
+                bind_address: "127.0.0.1".to_string(),
+                bind_port: 8080,
+                target_host: "localhost".to_string(),
+                target_port: 80,
+                status: ForwardStatus::Active,
+                description: Some("web".to_string()),
+            },
+            created_at: Utc::now(),
+            auto_start: true,
+            version: 1,
+        }
+    }
+
+    #[test]
+    fn build_saved_forwards_sync_snapshot_preserves_description() {
+        let snapshot = build_saved_forwards_sync_snapshot(vec![sample_persisted_forward(
+            "forward-1",
+            Some("conn-1"),
+        )])
+        .unwrap();
+
+        assert_eq!(snapshot.records.len(), 1);
+        assert_eq!(
+            snapshot.records[0].payload.as_ref().and_then(|payload| payload.description.as_deref()),
+            Some("web")
+        );
+        assert!(!snapshot.revision.is_empty());
+    }
+
+    #[test]
+    fn persisted_forward_from_sync_payload_clears_runtime_session_and_stops_rule() {
+        let persisted = persisted_forward_from_sync_payload(PersistedForwardDto {
+            id: "forward-1".to_string(),
+            session_id: "remote-session".to_string(),
+            owner_connection_id: Some("conn-1".to_string()),
+            forward_type: "local".to_string(),
+            bind_address: "127.0.0.1".to_string(),
+            bind_port: 8080,
+            target_host: "localhost".to_string(),
+            target_port: 80,
+            auto_start: true,
+            created_at: Utc::now().to_rfc3339(),
+            description: Some("web".to_string()),
+        })
+        .unwrap();
+
+        assert_eq!(persisted.session_id, "");
+        assert!(matches!(persisted.rule.status, ForwardStatus::Stopped));
+        assert_eq!(persisted.owner_connection_id.as_deref(), Some("conn-1"));
+    }
 }
