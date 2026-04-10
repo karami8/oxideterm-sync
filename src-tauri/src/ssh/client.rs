@@ -245,7 +245,8 @@ impl client::Handler for ClientHandler {
         &mut self,
         server_public_key: &PublicKey,
     ) -> Result<bool, Self::Error> {
-        let actual_fingerprint = super::known_hosts::KnownHostsStore::fingerprint(server_public_key);
+        let actual_fingerprint =
+            super::known_hosts::KnownHostsStore::fingerprint(server_public_key);
 
         if let Some(expected_fingerprint) = self.expected_host_key_fingerprint.as_deref() {
             if actual_fingerprint != expected_fingerprint {

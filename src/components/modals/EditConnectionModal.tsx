@@ -20,7 +20,6 @@ import { ConnectionInfo } from '../../types';
 import { useAppStore } from '../../store/appStore';
 import { useSessionTreeStore } from '../../store/sessionTreeStore';
 import { api } from '../../lib/api';
-import { buildTestConnectionRequest } from '../../lib/testConnectionRequest';
 
 export type EditConnectionSubmitPayload = {
   connection: ConnectionInfo;

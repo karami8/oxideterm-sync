@@ -226,9 +226,9 @@ function toSavedConnectionSnapshot(connection: {
   created_at: string;
   last_used_at: string | null;
   color: string | null;
-  tags: string[];
+  tags: ReadonlyArray<string>;
   agent_forwarding?: boolean;
-  proxy_chain?: Array<{
+  proxy_chain?: ReadonlyArray<{
     host: string;
     port: number;
     username: string;

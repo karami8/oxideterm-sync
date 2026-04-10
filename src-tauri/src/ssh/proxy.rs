@@ -314,8 +314,7 @@ async fn authenticate_proxy_hop(
         }
         AuthMethod::KeyboardInteractive => {
             return Err(SshError::AuthenticationFailed(
-                "KeyboardInteractive authentication not supported for proxy chain hops"
-                    .to_string(),
+                "KeyboardInteractive authentication not supported for proxy chain hops".to_string(),
             ));
         }
     };
@@ -575,7 +574,10 @@ pub async fn connect_via_proxy_for_test(
     let num_hops = chain.hops.len();
     if num_hops > MAX_CHAIN_DEPTH as usize {
         return Err(ProxyConnectError::InvalidChain {
-            detail: format!("Proxy chain too long: {} hops (max {})", num_hops, MAX_CHAIN_DEPTH),
+            detail: format!(
+                "Proxy chain too long: {} hops (max {})",
+                num_hops, MAX_CHAIN_DEPTH
+            ),
             total_hops: num_hops,
         });
     }
@@ -644,11 +646,13 @@ pub async fn connect_via_proxy_for_test(
         auth: target_auth.clone(),
     };
 
-    let stream = current_stream.ok_or_else(|| ProxyConnectError::step(
-        ProxyConnectOperation::OpenTunnel,
-        target_endpoint(target_host, target_port, target_username, num_hops),
-        SshError::ConnectionFailed("No stream available for target connection".into()),
-    ))?;
+    let stream = current_stream.ok_or_else(|| {
+        ProxyConnectError::step(
+            ProxyConnectOperation::OpenTunnel,
+            target_endpoint(target_host, target_port, target_username, num_hops),
+            SshError::ConnectionFailed("No stream available for target connection".into()),
+        )
+    })?;
 
     let target_handle = connect_via_stream_for_test(
         &target_hop,
@@ -671,7 +675,11 @@ async fn direct_connect_for_test(
 ) -> Result<Handle<ClientHandler>, ProxyConnectError> {
     let addr = format!("{}:{}", hop.host, hop.port);
     let socket_addr = resolve_socket_addr(&addr).map_err(|source| {
-        ProxyConnectError::step(ProxyConnectOperation::ResolveAddress, endpoint.clone(), source)
+        ProxyConnectError::step(
+            ProxyConnectOperation::ResolveAddress,
+            endpoint.clone(),
+            source,
+        )
     })?;
 
     let ssh_config = build_client_config();
@@ -699,7 +707,9 @@ async fn direct_connect_for_test(
 
     authenticate_proxy_hop(&mut handle, hop, ProxyAuthPath::Direct)
         .await
-        .map_err(|source| ProxyConnectError::step(ProxyConnectOperation::Authenticate, endpoint, source))?;
+        .map_err(|source| {
+            ProxyConnectError::step(ProxyConnectOperation::Authenticate, endpoint, source)
+        })?;
 
     Ok(handle)
 }
@@ -723,7 +733,10 @@ async fn connect_via_stream_for_test(
         ProxyConnectError::step(
             ProxyConnectOperation::EstablishTransport,
             endpoint.clone(),
-            SshError::Timeout(format!("Connection to {}:{} via stream timed out", hop.host, hop.port)),
+            SshError::Timeout(format!(
+                "Connection to {}:{} via stream timed out",
+                hop.host, hop.port
+            )),
         )
     })?
     .map_err(|e| {
@@ -739,7 +752,9 @@ async fn connect_via_stream_for_test(
 
     authenticate_proxy_hop(&mut handle, hop, ProxyAuthPath::Stream)
         .await
-        .map_err(|source| ProxyConnectError::step(ProxyConnectOperation::Authenticate, endpoint, source))?;
+        .map_err(|source| {
+            ProxyConnectError::step(ProxyConnectOperation::Authenticate, endpoint, source)
+        })?;
 
     Ok(handle)
 }
@@ -849,8 +864,8 @@ async fn connect_via_proxy_internal(
         SshError::ConnectionFailed("No stream available for target connection".into())
     })?;
 
-    let target_handle = connect_via_stream(&target_hop, stream, timeout_secs, trust_unknown_host)
-        .await?;
+    let target_handle =
+        connect_via_stream(&target_hop, stream, timeout_secs, trust_unknown_host).await?;
 
     info!("Target connection established");
 

@@ -219,7 +219,16 @@ describe('SessionManagerPanel', () => {
       agent_forwarding: false,
       proxy_chain: [],
     });
-    vi.mocked(api.testConnection).mockResolvedValue({ success: true, elapsedMs: 12 });
+    vi.mocked(api.testConnection).mockResolvedValue({
+      success: true,
+      elapsedMs: 12,
+      diagnostic: {
+        phase: 'complete',
+        category: 'success',
+        summary: 'Connection test succeeded',
+        detail: 'Connected successfully',
+      },
+    });
 
     render(<SessionManagerPanel />);
     fireEvent.click(screen.getByText('test-row'));

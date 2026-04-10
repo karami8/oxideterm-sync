@@ -526,18 +526,31 @@ fn format_location(location: &TestConnectionLocation) -> String {
             location.port,
         ),
         TestConnectionLocationKind::Target => {
-            format!("target {}@{}:{}", location.username, location.host, location.port)
+            format!(
+                "target {}@{}:{}",
+                location.username, location.host, location.port
+            )
         }
     }
 }
 
 fn route_overview(request: &ConnectRequest) -> String {
-    if let Some(proxy_chain) = request.proxy_chain.as_ref().filter(|chain| !chain.is_empty()) {
+    if let Some(proxy_chain) = request
+        .proxy_chain
+        .as_ref()
+        .filter(|chain| !chain.is_empty())
+    {
         let hops = proxy_chain
             .iter()
             .enumerate()
             .map(|(index, hop)| {
-                format!("jump host {} {}@{}:{}", index + 1, hop.username, hop.host, hop.port)
+                format!(
+                    "jump host {} {}@{}:{}",
+                    index + 1,
+                    hop.username,
+                    hop.host,
+                    hop.port
+                )
             })
             .collect::<Vec<_>>()
             .join(" -> ");
@@ -546,7 +559,10 @@ fn route_overview(request: &ConnectRequest) -> String {
             hops, request.username, request.host, request.port
         )
     } else {
-        format!("target {}@{}:{}", request.username, request.host, request.port)
+        format!(
+            "target {}@{}:{}",
+            request.username, request.host, request.port
+        )
     }
 }
 
@@ -588,7 +604,9 @@ fn build_failed_test_connection_response(
     }
 }
 
-fn classify_test_connection_error(error: &SshError) -> (TestConnectionPhase, TestConnectionCategory) {
+fn classify_test_connection_error(
+    error: &SshError,
+) -> (TestConnectionPhase, TestConnectionCategory) {
     match error {
         SshError::Timeout(message) => {
             let phase = if message.to_lowercase().contains("auth") {
@@ -602,7 +620,9 @@ fn classify_test_connection_error(error: &SshError) -> (TestConnectionPhase, Tes
             TestConnectionPhase::Authentication,
             TestConnectionCategory::Authentication,
         ),
-        SshError::KeyError(_) | SshError::CertificateLoadError(_) | SshError::CertificateParseError(_) => (
+        SshError::KeyError(_)
+        | SshError::CertificateLoadError(_)
+        | SshError::CertificateParseError(_) => (
             TestConnectionPhase::Authentication,
             TestConnectionCategory::KeyMaterial,
         ),
@@ -614,9 +634,10 @@ fn classify_test_connection_error(error: &SshError) -> (TestConnectionPhase, Tes
             TestConnectionPhase::Transport,
             TestConnectionCategory::Protocol,
         ),
-        SshError::DnsResolution { .. } => {
-            (TestConnectionPhase::Transport, TestConnectionCategory::DnsResolution)
-        }
+        SshError::DnsResolution { .. } => (
+            TestConnectionPhase::Transport,
+            TestConnectionCategory::DnsResolution,
+        ),
         SshError::HostKeyUnknown { .. } => (
             TestConnectionPhase::HostKeyVerification,
             TestConnectionCategory::HostKeyUnknown,
@@ -625,12 +646,21 @@ fn classify_test_connection_error(error: &SshError) -> (TestConnectionPhase, Tes
             TestConnectionPhase::HostKeyVerification,
             TestConnectionCategory::HostKeyChanged,
         ),
-        SshError::ConnectionFailed(_) => (TestConnectionPhase::Transport, TestConnectionCategory::Unknown),
-        _ => (TestConnectionPhase::Preparation, TestConnectionCategory::Unknown),
+        SshError::ConnectionFailed(_) => (
+            TestConnectionPhase::Transport,
+            TestConnectionCategory::Unknown,
+        ),
+        _ => (
+            TestConnectionPhase::Preparation,
+            TestConnectionCategory::Unknown,
+        ),
     }
 }
 
-fn direct_failure_summary(phase: &TestConnectionPhase, category: &TestConnectionCategory) -> String {
+fn direct_failure_summary(
+    phase: &TestConnectionPhase,
+    category: &TestConnectionCategory,
+) -> String {
     match phase {
         TestConnectionPhase::Preparation => match category {
             TestConnectionCategory::KeyMaterial => {
@@ -638,12 +668,16 @@ fn direct_failure_summary(phase: &TestConnectionPhase, category: &TestConnection
             }
             _ => "Target connection request is incomplete".to_string(),
         },
-        TestConnectionPhase::HostKeyVerification => "Target host key verification failed".to_string(),
+        TestConnectionPhase::HostKeyVerification => {
+            "Target host key verification failed".to_string()
+        }
         TestConnectionPhase::Transport => match category {
             TestConnectionCategory::DnsResolution => "Target DNS resolution failed".to_string(),
             TestConnectionCategory::Timeout => "Timed out reaching the target".to_string(),
             TestConnectionCategory::Network => "Target network connection failed".to_string(),
-            TestConnectionCategory::Protocol => "Target SSH transport negotiation failed".to_string(),
+            TestConnectionCategory::Protocol => {
+                "Target SSH transport negotiation failed".to_string()
+            }
             _ => "Target SSH transport failed".to_string(),
         },
         TestConnectionPhase::Authentication => match category {
@@ -861,9 +895,7 @@ fn build_proxy_chain(requests: &[ProxyChainRequest]) -> Result<ProxyChain, (usiz
 /// disconnects. This verifies connectivity, authentication, and
 /// reports the round-trip time.
 #[tauri::command]
-pub async fn test_connection(
-    request: ConnectRequest,
-) -> Result<TestConnectionResponse, String> {
+pub async fn test_connection(request: ConnectRequest) -> Result<TestConnectionResponse, String> {
     info!(
         "Testing connection: {}@{}:{}",
         request.username, request.host, request.port
@@ -893,8 +925,10 @@ pub async fn test_connection(
         }
     };
 
-    let response = if let Some(proxy_chain_requests) =
-        request.proxy_chain.as_ref().filter(|chain| !chain.is_empty())
+    let response = if let Some(proxy_chain_requests) = request
+        .proxy_chain
+        .as_ref()
+        .filter(|chain| !chain.is_empty())
     {
         let proxy_chain = match build_proxy_chain(proxy_chain_requests) {
             Ok(chain) => chain,
@@ -983,10 +1017,7 @@ pub async fn test_connection(
 
     info!(
         "Test connection finished (success={}) for {}@{}:{}",
-        response.success,
-        request.username,
-        request.host,
-        request.port
+        response.success, request.username, request.host, request.port
     );
 
     Ok(response)
@@ -1159,17 +1190,24 @@ mod tests {
                     total_hops: 2,
                     via_hop_index: Some(1),
                 },
-                source: SshError::ConnectionFailed(
-                    "administratively prohibited".to_string(),
-                ),
+                source: SshError::ConnectionFailed("administratively prohibited".to_string()),
             },
         );
 
         assert!(matches!(diagnostic.phase, TestConnectionPhase::Transport));
-        assert!(matches!(diagnostic.category, TestConnectionCategory::Tunnel));
-        assert_eq!(diagnostic.summary, "Tunnel from jump host 1 to jump host 2 failed");
+        assert!(matches!(
+            diagnostic.category,
+            TestConnectionCategory::Tunnel
+        ));
+        assert_eq!(
+            diagnostic.summary,
+            "Tunnel from jump host 1 to jump host 2 failed"
+        );
         let location = diagnostic.location.expect("missing location");
-        assert!(matches!(location.kind, TestConnectionLocationKind::JumpHost));
+        assert!(matches!(
+            location.kind,
+            TestConnectionLocationKind::JumpHost
+        ));
         assert_eq!(location.hop_index, Some(2));
         assert_eq!(location.via_hop_index, Some(1));
     }
@@ -1214,8 +1252,14 @@ mod tests {
             },
         );
 
-        assert!(matches!(diagnostic.phase, TestConnectionPhase::Authentication));
-        assert!(matches!(diagnostic.category, TestConnectionCategory::Authentication));
+        assert!(matches!(
+            diagnostic.phase,
+            TestConnectionPhase::Authentication
+        ));
+        assert!(matches!(
+            diagnostic.category,
+            TestConnectionCategory::Authentication
+        ));
         assert_eq!(
             diagnostic.summary,
             "Target authentication failed after jump hosts connected"

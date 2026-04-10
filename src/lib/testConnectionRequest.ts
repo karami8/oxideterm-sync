@@ -103,6 +103,8 @@ function buildProxyHopRequest(input: ManualProxyHopInput): TestConnectionProxyHo
 function normalizeProxyHopInput(
   proxyHop: ProxyHopConfig | SavedConnectionProxyHopForConnect,
 ): ManualProxyHopInput {
+  const certPath = 'cert_path' in proxyHop ? proxyHop.cert_path : undefined;
+
   return {
     host: proxyHop.host,
     port: proxyHop.port,
@@ -110,7 +112,7 @@ function normalizeProxyHopInput(
     authType: proxyHop.auth_type as ManualProxyHopInput['authType'],
     password: proxyHop.password,
     keyPath: proxyHop.key_path,
-    certPath: proxyHop.cert_path,
+    certPath,
     passphrase: proxyHop.passphrase,
   };
 }

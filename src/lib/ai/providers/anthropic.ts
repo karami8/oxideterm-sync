@@ -271,8 +271,18 @@ export const anthropicProvider: AiStreamProvider = {
         }
       }
 
-      if (currentToolUse) {
-        yield { type: 'tool_call_complete', id: currentToolUse.id, name: currentToolUse.name, arguments: currentToolUse.arguments };
+      const pendingToolUse = currentToolUse as unknown as {
+        id?: string;
+        name?: string;
+        arguments?: string;
+      } | null;
+      if (pendingToolUse?.id && pendingToolUse.name) {
+        yield {
+          type: 'tool_call_complete',
+          id: pendingToolUse.id,
+          name: pendingToolUse.name,
+          arguments: pendingToolUse.arguments ?? '',
+        };
         currentToolUse = null;
       }
     } finally {

@@ -102,7 +102,7 @@ export type TestConnectionProxyHop =
       passphrase?: string;
     };
 
-export type TestConnectionRequest = TestConnectionRequestOptions &
+export type TestConnectionRequest = TestConnectionRequestOptions & (
   | {
       host: string;
       port: number;
@@ -144,7 +144,7 @@ export type TestConnectionRequest = TestConnectionRequestOptions &
       key_path: string;
       cert_path: string;
       passphrase?: string;
-    };
+    });
 
 export type TestConnectionPhase =
   | 'preparation'
