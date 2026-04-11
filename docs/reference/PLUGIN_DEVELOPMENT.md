@@ -739,6 +739,9 @@ export function deactivate() {
 | | `sftp_transfer_stats` | 传输队列统计 |
 | **系统** | `get_app_version` | 获取 OxideTerm 版本 |
 | | `get_system_info` | 获取系统信息 |
+| **网络** | `plugin_http_request` | 通过宿主 Rust 后端发起二进制安全 HTTP 请求，适用于 WebDAV、对象存储或其他受 CORS 影响的同步场景 |
+
+> `plugin_http_request` 的请求体和响应体都使用 base64 传输，便于插件安全地处理非文本载荷。使用前仍需在 `contributes.apiCommands` 中显式声明该命令。
 
 ### 4.8 locales
 
@@ -1295,6 +1298,8 @@ ui.showProgress(title: string): ProgressReporter
 显示进度指示器，返回可更新的 `ProgressReporter`。
 
 宿主会在右上角显示轻量进度 HUD。当 `report(value, total)` 到达 100% 时，进度项会自动收起。
+
+> 注意：当前 `ProgressReporter` 没有 `dispose()` 或手动关闭接口。如果一次操作已经失败或提前结束，也应主动调用一次完成态上报，例如 `progress.report(1, 1, 'Failed')`，否则 HUD 会持续停留。
 
 ```typescript
 type ProgressReporter = {
@@ -4158,7 +4163,12 @@ npx esbuild src/index.ts \
 
 ### Q: 插件可以发网络请求吗？
 
-可以使用浏览器原生的 `fetch()` API。但注意 Tauri 的 CSP 策略可能限制某些域名。
+可以，但要区分两类场景：
+
+1. 普通 JSON API 可以直接使用浏览器原生的 `fetch()`。
+2. WebDAV、S3 兼容存储、Dropbox 或其他二进制请求较多且容易被 WebView CORS 限制的场景，建议声明 `plugin_http_request` 并通过 `ctx.api.invoke()` 走宿主 Rust 代理。
+
+`plugin_http_request` 只允许 HTTP/HTTPS URL，请求体参数为 `bodyBase64`，响应会返回 `{ status, headers, bodyBase64 }`。这种方式通常比插件侧直接 `fetch()` 更稳定，尤其适合同步插件。
 
 ### Q: 如何在插件中使用 JSX？
 
