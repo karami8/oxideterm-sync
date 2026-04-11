@@ -143,12 +143,15 @@ pub async fn preflight_export(
     let mut connections_with_passwords = 0;
     let mut connections_with_agent = 0;
     let mut total_key_bytes: u64 = 0;
+    let mut total_connections = 0;
 
     for id in &connection_ids {
         let saved_conn = match config.get_connection(id) {
             Some(c) => c,
             None => continue,
         };
+
+        total_connections += 1;
 
         // Check main connection auth
         match &saved_conn.auth {
@@ -231,7 +234,7 @@ pub async fn preflight_export(
     }
 
     Ok(ExportPreflightResult {
-        total_connections: connection_ids.len(),
+        total_connections,
         missing_keys,
         connections_with_keys,
         connections_with_passwords,
@@ -268,7 +271,7 @@ pub async fn export_to_oxide(
     for id in &connection_ids {
         let saved_conn = config
             .get_connection(id)
-            .ok_or_else(|| format!("Connection {} not found", id))?;
+            .ok_or_else(|| format!("Connection {} not found or has been deleted", id))?;
 
         // Helper function to convert SavedAuth to EncryptedAuth
         let convert_auth = |auth: &SavedAuth, context: &str| -> Result<EncryptedAuth, String> {

@@ -24,6 +24,7 @@ import { initializePluginSystem } from './lib/plugin/pluginLoader';
 import { setupConnectionBridge, setupNodeStateBridge, setupTransferBridge, pluginEventBridge } from './lib/plugin/pluginEventBridge';
 import { useToastStore } from './hooks/useToast';
 import { useUpdateStore } from './store/updateStore';
+import { autoSyncService } from './lib/autoSyncService';
 import { PluginConfirmDialog } from './components/plugin/PluginConfirmDialog';
 import { PluginProgressHost } from './components/plugin/PluginProgressHost';
 import { CommandPalette } from './components/command-palette/CommandPalette';
@@ -217,6 +218,54 @@ function App() {
       },
     );
     return unsub;
+  }, []);
+
+  // Initialize auto-sync service
+  useEffect(() => {
+    console.log('[App] Initializing auto-sync service');
+
+    // Start auto-sync service on app startup
+    autoSyncService.start();
+
+    // Listen for sync settings changes to restart/stop auto-sync
+    const unsub = useSettingsStore.subscribe(
+      (state) => state.settings.sync,
+      (sync) => {
+        if (sync?.autoSyncEnabled && sync?.backendUrl?.trim()) {
+          console.log('[App] Sync settings changed, restarting auto-sync');
+          autoSyncService.start();
+        } else {
+          console.log('[App] Sync settings changed, stopping auto-sync');
+          autoSyncService.stop();
+        }
+      },
+    );
+
+    // Handle page visibility changes (stop when app is in background, restart when visible)
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        console.log('[App] App hidden, stopping auto-sync');
+        autoSyncService.stop();
+      } else {
+        console.log('[App] App visible, restarting auto-sync');
+        // Check if auto-sync should be running based on current settings
+        const store = useSettingsStore.getState();
+        const sync = store.getSync();
+        if (sync?.autoSyncEnabled && sync?.backendUrl?.trim()) {
+          autoSyncService.start();
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Cleanup on unmount
+    return () => {
+      console.log('[App] Cleaning up auto-sync service');
+      unsub();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      autoSyncService.stop();
+    };
   }, []);
 
   // Initialize terminal background: re-grant asset scope & reconcile stored path

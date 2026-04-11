@@ -6,7 +6,7 @@ Thank you for your interest in OxideTerm! We appreciate every form of contributi
 
 ### Bug Reports & Feature Requests
 
-The best way to contribute is through [GitHub Issues](https://github.com/AnalyseDeCircuit/OxideTerm/issues). Clear, reproducible bug reports and well-thought-out feature proposals help shape the project's direction.
+The best way to contribute is through [GitHub Issues](https://github.com/karami8/oxideterm-sync/issues). Clear, reproducible bug reports and well-thought-out feature proposals help shape the project's direction.
 
 ### Plugins
 
@@ -40,7 +40,7 @@ You may still clone and build locally for your own use or for security research 
 ### Commands
 
 ```bash
-git clone https://github.com/AnalyseDeCircuit/OxideTerm.git
+git clone https://github.com/karami8/oxideterm-sync.git
 cd OxideTerm
 pnpm install
 
@@ -109,7 +109,7 @@ All contributions must meet the following standards. Familiarity with these is e
 
 ## Questions
 
-Use [GitHub Discussions Q&A](https://github.com/AnalyseDeCircuit/oxideterm/discussions/categories/q-a) for general questions (not for undisclosed security issues — use [SECURITY.md](SECURITY.md)).
+Use [GitHub Discussions Q&A](https://github.com/karami8/oxideterm-sync/discussions/categories/q-a) for general questions (not for undisclosed security issues — use [SECURITY.md](SECURITY.md)).
 
 ---
 

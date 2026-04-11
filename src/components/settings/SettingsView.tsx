@@ -10,6 +10,7 @@ import { invoke, convertFileSrc } from '@tauri-apps/api/core';
 import { open as openFileDialog } from '@tauri-apps/plugin-dialog';
 import { useAppStore } from '../../store/appStore';
 import { useSettingsStore, type UpdateChannel, type RendererType, type AdaptiveRendererMode, type FontFamily, type CursorStyle, type Language, type BackgroundFit, type UiDensity, type AnimationSpeed, type FrostedGlassMode } from '../../store/settingsStore';
+import type { SyncClientConfig, SyncStatus } from '../../lib/api';
 import { useTabBgActive } from '../../hooks/useTabBackground';
 import { useUpdateStore } from '../../store/updateStore';
 import { Button } from '../ui/button';
@@ -53,6 +54,8 @@ import { KeybindingEditorSection } from './KeybindingEditorSection';
 import { ThemeEditorModal } from './ThemeEditorModal';
 import { useToast } from '../../hooks/useToast';
 import { useConfirm } from '../../hooks/useConfirm';
+import { AUTO_SYNC_INTERVALS } from '../../lib/autoSyncService';
+import { dataRefreshService } from '../../lib/dataRefreshService';
 
 const formatThemeName = (key: string) => {
     if (isCustomTheme(key)) {
@@ -723,7 +726,7 @@ const HelpAboutSection = () => {
                         <ExternalLink className="h-4 w-4 text-theme-text-muted opacity-0 group-hover:opacity-100 transition-opacity" />
                     </a>
                     <a
-                        href="https://github.com/AnalyseDeCircuit/oxideterm"
+                        href="https://github.com/karami8/oxideterm-sync"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center justify-between p-3 rounded-lg hover:bg-theme-bg-hover transition-colors group"
@@ -735,7 +738,7 @@ const HelpAboutSection = () => {
                         <ExternalLink className="h-4 w-4 text-theme-text-muted opacity-0 group-hover:opacity-100 transition-opacity" />
                     </a>
                     <a
-                        href="https://github.com/AnalyseDeCircuit/oxideterm/issues"
+                        href="https://github.com/karami8/oxideterm-sync/issues"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center justify-between p-3 rounded-lg hover:bg-theme-bg-hover transition-colors group"
@@ -747,7 +750,7 @@ const HelpAboutSection = () => {
                         <ExternalLink className="h-4 w-4 text-theme-text-muted opacity-0 group-hover:opacity-100 transition-opacity" />
                     </a>
                     <a
-                        href="https://github.com/AnalyseDeCircuit/oxideterm/blob/main/DISCLAIMER.md"
+                        href="https://github.com/karami8/oxideterm-sync/blob/main/DISCLAIMER.md"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center justify-between p-3 rounded-lg hover:bg-theme-bg-hover transition-colors group"
@@ -1142,8 +1145,8 @@ export const SettingsView = () => {
     const [activeTab, setActiveTab] = useState('general');
 
     // Use unified settings store
-    const { settings, updateTerminal, updateAppearance, updateConnectionDefaults, updateAi, updateSftp, updateIde, updateReconnect, updateConnectionPool, setLanguage, addProvider, removeProvider, updateProvider, setActiveProvider, refreshProviderModels, setUserContextWindow } = useSettingsStore();
-    const { general, terminal, appearance, connectionDefaults, ai, sftp, ide, reconnect } = settings;
+    const { settings, updateTerminal, updateAppearance, updateConnectionDefaults, updateAi, updateSftp, updateIde, updateReconnect, updateConnectionPool, updateSync, setLanguage, addProvider, removeProvider, updateProvider, setActiveProvider, refreshProviderModels, setUserContextWindow } = useSettingsStore();
+    const { general, terminal, appearance, connectionDefaults, ai, sftp, ide, reconnect, sync } = settings;
 
     // AI enable confirmation dialog
     const [showAiConfirm, setShowAiConfirm] = useState(false);
@@ -1197,6 +1200,39 @@ export const SettingsView = () => {
     const [cliStatus, setCliStatus] = useState<{ bundled: boolean; installed: boolean; install_path: string | null; bundle_path: string | null; app_version: string; matches_bundled: boolean | null; needs_reinstall: boolean } | null>(null);
     const [cliLoading, setCliLoading] = useState(false);
 
+    // Sync settings state
+    const [syncApiKeyInput, setSyncApiKeyInput] = useState('');
+    const [syncHasApiKey, setSyncHasApiKey] = useState(false);
+    const [syncKeySaving, setSyncKeySaving] = useState(false);
+    const [syncTesting, setSyncTesting] = useState(false);
+    const [syncNowRunning, setSyncNowRunning] = useState(false);
+    const [syncLastStatus, setSyncLastStatus] = useState<SyncStatus | null>(null);
+    const [isCustomInterval, setIsCustomInterval] = useState(false);
+
+    const localizeSyncStatusMessage = useCallback((status: SyncStatus, action: 'test' | 'sync'): string => {
+        if (status.success) {
+            return action === 'test'
+                ? t('settings_view.sync.test_success', 'Connection test successful')
+                : t('settings_view.sync.sync_now_success', 'Sync successful');
+        }
+        if (status.message?.trim()) {
+            return status.message;
+        }
+        return action === 'test'
+            ? t('settings_view.sync.test_failed', 'Connection test failed')
+            : t('settings_view.sync.sync_now_failed', 'Sync failed');
+    }, [t]);
+
+    const canRunSync = !!sync?.backendUrl?.trim();
+
+    const buildSyncConfig = useCallback((): SyncClientConfig => ({
+        backendUrl: sync?.backendUrl?.trim() || '',
+        verifyTls: sync?.verifyTls ?? true,
+        timeoutSecs: sync?.timeoutSecs ?? 15,
+        syncMode: sync?.syncMode ?? 'push',
+        settingsPayload: settings as unknown as Record<string, unknown>,
+    }), [settings, sync]);
+
     useEffect(() => {
         if (activeTab === 'general') {
             api.getDataDirectory()
@@ -1229,8 +1265,26 @@ export const SettingsView = () => {
                     console.error('Failed to load SSH hosts:', e);
                     setSshHosts([]);
                 });
+        } else if (activeTab === 'sync') {
+            api.syncHasApiKey()
+                .then(setSyncHasApiKey)
+                .catch(() => setSyncHasApiKey(false));
+
+            // Initialize isCustomInterval based on current autoSyncInterval
+            if (sync?.autoSyncInterval && !AUTO_SYNC_INTERVALS.find(i => i.value === sync.autoSyncInterval)) {
+                setIsCustomInterval(true);
+            } else {
+                setIsCustomInterval(false);
+            }
         }
-    }, [activeTab]);
+    }, [activeTab, sync?.autoSyncInterval]);
+
+    // Update isCustomInterval when autoSyncInterval changes
+    useEffect(() => {
+        if (sync?.autoSyncInterval && AUTO_SYNC_INTERVALS.find(i => i.value === sync.autoSyncInterval)) {
+            setIsCustomInterval(false);
+        }
+    }, [sync?.autoSyncInterval]);
 
     const handleCreateGroup = async () => {
         if (!newGroup.trim()) return;
@@ -1330,6 +1384,100 @@ export const SettingsView = () => {
         }
     };
 
+    const handleSyncSaveApiKey = async () => {
+        if (!syncApiKeyInput.trim()) return;
+        setSyncKeySaving(true);
+        try {
+            await api.syncSetApiKey(syncApiKeyInput.trim());
+            setSyncApiKeyInput('');
+            setSyncHasApiKey(true);
+            toastSuccess(t('settings_view.sync.api_key_saved', '同步 API Key 已保存'));
+        } catch (e) {
+            toastError(t('settings_view.sync.api_key_save_failed', { defaultValue: '保存同步 API Key 失败: {{error}}', error: String(e) }));
+        } finally {
+            setSyncKeySaving(false);
+        }
+    };
+
+    const handleSyncDeleteApiKey = async () => {
+        const confirmed = await confirmDialog({
+            title: t('settings_view.sync.api_key_delete_confirm', '确认删除同步 API Key？'),
+            variant: 'danger',
+        });
+        if (!confirmed) return;
+        try {
+            await api.syncDeleteApiKey();
+            setSyncHasApiKey(false);
+            toastSuccess(t('settings_view.sync.api_key_deleted', '同步 API Key 已删除'));
+        } catch (e) {
+            toastError(t('settings_view.sync.api_key_delete_failed', { defaultValue: '删除同步 API Key 失败: {{error}}', error: String(e) }));
+        }
+    };
+
+    const handleSyncTestConnection = async () => {
+        if (!canRunSync) {
+            toastError(t('settings_view.sync.missing_required_fields', '请先填写后端地址'));
+            return;
+        }
+        setSyncTesting(true);
+        try {
+            const status = await api.syncTestConnection(buildSyncConfig());
+            const localizedStatus: SyncStatus = {
+                ...status,
+                message: localizeSyncStatusMessage(status, 'test'),
+            };
+            setSyncLastStatus(localizedStatus);
+            if (status.success) {
+                toastSuccess(localizedStatus.message);
+            } else {
+                toastError(localizedStatus.message);
+            }
+        } catch (e) {
+            toastError(t('settings_view.sync.test_failed', { defaultValue: '连接测试失败: {{error}}', error: String(e) }));
+        } finally {
+            setSyncTesting(false);
+        }
+    };
+
+    const handleSyncNow = async () => {
+        if (!canRunSync) {
+            toastError(t('settings_view.sync.missing_required_fields', '请先填写后端地址'));
+            return;
+        }
+        setSyncNowRunning(true);
+        try {
+            const status = await api.syncNow(buildSyncConfig());
+            const localizedStatus: SyncStatus = {
+                ...status,
+                message: localizeSyncStatusMessage(status, 'sync'),
+            };
+            setSyncLastStatus(localizedStatus);
+            if (status.success) {
+                toastSuccess(localizedStatus.message);
+                
+                // Refresh application data after successful sync
+                try {
+                    await dataRefreshService.refreshAfterSync({
+                        refreshConnections: true,
+                        refreshForwards: true,
+                        refreshSettings: true,
+                        refreshTerminals: true,
+                        showToast: true,
+                    });
+                } catch (refreshError) {
+                    console.error('[Sync] Failed to refresh data after sync:', refreshError);
+                    // Don't show error toast here, as the sync itself was successful
+                }
+            } else {
+                toastError(localizedStatus.message);
+            }
+        } catch (e) {
+            toastError(t('settings_view.sync.sync_now_failed', { defaultValue: '同步失败: {{error}}', error: String(e) }));
+        } finally {
+            setSyncNowRunning(false);
+        }
+    };
+
     return (
         <div className={`flex h-full w-full text-theme-text ${bgActive ? '' : 'bg-theme-bg'}`} data-bg-active={bgActive || undefined}>
             {/* Sidebar */}
@@ -1395,6 +1543,13 @@ export const SettingsView = () => {
                         onClick={() => setActiveTab('reconnect')}
                     >
                         <WifiOff className="h-4 w-4" /> {t('settings_view.tabs.reconnect')}
+                    </Button>
+                    <Button
+                        variant={activeTab === 'sync' ? 'secondary' : 'ghost'}
+                        className="w-full justify-start gap-3 h-10 font-normal rounded-md"
+                        onClick={() => setActiveTab('sync')}
+                    >
+                        <RotateCw className="h-4 w-4" /> {t('settings_view.tabs.sync', '同步')}
                     </Button>
 
                     <Separator className="!my-2" />
@@ -3097,6 +3252,231 @@ export const SettingsView = () => {
 
                     {activeTab === 'local' && (
                         <LocalTerminalSettings />
+                    )}
+
+                    {activeTab === 'sync' && (
+                        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                            <div>
+                                <h3 className="text-2xl font-medium text-theme-text-heading mb-2">{t('settings_view.sync.title', '同步')}</h3>
+                                <p className="text-theme-text-muted">{t('settings_view.sync.description', '配置自建同步后端并执行连接测试或立即同步。')}</p>
+                            </div>
+                            <Separator />
+
+                            <div className="rounded-lg border border-theme-border bg-theme-bg-card p-5 space-y-5">
+                                <h4 className="text-sm font-medium text-theme-text uppercase tracking-wider">{t('settings_view.sync.backend', '后端配置')}</h4>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="grid gap-2 md:col-span-2">
+                                        <Label>{t('settings_view.sync.backend_url', '后端地址')}</Label>
+                                        <Input
+                                            value={sync?.backendUrl ?? ''}
+                                            onChange={(e) => updateSync('backendUrl', e.target.value)}
+                                            placeholder="https://your-sync-server.example.com"
+                                        />
+                                    </div>
+
+                                </div>
+
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <Label>{t('settings_view.sync.ignore_ssl', '忽略 SSL 证书校验')}</Label>
+                                        <p className="text-xs text-theme-text-muted mt-0.5">{t('settings_view.sync.ignore_ssl_hint', '仅用于自签名证书场景。生产环境建议开启证书校验。')}</p>
+                                    </div>
+                                    <Checkbox
+                                        checked={!(sync?.verifyTls ?? true)}
+                                        onCheckedChange={(checked) => updateSync('verifyTls', !(checked === true))}
+                                    />
+                                </div>
+
+                                <div className="flex items-center justify-between max-w-xs">
+                                    <div>
+                                        <Label>{t('settings_view.sync.timeout_secs', '超时（秒）')}</Label>
+                                    </div>
+                                    <Input
+                                        type="number"
+                                        min={3}
+                                        max={120}
+                                        className="w-24"
+                                        value={sync?.timeoutSecs ?? 15}
+                                        onChange={(e) => updateSync('timeoutSecs', Math.min(120, Math.max(3, parseInt(e.target.value, 10) || 15)))}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="rounded-lg border border-theme-border bg-theme-bg-card p-5 space-y-4">
+                                <h4 className="text-sm font-medium text-theme-text uppercase tracking-wider">{t('settings_view.sync.api_key', 'API Key')}</h4>
+
+                                <div className="flex items-center gap-2 max-w-2xl">
+                                    {syncHasApiKey ? (
+                                        <>
+                                            <div className="flex-1 h-10 px-3 flex items-center bg-theme-bg border border-theme-border/50 rounded text-theme-text-muted text-sm italic">
+                                                •••••••••••••••••••••••
+                                            </div>
+                                            <Button variant="outline" onClick={handleSyncDeleteApiKey}>
+                                                {t('settings_view.sync.delete_api_key', '删除')}
+                                            </Button>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Input
+                                                type="password"
+                                                className="flex-1"
+                                                placeholder={t('settings_view.sync.api_key_placeholder', '输入同步 API Key')}
+                                                value={syncApiKeyInput}
+                                                onChange={(e) => setSyncApiKeyInput(e.target.value)}
+                                            />
+                                            <Button
+                                                onClick={handleSyncSaveApiKey}
+                                                disabled={!syncApiKeyInput.trim() || syncKeySaving}
+                                            >
+                                                {syncKeySaving ? t('settings_view.sync.saving', '保存中...') : t('settings_view.sync.save_api_key', '保存')}
+                                            </Button>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Auto-sync settings */}
+                            <div className="rounded-lg border border-theme-border bg-theme-bg-card p-5 space-y-4">
+                                <h4 className="text-sm font-medium text-theme-text uppercase tracking-wider">{t('settings_view.sync.auto_sync', '自动同步')}</h4>
+                                
+                                {/* Auto-sync enabled toggle */}
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <Label>{t('settings_view.sync.auto_sync_enabled', '启用自动同步')}</Label>
+                                        <p className="text-xs text-theme-text-muted mt-0.5">
+                                            {t('settings_view.sync.auto_sync_enabled_hint', '定期自动将本地数据上传到后端服务器')}
+                                        </p>
+                                    </div>
+                                    <Checkbox
+                                        checked={sync?.autoSyncEnabled ?? false}
+                                        onCheckedChange={(checked) => updateSync('autoSyncEnabled', !!checked)}
+                                    />
+                                </div>
+
+                                {/* Auto-sync interval selection */}
+                                <div className={cn('space-y-4 transition-opacity', !(sync?.autoSyncEnabled ?? false) && 'opacity-50 pointer-events-none')}>
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <Label>{t('settings_view.sync.auto_sync_interval', '同步间隔')}</Label>
+                                            <p className="text-xs text-theme-text-muted mt-0.5">
+                                                {t('settings_view.sync.auto_sync_interval_hint', '选择自动上传同步的时间间隔')}
+                                            </p>
+                                        </div>
+                                        <Select
+                                            value={AUTO_SYNC_INTERVALS.find(i => i.value === sync?.autoSyncInterval) ? String(sync?.autoSyncInterval ?? 60) : 'custom'}
+                                            onValueChange={(value) => {
+                                                if (value === 'custom') {
+                                                    setIsCustomInterval(true);
+                                                    // 如果当前值在预定义列表中，保持该值不变，但显示自定义输入框
+                                                } else {
+                                                    setIsCustomInterval(false);
+                                                    updateSync('autoSyncInterval', parseInt(value));
+                                                }
+                                            }}
+                                        >
+                                            <SelectTrigger className="w-48">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {AUTO_SYNC_INTERVALS.map((interval) => (
+                                                    <SelectItem key={interval.value} value={String(interval.value)}>
+                                                        {t(`settings_view.sync.interval_${interval.value}m`, `${interval.value} min`)}
+                                                    </SelectItem>
+                                                ))}
+                                                <SelectItem value="custom">{t('settings_view.sync.custom_interval', '自定义...')}</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
+                                    {/* Custom interval input - show when user selected 'custom' or value is not in predefined list */}
+                                    {isCustomInterval && (
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <Label>{t('settings_view.sync.custom_interval_input', '自定义分钟数')}</Label>
+                                                <p className="text-xs text-theme-text-muted mt-0.5">
+                                                    {t('settings_view.sync.custom_interval_hint', '输入自定义的同步间隔（分钟，1分钟及以上）')}
+                                                </p>
+                                            </div>
+                                            <Input
+                                                type="number"
+                                                min={1}
+                                                max={10080} // 7天
+                                                className="w-48"
+                                                value={sync?.autoSyncInterval ?? 60}
+                                                onChange={(e) => {
+                                                    const value = parseInt(e.target.value);
+                                                    if (!isNaN(value) && value >= 1) {
+                                                        updateSync('autoSyncInterval', value);
+                                                    }
+                                                }}
+                                            />
+                                        </div>
+                                    )}
+
+                                    {/* Last sync time display */}
+                                    {sync?.lastAutoSyncTime && (
+                                        <div className="text-xs text-theme-text-muted pt-2 border-t border-theme-border/30">
+                                            {t('settings_view.sync.last_auto_sync_time', '上次自动同步时间')}: {new Date(sync.lastAutoSyncTime).toLocaleString()}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="rounded-lg border border-theme-border bg-theme-bg-card p-5 space-y-4">
+                                <h4 className="text-sm font-medium text-theme-text uppercase tracking-wider">{t('settings_view.sync.sync_mode', '同步模式')}</h4>
+                                <div className="flex items-center justify-between max-w-2xl">
+                                    <div>
+                                        <Label>{t('settings_view.sync.sync_mode_label', '同步方向')}</Label>
+                                        <p className="text-xs text-theme-text-muted mt-0.5">{t('settings_view.sync.sync_mode_hint', '选择手动同步执行的方向。自动同步始终为上传同步。')}</p>
+                                    </div>
+                                    <Select
+                                        value={sync?.syncMode ?? 'push'}
+                                        onValueChange={(value: 'push' | 'pull') => updateSync('syncMode', value)}
+                                    >
+                                        <SelectTrigger className="w-48">
+                                            <span className="truncate">
+                                                {sync?.syncMode === 'push' && t('settings_view.sync.sync_mode_push', '上传同步')}
+                                                {sync?.syncMode === 'pull' && t('settings_view.sync.sync_mode_pull', '拉取同步')}
+                                            </span>
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="push">{t('settings_view.sync.sync_mode_push', '上传同步')}</SelectItem>
+                                            <SelectItem value="pull">{t('settings_view.sync.sync_mode_pull', '拉取同步')}</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+
+                            <div className="rounded-lg border border-theme-border bg-theme-bg-card p-5 space-y-4">
+                                <h4 className="text-sm font-medium text-theme-text uppercase tracking-wider">{t('settings_view.sync.actions', '操作')}</h4>
+                                <div className="flex items-center gap-3">
+                                    <Button variant="outline" onClick={handleSyncTestConnection} disabled={syncTesting || syncNowRunning}>
+                                        {syncTesting ? t('settings_view.sync.testing', '测试中...') : t('settings_view.sync.test_connection', '测试连接')}
+                                    </Button>
+                                    <Button onClick={handleSyncNow} disabled={syncNowRunning || syncTesting}>
+                                        {syncNowRunning ? t('settings_view.sync.syncing', '同步中...') : t('settings_view.sync.sync_now', '立即同步')}
+                                    </Button>
+                                </div>
+
+                                {syncLastStatus && (
+                                    <div className={cn(
+                                        'rounded-md border p-3 text-sm',
+                                        syncLastStatus.success
+                                            ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
+                                            : 'border-red-500/30 bg-red-500/10 text-red-300'
+                                    )}>
+                                        <div className="font-medium mb-1">{syncLastStatus.message || (syncLastStatus.success ? t('settings_view.sync.ok', '成功') : t('settings_view.sync.failed', '失败'))}</div>
+                                        <div className="text-xs opacity-90">
+                                            ↑Conn {syncLastStatus.pushedConnections} / ↑Fwd {syncLastStatus.pushedForwards} / ↑Settings {syncLastStatus.pushedSettingsRecords} / ↑Creds {syncLastStatus.pushedCredentialsRecords} / ↓Conn {syncLastStatus.pulledConnections} / ↓Fwd {syncLastStatus.pulledForwards} / ↓Settings {syncLastStatus.pulledSettingsRecords} / ↓Creds {syncLastStatus.pulledCredentialsRecords}
+                                        </div>
+                                        {syncLastStatus.serverTime && (
+                                            <div className="text-xs opacity-75 mt-1">serverTime: {syncLastStatus.serverTime}</div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
                     )}
 
                     {activeTab === 'reconnect' && (

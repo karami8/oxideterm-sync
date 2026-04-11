@@ -16,7 +16,7 @@ OxideTerm has a runtime plugin system that supports custom extensions without mo
 
 OxideTerm 拥有运行时插件系统，无需修改核心代码即可实现自定义扩展。
 
-→ [Plugin Development Guide](https://github.com/AnalyseDeCircuit/OxideTerm/blob/main/docs/reference/PLUGIN_DEVELOPMENT.md)
+→ [Plugin Development Guide](https://github.com/karami8/oxideterm-sync/blob/main/docs/reference/PLUGIN_DEVELOPMENT.md)
 
 ---
 
@@ -27,7 +27,7 @@ Undiscussed PRs will be closed without review.
 
 所有贡献必须先在 Issue 中讨论，未经讨论的 PR 将直接关闭，不予审查。
 
-→ [Open an Issue](https://github.com/AnalyseDeCircuit/oxideterm/issues/new)
+→ [Open an Issue](https://github.com/karami8/oxideterm-sync/issues/new)
 
 ---
 

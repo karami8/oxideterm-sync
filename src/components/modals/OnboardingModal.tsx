@@ -818,7 +818,7 @@ export const OnboardingModal = () => {
 
       {/* GPL note */}
       <a
-        href="https://github.com/AnalyseDeCircuit/oxideterm/blob/main/DISCLAIMER.md"
+        href="https://github.com/karami8/oxideterm-sync/blob/main/DISCLAIMER.md"
         target="_blank"
         rel="noopener noreferrer"
         className="flex gap-2.5 p-3 rounded-md bg-theme-bg-sunken border border-theme-border hover:bg-theme-bg-hover transition-colors group"

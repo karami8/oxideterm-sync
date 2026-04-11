@@ -578,6 +578,7 @@ fn build_saved_connection_from_sync_payload(
         color: payload.color.clone(),
         tags: payload.tags.clone(),
         proxy_chain,
+        deleted: false,
     })
 }
 
@@ -752,11 +753,7 @@ pub async fn get_connections(
     state: State<'_, Arc<ConfigState>>,
 ) -> Result<Vec<ConnectionInfo>, String> {
     let config = state.config.read();
-    Ok(config
-        .connections
-        .iter()
-        .map(ConnectionInfo::from)
-        .collect())
+    Ok(config.active_connections().map(ConnectionInfo::from).collect())
 }
 
 /// Export a structured snapshot of saved connections for plugin-driven sync.
@@ -976,10 +973,14 @@ pub async fn save_connection(
         if let Some(id) = request.id {
             let jump_conn = if let Some(ref jump_host) = request.jump_host {
                 config
-                    .connections
-                    .iter()
-                    .find(|c| c.options.jump_host == Some(jump_host.clone()))
+                    .get_connection(jump_host)
                     .cloned()
+                    .or_else(|| {
+                        config
+                            .active_connections()
+                            .find(|c| c.name.eq_ignore_ascii_case(jump_host))
+                            .cloned()
+                    })
             } else {
                 None
             };
@@ -988,44 +989,35 @@ pub async fn save_connection(
                 .get_connection_mut(&id)
                 .ok_or("Connection not found")?;
 
-            if request.jump_host.is_some() {
-                if !matches!(&conn.auth, SavedAuth::Key { .. }) {
-                    conn.options.jump_host = None;
-                }
+            if let Some(jump_host) = request.jump_host.as_ref() {
+                let jump_conn = jump_conn.ok_or_else(|| {
+                    format!("Jump host not found: {}", jump_host)
+                })?;
 
-                app_handle
-                    .emit("connection:update", "saved")
-                    .map_err(|e| format!("Failed to emit connection:update: {}", e))?;
-                let mut proxy_chain = conn.proxy_chain.clone();
+                let hop_config = match &jump_conn.auth {
+                    SavedAuth::Key {
+                        key_path,
+                        passphrase_keychain_id,
+                        ..
+                    } => SavedAuth::Key {
+                        key_path: key_path.clone(),
+                        has_passphrase: false,
+                        passphrase_keychain_id: passphrase_keychain_id.clone(),
+                    },
+                    _ => {
+                        return Err(
+                            "Jump host must use key authentication for proxy chain".to_string()
+                        );
+                    }
+                };
 
-                if let Some(jump_conn) = jump_conn {
-                    let hop_config = match &jump_conn.auth {
-                        SavedAuth::Key {
-                            key_path,
-                            passphrase_keychain_id,
-                            ..
-                        } => SavedAuth::Key {
-                            key_path: key_path.clone(),
-                            has_passphrase: false,
-                            passphrase_keychain_id: passphrase_keychain_id.clone(),
-                        },
-                        _ => {
-                            return Err(
-                                "Jump host must use key authentication for proxy chain".to_string()
-                            );
-                        }
-                    };
-
-                    proxy_chain.push(ProxyHopConfig {
-                        host: jump_conn.host.clone(),
-                        port: jump_conn.port,
-                        username: jump_conn.username.clone(),
-                        auth: hop_config,
-                        agent_forwarding: false,
-                    });
-                }
-
-                conn.proxy_chain = proxy_chain;
+                conn.proxy_chain = vec![ProxyHopConfig {
+                    host: jump_conn.host.clone(),
+                    port: jump_conn.port,
+                    username: jump_conn.username.clone(),
+                    auth: hop_config,
+                    agent_forwarding: false,
+                }];
                 conn.options.jump_host = None;
             }
 
@@ -1218,6 +1210,7 @@ pub async fn save_connection(
                 color: request.color,
                 tags: request.tags,
                 proxy_chain,
+                deleted: false,
             };
 
             if let Some(ref group) = group {
@@ -1675,7 +1668,7 @@ pub async fn list_ssh_config_hosts(
     let hosts = parse_ssh_config(None).await.map_err(|e| e.to_string())?;
     let existing_names: HashSet<String> = {
         let config = state.config.read();
-        config.connections.iter().map(|c| c.name.clone()).collect()
+        config.active_connections().map(|c| c.name.clone()).collect()
     };
     Ok(hosts
         .iter()
@@ -1728,6 +1721,7 @@ pub async fn import_ssh_host(
         color: None,
         tags: vec!["ssh-config".to_string()],
         proxy_chain: Vec::new(),
+        deleted: false,
     };
 
     {
@@ -1766,9 +1760,9 @@ pub async fn import_ssh_hosts(
     let mut errors = Vec::new();
 
     // Collect existing names for conflict detection
-    let existing_names: HashSet<String> = {
+    let mut existing_names: HashSet<String> = {
         let config = state.config.read();
-        config.connections.iter().map(|c| c.name.clone()).collect()
+        config.active_connections().map(|c| c.name.clone()).collect()
     };
 
     for alias in &aliases {
@@ -1812,6 +1806,7 @@ pub async fn import_ssh_hosts(
             color: None,
             tags: vec!["ssh-config".to_string()],
             proxy_chain: Vec::new(),
+            deleted: false,
         };
 
         {
@@ -1823,6 +1818,7 @@ pub async fn import_ssh_hosts(
             }
         }
 
+        existing_names.insert(alias.clone());
         imported += 1;
     }
 

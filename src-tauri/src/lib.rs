@@ -627,6 +627,12 @@ pub fn run() {
         commands::plugin::get_plugin_secrets_batch,
         commands::plugin::has_plugin_secret,
         commands::plugin::delete_plugin_secret,
+        // Cloud sync commands
+        commands::sync_set_api_key,
+        commands::sync_has_api_key,
+        commands::sync_delete_api_key,
+        commands::sync_test_connection,
+        commands::sync_now,
         // Oxide file export/import commands
         commands::oxide_export::export_to_oxide,
         commands::oxide_export::preflight_export,
@@ -965,6 +971,12 @@ pub fn run() {
         commands::plugin::get_plugin_secrets_batch,
         commands::plugin::has_plugin_secret,
         commands::plugin::delete_plugin_secret,
+        // Cloud sync commands
+        commands::sync_set_api_key,
+        commands::sync_has_api_key,
+        commands::sync_delete_api_key,
+        commands::sync_test_connection,
+        commands::sync_now,
         // Oxide file export/import commands
         commands::oxide_export::export_to_oxide,
         commands::oxide_export::preflight_export,

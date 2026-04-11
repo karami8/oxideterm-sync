@@ -19,7 +19,7 @@ import {
 } from '../ui/dropdown-menu';
 
 /** GitHub repo URL for agent build instructions for unsupported architectures. */
-const AGENT_DOWNLOAD_BASE_URL = 'https://github.com/AnalyseDeCircuit/oxideterm/blob/main/agents/README.md';
+const AGENT_DOWNLOAD_BASE_URL = 'https://github.com/karami8/oxideterm-sync/blob/main/agents/README.md';
 
 export function IdeStatusBar() {
   const { t } = useTranslation();

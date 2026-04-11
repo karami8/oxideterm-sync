@@ -165,7 +165,7 @@ export class ErrorBoundary extends Component<Props, State> {
               <p className="text-xs text-theme-text-muted">
                 {i18n.t('error_boundary.help_text')}{' '}
                 <a 
-                  href="https://github.com/AnalyseDeCircuit/OxideTerm/issues" 
+                  href="https://github.com/karami8/oxideterm-sync/issues" 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="text-theme-accent hover:underline"

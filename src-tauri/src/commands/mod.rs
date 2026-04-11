@@ -37,6 +37,7 @@ pub mod scroll;
 pub mod session_tree;
 pub mod sftp;
 pub mod ssh;
+pub mod sync;
 
 pub use agent_history::*;
 pub use ai_chat::*;
@@ -64,3 +65,4 @@ pub use scroll::*;
 pub use session_tree::*;
 pub use sftp::*;
 pub use ssh::*;
+pub use sync::*;

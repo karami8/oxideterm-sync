@@ -5,14 +5,14 @@ body:
   - type: markdown
     attributes:
       value: |
-        **Not for security issues** — use [Report a vulnerability](https://github.com/AnalyseDeCircuit/OxideTerm/security/advisories/new) instead.
+        **Not for security issues** — use [Report a vulnerability](https://github.com/karami8/oxideterm-sync/security/advisories/new) instead.
         **非安全漏洞** — 请用 GitHub 私密漏洞报告，勿用本模板。
 
         **One bug per issue.** Please do not combine multiple unrelated bugs — open separate issues instead.
         **每个 Issue 只报一个 bug。** 请勿将多个不相关的问题合并提交，请分别创建 Issue。
 
-        **Not sure if it's a bug?** If you're asking "how do I …?" or unsure whether the behavior is expected, please check the [documentation](https://github.com/AnalyseDeCircuit/OxideTerm/tree/main/docs/reference) or ask in [Discussions Q&A](https://github.com/AnalyseDeCircuit/oxideterm/discussions/categories/q-a) first.
-        **不确定是否为 bug？** 如果你的问题是「怎么用」或不确定当前行为是否符合预期，请先查阅[文档](https://github.com/AnalyseDeCircuit/OxideTerm/tree/main/docs/reference)或到 [Discussions Q&A](https://github.com/AnalyseDeCircuit/oxideterm/discussions/categories/q-a) 提问。
+        **Not sure if it's a bug?** If you're asking "how do I …?" or unsure whether the behavior is expected, please check the [documentation](https://github.com/karami8/oxideterm-sync/tree/main/docs/reference) or ask in [Discussions Q&A](https://github.com/karami8/oxideterm-sync/discussions/categories/q-a) first.
+        **不确定是否为 bug？** 如果你的问题是「怎么用」或不确定当前行为是否符合预期，请先查阅[文档](https://github.com/karami8/oxideterm-sync/tree/main/docs/reference)或到 [Discussions Q&A](https://github.com/karami8/oxideterm-sync/discussions/categories/q-a) 提问。
 
   - type: input
     id: version
