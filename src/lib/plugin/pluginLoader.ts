@@ -53,6 +53,9 @@ const LIFECYCLE_TIMEOUT = 5000;
 const MAX_ERRORS = 10;
 const ERROR_WINDOW_MS = 60_000;
 
+/** Idempotency guard for initializePluginSystem — prevents double-init under React StrictMode */
+let initPromise: Promise<void> | null = null;
+
 /** Per-plugin error tracking */
 const errorTrackers = new Map<string, { count: number; windowStart: number }>();
 
@@ -241,7 +244,7 @@ export async function loadPlugin(manifest: PluginManifest): Promise<void> {
   // without a clean deactivate cycle), clean up stale registrations to prevent
   // duplicate status-bar items, commands, etc.
   const existingPlugin = store.getPlugin(id);
-  if (existingPlugin?.state === 'active' || existingPlugin?.module) {
+  if (existingPlugin?.state === 'active' || existingPlugin?.state === 'loading' || existingPlugin?.module) {
     try {
       if (existingPlugin.module?.deactivate) {
         const result = existingPlugin.module.deactivate();
@@ -489,6 +492,16 @@ export async function savePluginGlobalConfig(config: PluginGlobalConfig): Promis
  * Discovers all plugins, loads configuration, and activates enabled plugins.
  */
 export async function initializePluginSystem(): Promise<void> {
+  // Idempotency: if already initializing or initialized, return the same promise.
+  // Prevents duplicate plugin activations under React StrictMode double-mount.
+  if (initPromise) {
+    return initPromise;
+  }
+  initPromise = doInitializePluginSystem();
+  return initPromise;
+}
+
+async function doInitializePluginSystem(): Promise<void> {
   console.log('[PluginLoader] Initializing plugin system...');
 
   const store = usePluginStore.getState();
