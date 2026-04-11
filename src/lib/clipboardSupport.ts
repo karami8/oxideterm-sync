@@ -37,6 +37,34 @@ function isOsc52Enabled(): boolean {
   return useSettingsStore.getState().settings.terminal.osc52Clipboard;
 }
 
+async function writeBrowserClipboardText(text: string): Promise<boolean> {
+  if (!navigator.clipboard?.writeText) {
+    return false;
+  }
+
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch (error) {
+    console.warn('[Terminal] Clipboard write failed:', error);
+    return false;
+  }
+}
+
+export async function writeSystemClipboardText(text: string): Promise<boolean> {
+  if (!text) {
+    return true;
+  }
+
+  try {
+    const { writeText } = await import('@tauri-apps/plugin-clipboard-manager');
+    await writeText(text);
+    return true;
+  } catch {
+    return await writeBrowserClipboardText(text);
+  }
+}
+
 function createSecureClipboardAdapter(): ClipboardProvider & Base64Codec {
   return {
     async readText(selection: string): Promise<string> {
@@ -48,12 +76,11 @@ function createSecureClipboardAdapter(): ClipboardProvider & Base64Codec {
       if (
         selection !== 'c' ||
         !text ||
-        !isOsc52Enabled() ||
-        !navigator.clipboard?.writeText
+        !isOsc52Enabled()
       ) {
         return;
       }
-      await navigator.clipboard.writeText(text);
+      await writeSystemClipboardText(text);
     },
     encodeText(data: string): string {
       return encodeUtf8Base64(data);
@@ -92,12 +119,10 @@ function installOsc52Fallback(term: Terminal): Disposable {
 
     try {
       const text = decodeBase64Utf8(payload);
-      if (!navigator.clipboard?.writeText) {
-        console.warn('[OSC 52] Clipboard write is unavailable in this environment');
-        return true;
-      }
-      navigator.clipboard.writeText(text).catch((err) => {
-        console.warn('[OSC 52] Clipboard write failed:', err);
+      void writeSystemClipboardText(text).then((written) => {
+        if (!written) {
+          console.warn('[OSC 52] Clipboard write is unavailable in this environment');
+        }
       });
     } catch {
       console.warn('[OSC 52] Invalid base64 payload');
@@ -130,6 +155,13 @@ export async function installTerminalClipboardSupport(term: Terminal): Promise<D
 }
 
 export async function readSystemClipboardText(): Promise<string | null> {
+  try {
+    const { readText } = await import('@tauri-apps/plugin-clipboard-manager');
+    return await readText();
+  } catch {
+    // Fall back to the browser clipboard API outside Tauri or if the plugin fails.
+  }
+
   if (!navigator.clipboard?.readText) {
     console.warn('[Terminal] Clipboard read is unavailable in this environment');
     return null;

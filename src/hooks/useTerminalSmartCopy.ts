@@ -4,6 +4,7 @@
 import type { Terminal } from '@xterm/xterm';
 import { matchAction } from '@/lib/keybindingRegistry';
 import { platform } from '@/lib/platform';
+import { writeSystemClipboardText } from '@/lib/clipboardSupport';
 
 type Disposable = { dispose: () => void };
 
@@ -39,14 +40,11 @@ function fallbackCopySelection(): void {
 
 function copySelection(selection: string): void {
   if (!selection) return;
-  if (!navigator.clipboard?.writeText) {
-    fallbackCopySelection();
-    return;
-  }
 
-  navigator.clipboard.writeText(selection).catch((error) => {
-    console.warn('[Terminal] Clipboard write failed, falling back to document.copy:', error);
-    fallbackCopySelection();
+  void writeSystemClipboardText(selection).then((written) => {
+    if (!written) {
+      fallbackCopySelection();
+    }
   });
 }
 

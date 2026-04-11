@@ -2,6 +2,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Terminal } from '@xterm/xterm';
 import { attachTerminalSmartCopy } from '@/hooks/useTerminalSmartCopy';
 import { setOverrides } from '@/lib/keybindingRegistry';
+import { writeSystemClipboardText } from '@/lib/clipboardSupport';
+
+vi.mock('@/lib/clipboardSupport', () => ({
+  writeSystemClipboardText: vi.fn().mockResolvedValue(true),
+}));
 
 vi.mock('@/lib/platform', () => ({
   platform: {
@@ -37,19 +42,14 @@ function createShortcutEvent(init: KeyboardEventInit): KeyboardEvent {
 
 describe('attachTerminalSmartCopy', () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     setOverrides(new Map());
-    Object.defineProperty(navigator, 'clipboard', {
-      configurable: true,
-      value: {
-        readText: vi.fn().mockResolvedValue('pasted text'),
-        writeText: vi.fn().mockResolvedValue(undefined),
-      },
-    });
+    vi.mocked(writeSystemClipboardText).mockResolvedValue(true);
   });
 
   it('copies the current selection and consumes Ctrl+C when enabled', () => {
     const { term, getHandler } = createTerminalMock();
-    const writeText = vi.mocked(navigator.clipboard.writeText);
+    const copyText = vi.mocked(writeSystemClipboardText);
     const hasSelection = vi.mocked(term.hasSelection);
     const getSelection = vi.mocked(term.getSelection);
     const event = createShortcutEvent({ key: 'c', ctrlKey: true });
@@ -65,14 +65,14 @@ describe('attachTerminalSmartCopy', () => {
     const handled = getHandler()?.(event);
 
     expect(handled).toBe(false);
-    expect(writeText).toHaveBeenCalledWith('selected output');
+    expect(copyText).toHaveBeenCalledWith('selected output');
     expect(event.preventDefault).toHaveBeenCalledOnce();
     expect(event.stopPropagation).toHaveBeenCalledOnce();
   });
 
   it('lets Ctrl+C pass through when nothing is selected', () => {
     const { term, getHandler } = createTerminalMock();
-    const writeText = vi.mocked(navigator.clipboard.writeText);
+    const copyText = vi.mocked(writeSystemClipboardText);
     const hasSelection = vi.mocked(term.hasSelection);
 
     hasSelection.mockReturnValue(false);
@@ -85,12 +85,12 @@ describe('attachTerminalSmartCopy', () => {
     const handled = getHandler()?.(new KeyboardEvent('keydown', { key: 'c', ctrlKey: true }));
 
     expect(handled).toBe(true);
-    expect(writeText).not.toHaveBeenCalled();
+    expect(copyText).not.toHaveBeenCalled();
   });
 
   it('lets Ctrl+C pass through when smart copy is disabled', () => {
     const { term, getHandler } = createTerminalMock();
-    const writeText = vi.mocked(navigator.clipboard.writeText);
+    const copyText = vi.mocked(writeSystemClipboardText);
     const hasSelection = vi.mocked(term.hasSelection);
 
     hasSelection.mockReturnValue(true);
@@ -103,12 +103,12 @@ describe('attachTerminalSmartCopy', () => {
     const handled = getHandler()?.(new KeyboardEvent('keydown', { key: 'c', ctrlKey: true }));
 
     expect(handled).toBe(true);
-    expect(writeText).not.toHaveBeenCalled();
+    expect(copyText).not.toHaveBeenCalled();
   });
 
   it('lets Ctrl+C pass through when the terminal is inactive', () => {
     const { term, getHandler } = createTerminalMock();
-    const writeText = vi.mocked(navigator.clipboard.writeText);
+    const copyText = vi.mocked(writeSystemClipboardText);
     const hasSelection = vi.mocked(term.hasSelection);
 
     hasSelection.mockReturnValue(true);
@@ -121,7 +121,7 @@ describe('attachTerminalSmartCopy', () => {
     const handled = getHandler()?.(new KeyboardEvent('keydown', { key: 'c', ctrlKey: true }));
 
     expect(handled).toBe(true);
-    expect(writeText).not.toHaveBeenCalled();
+    expect(copyText).not.toHaveBeenCalled();
   });
 
   it('lets a customized terminal paste shortcut pass through when the terminal is inactive', () => {
