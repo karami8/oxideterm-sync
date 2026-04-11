@@ -10,9 +10,9 @@ Security fixes are applied to the **latest release on `main`** when practical. O
 
 ### Preferred: private reporting on GitHub
 
-1. Open the repository on GitHub: [AnalyseDeCircuit/OxideTerm](https://github.com/AnalyseDeCircuit/OxideTerm).
+1. Open the repository on GitHub: [karami8/oxideterm-sync](https://github.com/karami8/oxideterm-sync).
 2. Use **Security → Report a vulnerability** (private vulnerability reporting), if enabled for this repository.  
-   - Shortcut (when logged in): [Report a vulnerability](https://github.com/AnalyseDeCircuit/OxideTerm/security/advisories/new).
+   - Shortcut (when logged in): [Report a vulnerability](https://github.com/karami8/oxideterm-sync/security/advisories/new).
 
 If private reporting is disabled, enable it under **Settings → General → Security → Private vulnerability reporting**, or contact the maintainer through another **private** channel they publish on their profile or README.
 

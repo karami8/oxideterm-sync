@@ -132,6 +132,15 @@ pub struct SavedConnection {
     /// Target server info is always in host/port/username fields
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub proxy_chain: Vec<ProxyHopConfig>,
+
+    /// Soft deletion flag - when true, the connection is marked as deleted
+    /// but kept in the configuration for synchronization purposes (tombstone)
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub deleted: bool,
+}
+
+fn is_false(b: &bool) -> bool {
+    !*b
 }
 
 fn default_port() -> u16 {
@@ -164,6 +173,7 @@ impl SavedConnection {
             color: None,
             tags: Vec::new(),
             proxy_chain: Vec::new(),
+            deleted: false,
         }
     }
 
@@ -194,6 +204,7 @@ impl SavedConnection {
             color: None,
             tags: Vec::new(),
             proxy_chain: Vec::new(),
+            deleted: false,
         }
     }
 
@@ -249,8 +260,21 @@ impl ConfigFile {
         self.connections.push(connection);
     }
 
-    /// Remove a connection by ID
+    /// Remove a connection by ID (marks as deleted for tombstone synchronization)
     pub fn remove_connection(&mut self, id: &str) -> Option<SavedConnection> {
+        if let Some(conn) = self.connections.iter_mut().find(|c| c.id == id) {
+            // Mark as deleted instead of removing
+            conn.deleted = true;
+            conn.last_used_at = Some(Utc::now()); // Update timestamp for sync
+            self.recent.retain(|r| r != id);
+            Some(conn.clone())
+        } else {
+            None
+        }
+    }
+
+    /// Permanently remove a connection (for cleanup after tombstone period)
+    pub fn purge_deleted_connection(&mut self, id: &str) -> Option<SavedConnection> {
         if let Some(pos) = self.connections.iter().position(|c| c.id == id) {
             self.recent.retain(|r| r != id);
             Some(self.connections.remove(pos))
@@ -259,18 +283,66 @@ impl ConfigFile {
         }
     }
 
-    /// Get connection by ID
+    /// Clean up connections marked as deleted older than the specified days
+    /// Returns the number of connections purged
+    pub fn cleanup_old_deleted_connections(&mut self, days_old: i64) -> usize {
+        let cutoff = Utc::now() - chrono::Duration::days(days_old);
+        let mut to_remove = Vec::new();
+        
+        for (i, conn) in self.connections.iter().enumerate() {
+            if conn.deleted {
+                // Use last_used_at as deletion timestamp, fallback to created_at
+                let deleted_at = conn.last_used_at.unwrap_or(conn.created_at);
+                if deleted_at < cutoff {
+                    to_remove.push(i);
+                }
+            }
+        }
+        
+        // Remove in reverse order to maintain indices
+        let count = to_remove.len();
+        for &i in to_remove.iter().rev() {
+            let id = self.connections[i].id.clone();
+            self.recent.retain(|r| r != &id);
+            self.connections.remove(i);
+        }
+        
+        count
+    }
+
+    /// Get active (non-deleted) connection by ID
     pub fn get_connection(&self, id: &str) -> Option<&SavedConnection> {
+        self.connections.iter().find(|c| c.id == id && !c.deleted)
+    }
+
+    /// Get any connection by ID, including tombstones
+    pub fn get_connection_any(&self, id: &str) -> Option<&SavedConnection> {
         self.connections.iter().find(|c| c.id == id)
     }
 
-    /// Get mutable connection by ID
+    /// Get mutable active (non-deleted) connection by ID
     pub fn get_connection_mut(&mut self, id: &str) -> Option<&mut SavedConnection> {
+        self.connections.iter_mut().find(|c| c.id == id && !c.deleted)
+    }
+
+    /// Get mutable connection by ID, including tombstones
+    pub fn get_connection_mut_any(&mut self, id: &str) -> Option<&mut SavedConnection> {
         self.connections.iter_mut().find(|c| c.id == id)
+    }
+
+    /// Iterate active (non-deleted) saved connections
+    pub fn active_connections(&self) -> impl Iterator<Item = &SavedConnection> {
+        self.connections.iter().filter(|c| !c.deleted)
     }
 
     /// Mark connection as recently used
     pub fn mark_used(&mut self, id: &str) {
+        // Do not track deleted connections in recents
+        if self.get_connection(id).is_none() {
+            self.recent.retain(|r| r != id);
+            return;
+        }
+
         // Remove from recent list if exists
         self.recent.retain(|r| r != id);
         // Add to front
@@ -288,15 +360,14 @@ impl ConfigFile {
     pub fn get_recent(&self, limit: usize) -> Vec<&SavedConnection> {
         self.recent
             .iter()
-            .take(limit)
             .filter_map(|id| self.get_connection(id))
+            .take(limit)
             .collect()
     }
 
     /// Get connections by group
     pub fn get_by_group(&self, group: Option<&str>) -> Vec<&SavedConnection> {
-        self.connections
-            .iter()
+        self.active_connections()
             .filter(|c| c.group.as_deref() == group)
             .collect()
     }
@@ -304,8 +375,7 @@ impl ConfigFile {
     /// Search connections by name or host
     pub fn search(&self, query: &str) -> Vec<&SavedConnection> {
         let query_lower = query.to_lowercase();
-        self.connections
-            .iter()
+        self.active_connections()
             .filter(|c| {
                 c.name.to_lowercase().contains(&query_lower)
                     || c.host.to_lowercase().contains(&query_lower)
@@ -345,7 +415,8 @@ mod tests {
 
         let removed = config.remove_connection(&id);
         assert!(removed.is_some());
-        assert_eq!(config.connections.len(), 0);
+        assert_eq!(config.connections.len(), 1);
+        assert!(config.connections[0].deleted);
         assert_eq!(config.recent.len(), 0);
     }
 

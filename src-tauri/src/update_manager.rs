@@ -171,7 +171,7 @@ impl Default for UpdateManagerState {
 // ── Update channel ──────────────────────────────────────────
 
 const BETA_ENDPOINT: &str =
-    "https://github.com/AnalyseDeCircuit/oxideterm/releases/download/updater-beta/latest.json";
+    "https://github.com/karami8/oxideterm-sync/releases/download/updater-beta/latest.json";
 
 /// Build an `Updater` for the given channel.
 /// `"stable"` uses the config-default endpoint; `"beta"` overrides to the

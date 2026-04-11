@@ -317,6 +317,18 @@ impl ForwardingRegistry {
         }
     }
 
+    /// Load all persisted forwards across all sessions.
+    pub async fn load_all_persisted_forwards(&self) -> Result<Vec<PersistedForward>, String> {
+        if let Some(persistence) = &self.persistence {
+            persistence
+                .load_all_async()
+                .await
+                .map_err(|e| format!("Failed to load all persisted forwards: {:?}", e))
+        } else {
+            Ok(Vec::new())
+        }
+    }
+
     /// Update auto-start flag for a forward
     pub async fn update_auto_start(
         &self,

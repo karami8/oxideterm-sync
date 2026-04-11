@@ -246,6 +246,32 @@ function dedup<T>(key: string, fn: () => Promise<T>): Promise<T> {
   return p;
 }
 
+// --- Cloud Sync types ---
+
+export interface SyncClientConfig {
+  backendUrl: string;
+  verifyTls?: boolean;
+  timeoutSecs?: number;
+  settingsPayload?: Record<string, unknown>;
+  syncMode?: 'push' | 'pull';
+}
+
+export interface SyncStatus {
+  success: boolean;
+  pushedConnections: number;
+  pushedForwards: number;
+  pushedSettingsRecords: number;
+  pushedCredentialsRecords: number;
+  pulledConnections: number;
+  pulledForwards: number;
+  pulledSettingsRecords: number;
+  pulledCredentialsRecords: number;
+  pulledSettingsPayload?: Record<string, unknown> | null;
+  pulledSettingsDeleted: boolean;
+  message: string;
+  serverTime?: string | null;
+}
+
 // --- API Implementation ---
 
 export const api = {
@@ -1297,6 +1323,65 @@ export const api = {
   ): Promise<void> => {
     if (USE_MOCK) return;
     return invoke('sync_ai_providers', { providers, activeProviderId });
+  },
+
+  // ============ Cloud Sync Commands ============
+
+  syncSetApiKey: async (apiKey: string): Promise<void> => {
+    if (USE_MOCK) return;
+    return invoke('sync_set_api_key', { apiKey });
+  },
+
+  syncHasApiKey: async (): Promise<boolean> => {
+    if (USE_MOCK) return false;
+    return invoke('sync_has_api_key');
+  },
+
+  syncDeleteApiKey: async (): Promise<void> => {
+    if (USE_MOCK) return;
+    return invoke('sync_delete_api_key');
+  },
+
+  syncTestConnection: async (config: SyncClientConfig): Promise<SyncStatus> => {
+    if (USE_MOCK) {
+      return {
+        success: true,
+        pushedConnections: 0,
+        pushedForwards: 0,
+        pushedSettingsRecords: 0,
+        pushedCredentialsRecords: 0,
+        pulledConnections: 0,
+        pulledForwards: 0,
+        pulledSettingsRecords: 0,
+        pulledCredentialsRecords: 0,
+        pulledSettingsPayload: null,
+        pulledSettingsDeleted: false,
+        message: '连接测试成功',
+        serverTime: new Date().toISOString(),
+      };
+    }
+    return invoke('sync_test_connection', { config });
+  },
+
+  syncNow: async (config: SyncClientConfig): Promise<SyncStatus> => {
+    if (USE_MOCK) {
+      return {
+        success: true,
+        pushedConnections: 0,
+        pushedForwards: 0,
+        pushedSettingsRecords: 0,
+        pushedCredentialsRecords: 0,
+        pulledConnections: 0,
+        pulledForwards: 0,
+        pulledSettingsRecords: 0,
+        pulledCredentialsRecords: 0,
+        pulledSettingsPayload: null,
+        pulledSettingsDeleted: false,
+        message: '同步完成',
+        serverTime: new Date().toISOString(),
+      };
+    }
+    return invoke('sync_now', { config });
   },
 
   // ============ Local Terminal (PTY) ============

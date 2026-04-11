@@ -378,6 +378,7 @@ fn build_saved_connection(
         color: imported.color,
         tags: imported.tags,
         proxy_chain: imported.proxy_chain,
+        deleted: false,
     }
 }
 
@@ -410,6 +411,7 @@ fn merge_saved_connection(
         } else {
             existing.proxy_chain.clone()
         },
+        deleted: existing.deleted,
     }
 }
 

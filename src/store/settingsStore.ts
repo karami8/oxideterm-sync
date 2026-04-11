@@ -284,6 +284,18 @@ export interface ConnectionPoolSettings {
   idleTimeoutSecs: number;
 }
 
+/** Cloud sync settings */
+export interface SyncSettings {
+  backendUrl: string;
+  verifyTls: boolean;
+  timeoutSecs: number;
+  syncMode: 'push' | 'pull';
+  // Auto-sync settings
+  autoSyncEnabled: boolean;      // Master toggle for auto-sync
+  autoSyncInterval: number;      // Interval in minutes (1, 5, 15, 30, 60, 360, 720, 1440)
+  lastAutoSyncTime?: string;     // ISO 8601 timestamp of last auto-sync
+}
+
 /** Complete settings structure */
 export interface PersistedSettingsV2 {
   version: 2;
@@ -300,6 +312,7 @@ export interface PersistedSettingsV2 {
   ide?: IdeSettings;
   reconnect?: ReconnectSettings;
   connectionPool?: ConnectionPoolSettings;
+  sync?: SyncSettings;
   experimental?: ExperimentalSettings;
   /** Whether the first-run onboarding wizard has been completed or dismissed */
   onboardingCompleted?: boolean;
@@ -529,6 +542,16 @@ function syncConnectionPoolToBackend(connectionPool: ConnectionPoolSettings): vo
   });
 }
 
+const defaultSyncSettings: SyncSettings = {
+  backendUrl: '',
+  verifyTls: true,
+  timeoutSecs: 15,
+  syncMode: 'push',
+  // Auto-sync defaults
+  autoSyncEnabled: false,
+  autoSyncInterval: 60, // 1 hour
+  lastAutoSyncTime: undefined,
+};
 function createDefaultSettings(): PersistedSettingsV2 {
   return {
     version: 2,
@@ -545,6 +568,7 @@ function createDefaultSettings(): PersistedSettingsV2 {
     ide: { ...defaultIdeSettings },
     reconnect: { ...defaultReconnectSettings },
     connectionPool: { ...defaultConnectionPoolSettings },
+    sync: { ...defaultSyncSettings },
     experimental: { virtualSessionProxy: false },
     onboardingCompleted: false,
   };
@@ -597,6 +621,17 @@ function mergeWithDefaults(saved: Partial<PersistedSettingsV2>): PersistedSettin
     connectionPool: saved.connectionPool
       ? { ...defaults.connectionPool!, ...saved.connectionPool }
       : defaults.connectionPool,
+    sync: saved.sync
+      ? {
+          ...defaults.sync,
+          ...saved.sync,
+          syncMode: saved.sync.syncMode === 'pull' ? 'pull' : defaults.sync!.syncMode,
+          // Ensure new auto-sync fields have defaults
+          autoSyncEnabled: saved.sync.autoSyncEnabled ?? defaults.sync!.autoSyncEnabled,
+          autoSyncInterval: saved.sync.autoSyncInterval ?? defaults.sync!.autoSyncInterval,
+          lastAutoSyncTime: saved.sync.lastAutoSyncTime,
+        }
+      : defaults.sync,
     experimental: saved.experimental
       ? { ...defaults.experimental, ...saved.experimental }
       : defaults.experimental,
@@ -793,6 +828,7 @@ interface SettingsStore {
   updateIde: <K extends keyof IdeSettings>(key: K, value: IdeSettings[K]) => void;
   updateReconnect: <K extends keyof ReconnectSettings>(key: K, value: ReconnectSettings[K]) => void;
   updateConnectionPool: <K extends keyof ConnectionPoolSettings>(key: K, value: ConnectionPoolSettings[K]) => void;
+  updateSync: <K extends keyof SyncSettings>(key: K, value: SyncSettings[K]) => void;
 
   // Actions - Dedicated language setter with i18n sync
   setLanguage: (language: Language) => void;
@@ -834,6 +870,7 @@ interface SettingsStore {
   getIde: () => IdeSettings;
   getReconnect: () => ReconnectSettings;
   getConnectionPool: () => ConnectionPoolSettings;
+  getSync: () => SyncSettings;
 }
 
 // ============================================================================
@@ -1000,6 +1037,19 @@ export const useSettingsStore = create<SettingsStore>()(
         syncConnectionPoolToBackend(
           newSettings.connectionPool || defaultConnectionPoolSettings,
         );
+        return { settings: newSettings };
+      });
+    },
+
+    // ========== Sync Settings ==========
+    updateSync: (key, value) => {
+      set((state) => {
+        const currentSync = state.settings.sync || defaultSyncSettings;
+        const newSettings: PersistedSettingsV2 = {
+          ...state.settings,
+          sync: { ...currentSync, [key]: value },
+        };
+        persistSettings(newSettings);
         return { settings: newSettings };
       });
     },
@@ -1397,6 +1447,7 @@ export const useSettingsStore = create<SettingsStore>()(
     getReconnect: () => get().settings.reconnect || defaultReconnectSettings,
     getConnectionPool: () =>
       get().settings.connectionPool || defaultConnectionPoolSettings,
+    getSync: () => get().settings.sync || defaultSyncSettings,
   }))
 );
 

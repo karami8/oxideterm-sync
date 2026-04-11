@@ -87,3 +87,6 @@ CLAUDE.md
 # Website (symlink)
 oxideterm-web
 README.old.md
+src-tauri/tauri.key
+src-tauri/tauri.key.pub
+/sync

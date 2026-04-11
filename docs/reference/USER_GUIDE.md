@@ -374,8 +374,8 @@ Group: Production
 
 ## 获取帮助
 
-- **GitHub Issues**: https://github.com/AnalyseDeCircuit/oxideterm/issues  
-- **Discussions**: https://github.com/AnalyseDeCircuit/oxideterm/discussions  
+- **GitHub Issues**: https://github.com/karami8/oxideterm-sync/issues  
+- **Discussions**: https://github.com/karami8/oxideterm-sync/discussions  
 
 欢迎通过 Issue / PR 反馈文档与产品问题。
 

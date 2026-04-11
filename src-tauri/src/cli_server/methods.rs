@@ -114,8 +114,7 @@ async fn list_saved_connections(app: &tauri::AppHandle) -> Result<Value, (i32, S
 
     let config = config_state.inner().get_config_snapshot();
     let connections: Vec<Value> = config
-        .connections
-        .iter()
+        .active_connections()
         .map(|conn| {
             let (auth_type, key_path) = match &conn.auth {
                 crate::config::SavedAuth::Password { .. } => ("password", None),
@@ -401,7 +400,7 @@ async fn config_list(app: &tauri::AppHandle) -> Result<Value, (i32, String)> {
     let config = config_state.inner().get_config_snapshot();
 
     let mut groups: std::collections::BTreeMap<String, usize> = std::collections::BTreeMap::new();
-    for conn in &config.connections {
+    for conn in config.active_connections() {
         let group_name = conn.group.as_deref().unwrap_or("(ungrouped)").to_string();
         *groups.entry(group_name).or_insert(0) += 1;
     }
@@ -411,8 +410,10 @@ async fn config_list(app: &tauri::AppHandle) -> Result<Value, (i32, String)> {
         .map(|(name, count)| json!({ "name": name, "count": count }))
         .collect();
 
+    let total_connections = config.active_connections().count();
+
     Ok(json!({
-        "total_connections": config.connections.len(),
+        "total_connections": total_connections,
         "groups": groups_json,
     }))
 }
@@ -430,8 +431,7 @@ async fn config_get(app: &tauri::AppHandle, params: Value) -> Result<Value, (i32
 
     let config = config_state.inner().get_config_snapshot();
     let conn = config
-        .connections
-        .iter()
+        .active_connections()
         .find(|c| c.name.eq_ignore_ascii_case(name) || c.id == name)
         .ok_or((
             protocol::ERR_INVALID_PARAMS,
@@ -463,12 +463,26 @@ async fn config_get(app: &tauri::AppHandle, params: Value) -> Result<Value, (i32
             "compression": conn.options.compression,
             "jump_host": conn.options.jump_host,
             "term_type": conn.options.term_type,
+            "agent_forwarding": conn.options.agent_forwarding,
         },
-        "proxy_chain": conn.proxy_chain.iter().map(|p| json!({
-            "host": p.host,
-            "port": p.port,
-            "username": p.username,
-        })).collect::<Vec<_>>(),
+        "proxy_chain": conn.proxy_chain.iter().map(|p| {
+            let (proxy_auth_type, proxy_key_path) = match &p.auth {
+                crate::config::SavedAuth::Password { .. } => ("password", None),
+                crate::config::SavedAuth::Key { key_path, .. } => ("key", Some(key_path.as_str())),
+                crate::config::SavedAuth::Certificate { key_path, .. } => {
+                    ("certificate", Some(key_path.as_str()))
+                }
+                crate::config::SavedAuth::Agent => ("agent", None),
+            };
+            json!({
+                "host": p.host,
+                "port": p.port,
+                "username": p.username,
+                "auth_type": proxy_auth_type,
+                "key_path": proxy_key_path,
+                "agent_forwarding": p.agent_forwarding,
+            })
+        }).collect::<Vec<_>>(),
         "created_at": conn.created_at.to_rfc3339(),
         "last_used_at": conn.last_used_at.map(|t| t.to_rfc3339()),
     }))
@@ -1994,7 +2008,7 @@ async fn import_list(app: &tauri::AppHandle) -> Result<Value, (i32, String)> {
 
     let existing_names: std::collections::HashSet<String> = {
         let config = config_state.get_config_snapshot();
-        config.connections.iter().map(|c| c.name.clone()).collect()
+        config.active_connections().map(|c| c.name.clone()).collect()
     };
 
     let items: Vec<Value> = hosts
@@ -2053,9 +2067,9 @@ async fn import_hosts(app: &tauri::AppHandle, params: Value) -> Result<Value, (i
         )
     })?;
 
-    let existing_names: std::collections::HashSet<String> = {
+    let mut existing_names: std::collections::HashSet<String> = {
         let config = config_state.get_config_snapshot();
-        config.connections.iter().map(|c| c.name.clone()).collect()
+        config.active_connections().map(|c| c.name.clone()).collect()
     };
 
     let mut imported = 0usize;
@@ -2107,6 +2121,7 @@ async fn import_hosts(app: &tauri::AppHandle, params: Value) -> Result<Value, (i
             color: None,
             tags: vec!["ssh-config".to_string()],
             proxy_chain: Vec::new(),
+            deleted: false,
         };
 
         config_state
@@ -2123,6 +2138,7 @@ async fn import_hosts(app: &tauri::AppHandle, params: Value) -> Result<Value, (i
                 )
             })?;
 
+        existing_names.insert(alias.clone());
         imported += 1;
     }
 

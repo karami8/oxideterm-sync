@@ -2,14 +2,14 @@
 blank_issues_enabled: false
 contact_links:
   - name: Questions & support
-    url: https://github.com/AnalyseDeCircuit/oxideterm/discussions/categories/q-a
+    url: https://github.com/karami8/oxideterm-sync/discussions/categories/q-a
     about: >
       For "how do I …?" questions, please use Discussions instead of opening an issue.
   - name: Security vulnerability
-    url: https://github.com/AnalyseDeCircuit/OxideTerm/security/advisories/new
+    url: https://github.com/karami8/oxideterm-sync/security/advisories/new
     about: >
       Report privately via GitHub — do not open a public issue for undisclosed vulnerabilities.
   - name: Contributing & PR policy
-    url: https://github.com/AnalyseDeCircuit/OxideTerm/blob/main/CONTRIBUTING.md
+    url: https://github.com/karami8/oxideterm-sync/blob/main/CONTRIBUTING.md
     about: >
       PRs are welcome, but please open an Issue first to discuss the approach. Read CONTRIBUTING.md for details.
