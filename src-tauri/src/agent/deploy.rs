@@ -29,6 +29,7 @@ use crate::ssh::HandleController;
 const AGENT_REMOTE_DIR: &str = ".oxideterm";
 const AGENT_BINARY_NAME: &str = "oxideterm-agent";
 const LEGACY_AGENT_COMPATIBILITY_VERSION: u32 = 1;
+const INVALID_AGENT_COMPATIBILITY_VERSION: u32 = 0;
 
 /// Deployer for the OxideTerm agent.
 pub struct AgentDeployer;
@@ -241,16 +242,21 @@ impl AgentDeployer {
             let _binary_name = parts.next();
             let version = parts.next().unwrap_or(trimmed).to_string();
             let mut compatibility_version = LEGACY_AGENT_COMPATIBILITY_VERSION;
+            let mut saw_compat_marker = false;
 
             while let Some(part) = parts.next() {
                 if part == "compat" {
-                    if let Some(raw_version) = parts.next() {
-                        if let Ok(parsed) = raw_version.parse::<u32>() {
-                            compatibility_version = parsed;
-                        }
-                    }
+                    saw_compat_marker = true;
+                    compatibility_version = parts
+                        .next()
+                        .and_then(|raw_version| raw_version.parse::<u32>().ok())
+                        .unwrap_or(INVALID_AGENT_COMPATIBILITY_VERSION);
                     break;
                 }
+            }
+
+            if !saw_compat_marker {
+                compatibility_version = LEGACY_AGENT_COMPATIBILITY_VERSION;
             }
 
             if compatibility_version == Self::expected_compatibility_version() {
@@ -498,7 +504,19 @@ impl std::fmt::Display for AgentStatus {
 
 #[cfg(test)]
 mod tests {
-    use super::{AgentDeployer, RemoteAgentInstallState, RemoteAgentVersionInfo};
+    use super::{
+        AgentDeployer, INVALID_AGENT_COMPATIBILITY_VERSION, LEGACY_AGENT_COMPATIBILITY_VERSION,
+        RemoteAgentInstallState, RemoteAgentVersionInfo,
+    };
+
+    fn outdated_compatibility_version() -> u32 {
+        let expected = AgentDeployer::expected_compatibility_version();
+        if expected == LEGACY_AGENT_COMPATIBILITY_VERSION {
+            expected + 1
+        } else {
+            LEGACY_AGENT_COMPATIBILITY_VERSION
+        }
+    }
 
     #[test]
     fn parses_missing_remote_agent() {
@@ -525,17 +543,49 @@ mod tests {
 
         assert_eq!(
             AgentDeployer::parse_remote_version_output("oxideterm-agent 0.12.1"),
-            RemoteAgentInstallState::Current
+            if AgentDeployer::expected_compatibility_version()
+                == LEGACY_AGENT_COMPATIBILITY_VERSION
+            {
+                RemoteAgentInstallState::Current
+            } else {
+                RemoteAgentInstallState::Incompatible(RemoteAgentVersionInfo {
+                    version: "0.12.1".to_string(),
+                    compatibility_version: LEGACY_AGENT_COMPATIBILITY_VERSION,
+                })
+            }
         );
     }
 
     #[test]
     fn parses_outdated_remote_agent() {
+        let outdated = outdated_compatibility_version();
         assert_eq!(
-            AgentDeployer::parse_remote_version_output("oxideterm-agent 0.12.1 compat 2"),
+            AgentDeployer::parse_remote_version_output(&format!(
+                "oxideterm-agent 0.12.1 compat {}",
+                outdated
+            )),
             RemoteAgentInstallState::Incompatible(RemoteAgentVersionInfo {
                 version: "0.12.1".to_string(),
-                compatibility_version: 2,
+                compatibility_version: outdated,
+            })
+        );
+    }
+
+    #[test]
+    fn parses_invalid_compat_marker_as_incompatible() {
+        assert_eq!(
+            AgentDeployer::parse_remote_version_output("oxideterm-agent 0.12.1 compat abc"),
+            RemoteAgentInstallState::Incompatible(RemoteAgentVersionInfo {
+                version: "0.12.1".to_string(),
+                compatibility_version: INVALID_AGENT_COMPATIBILITY_VERSION,
+            })
+        );
+
+        assert_eq!(
+            AgentDeployer::parse_remote_version_output("oxideterm-agent 0.12.1 compat"),
+            RemoteAgentInstallState::Incompatible(RemoteAgentVersionInfo {
+                version: "0.12.1".to_string(),
+                compatibility_version: INVALID_AGENT_COMPATIBILITY_VERSION,
             })
         );
     }
